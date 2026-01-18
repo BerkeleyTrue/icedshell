@@ -21,9 +21,9 @@ run:
 [group('build')]
 watch:
   if [ -n "{{nixgl}}" ]; then \
-    {{nixgl}} cargo watch -w src -w resources -x "run -- --no-focus --dryrun -v"; \
+    {{nixgl}} cargo watch -w src -w resources -x "run -- --quit-keybindings -v"; \
   else \
-    cargo watch -w src -w resources -x "run -- --no-focus --dryrun -v"; \
+    cargo watch -w src -w resources -x "run -- --quit-keybindings -v"; \
   fi
 
 [group('build')]
