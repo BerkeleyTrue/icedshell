@@ -1,12 +1,16 @@
-use std::env::var_os;
+use std::{env::var_os, ffi::OsString};
 
-use niri_ipc::{Reply, Request, Response, socket};
-use tokio::{io::{AsyncBufReadExt, AsyncWriteExt, BufReader}, net::UnixStream};
+use iced::futures::{Stream, stream};
+use niri_ipc::{Event as NiriEvent, Reply, Request, socket};
+use tokio::{
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    net::UnixStream,
+};
 
-mod types;
+pub mod types;
 
 #[derive(Debug, thiserror::Error)]
-enum EventStreamError {
+pub enum EventStreamError {
     #[error("No socket found for Niri")]
     NiriNoSocket,
 
@@ -21,31 +25,49 @@ enum EventStreamError {
 
     #[error("Serde failed to parse")]
     SerdeErr(#[from] serde_json::Error),
-
 }
 
-struct EventStream(UnixStream);
+pub struct EventStream {
+    reader: BufReader<UnixStream>,
+}
 
-impl EventStream {
-    pub async fn connect() -> Result<Self, EventStreamError> {
-        let path = var_os(socket::SOCKET_PATH_ENV).ok_or(EventStreamError::NiriNoSocket)?;
-        let stream = UnixStream::connect(path).await?;
-        Ok(Self(stream))
+impl<'a> EventStream {
+    fn path() -> Result<OsString, EventStreamError> {
+        var_os(socket::SOCKET_PATH_ENV).ok_or(EventStreamError::NiriNoSocket)
     }
 
-    pub async fn get_reader(&mut self, req: Request) -> Result<Response, EventStreamError> {
-        let req_buff = serde_json::to_string(&req)? + "\n";
+    pub async fn new() -> Result<Self, EventStreamError> {
+        let path = Self::path()?;
+        let req_buff = serde_json::to_string(&Request::EventStream)? + "\n";
 
-        self.0.writable().await?;
-        self.0.write_all(req_buff.as_bytes()).await?;
-        self.0.shutdown().await?;
+        let mut stream = UnixStream::connect(path).await?;
 
-        let mut reader = BufReader::new(&mut self.0);
+        stream.writable().await?;
+        stream.write_all(req_buff.as_bytes()).await?;
+        stream.shutdown().await?;
+
+        let mut reader = BufReader::new(stream);
 
         let mut line = String::new();
-        let _ = reader.read_line(&mut line);
+        reader.read_line(&mut line).await?;
 
         let reply: Reply = serde_json::from_str(&line)?;
-        reply.map_err(EventStreamError::NiriStreamRefused)
+        reply.map_err(EventStreamError::NiriStreamRefused)?;
+
+        Ok(Self { reader })
+    }
+
+    pub fn listen(self) -> impl Stream<Item = NiriEvent> {
+        stream::unfold(self.reader, |mut reader| async {
+            let mut line = String::new();
+            let bytes_read = reader.read_line(&mut line).await.ok()?;
+            if bytes_read == 0 {
+                return None;
+            }
+            match serde_json::from_str::<NiriEvent>(&line) {
+                Ok(e) => Some((e, reader)),
+                Err(_err) => None,
+            }
+        })
     }
 }

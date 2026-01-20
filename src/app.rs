@@ -1,7 +1,8 @@
 use iced::{
-    Element, Length, Task,
-    widget::{container, text},
+    Element, Length, Subscription, Task, widget::{container, text}
 };
+
+use crate::niri;
 
 #[derive(Debug)]
 pub enum Message {
@@ -13,6 +14,10 @@ pub struct App {}
 impl App {
     pub fn new() -> Self {
         Self {}
+    }
+
+    pub fn subscription() -> Subscription<Message> {
+        niri::EventStream::new().listen().map(Message::noop)
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
