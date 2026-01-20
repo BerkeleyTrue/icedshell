@@ -1,6 +1,7 @@
 mod app;
 mod layershell;
 mod theme;
+mod niri;
 
 use clap::Parser;
 use crate::layershell::start;

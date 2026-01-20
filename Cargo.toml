@@ -9,6 +9,9 @@ dirs = "6.0.0"
 iced = {version = "0.14.0", features = ["image", "wayland", "tokio"]}
 iced_font_awesome = "0.4.1"
 iced_layershell = "0.14.2"
-tokio = {version = "1.49.0", features = ["fs", "rt", "macros", "process"]}
+niri-ipc = "25.11.0"
+serde_json = "1.0.149"
+thiserror = "2.0.18"
+tokio = {version = "1.49.0", features = ["fs", "rt", "macros", "process", "net", "io-util"]}
 tracing = "0.1.44"
 tracing-subscriber = "0.3.22"

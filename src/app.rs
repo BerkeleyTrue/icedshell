@@ -1,5 +1,5 @@
 use iced::{
-    Element, Task,
+    Element, Length, Task,
     widget::{container, text},
 };
 
@@ -22,6 +22,8 @@ impl App {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        container(text("Hello World")).into()
+        container(text("Hello World"))
+            .center_y(Length::Fill)
+            .into()
     }
 }
