@@ -57,6 +57,16 @@ impl EventStream {
 
         Ok(reader)
     }
+
+    async fn read(reader: &mut BufReader<UnixStream>) -> Result<NiriEvent, EventStreamError> {
+        let mut line = String::new();
+        let bytes_read = reader.read_line(&mut line).await?;
+        if bytes_read == 0 {
+            return Err(EventStreamError::NiriConnectionRefused);
+        }
+
+        serde_json::from_str::<NiriEvent>(&line).map_err(EventStreamError::SerdeErr)
+    }
 }
 
 pub fn listen() -> impl Stream<Item = NiriEvent> {
@@ -64,20 +74,13 @@ pub fn listen() -> impl Stream<Item = NiriEvent> {
     stream::unfold(eventstream, |es| async {
         match es {
             EventStream::Disconnected => {
-                let reader = EventStream::new().await.ok()?;
-                Some((None, EventStream::Connected(reader)))
-            },
+                let mut reader = EventStream::new().await.ok()?;
+                let event = EventStream::read(&mut reader).await.ok()?;
+                Some((Some(event), EventStream::Connected(reader)))
+            }
             EventStream::Connected(mut reader) => {
-                let mut line = String::new();
-                let bytes_read = reader.read_line(&mut line).await.ok()?;
-                if bytes_read == 0 {
-                    return Some((None, EventStream::Disconnected));
-                }
-
-                match serde_json::from_str::<NiriEvent>(&line) {
-                    Ok(e) => Some((Some(e), EventStream::Connected(reader))),
-                    Err(_err) => None,
-                }
+                let event = EventStream::read(&mut reader).await.ok()?;
+                Some((Some(event), EventStream::Connected(reader)))
             }
         }
     })
