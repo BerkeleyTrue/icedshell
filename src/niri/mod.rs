@@ -1,4 +1,4 @@
-use std::{env::var_os, ffi::OsString};
+use std::{env::var_os, ffi::OsString, time::Duration};
 
 use iced::futures::{Stream, stream};
 use niri_ipc::{Event as NiriEvent, Reply, Request, socket};
@@ -28,7 +28,7 @@ pub enum NiriStreamError {
 }
 
 enum NiriStream {
-    Disconnected,
+    Disconnected { attempts: u32 },
     Connected(BufReader<UnixStream>),
 }
 
@@ -70,18 +70,41 @@ impl NiriStream {
 }
 
 pub fn listen() -> impl Stream<Item = Result<NiriEvent, NiriStreamError>> {
-    let eventstream = NiriStream::Disconnected;
-    stream::unfold(eventstream, |es| async {
+    let eventstream = NiriStream::Disconnected { attempts: 0 };
+    stream::unfold(eventstream, |es| async move {
         match es {
-            NiriStream::Disconnected => {
+            NiriStream::Disconnected { attempts } => {
+                if attempts >= 4 {
+                    return None;
+                }
+
+                if attempts > 0 {
+                    let duration = Duration::from_secs(1 * 2_u64.pow(attempts));
+                    tokio::time::sleep(duration).await;
+                }
+
                 let mut reader = match NiriStream::new().await {
                     Ok(reader) => reader,
-                    Err(err) => return Some((Err(err), NiriStream::Disconnected)),
+                    Err(err) => {
+                        return Some((
+                            Err(err),
+                            NiriStream::Disconnected {
+                                attempts: attempts + 1,
+                            },
+                        ));
+                    }
                 };
 
                 let event = match NiriStream::read(&mut reader).await {
                     Ok(event) => event,
-                    Err(err) => return Some((Err(err), NiriStream::Disconnected)),
+                    Err(err) => {
+                        return Some((
+                            Err(err),
+                            NiriStream::Disconnected {
+                                attempts: attempts + 1,
+                            },
+                        ));
+                    }
                 };
 
                 Some((Ok(event), NiriStream::Connected(reader)))
@@ -89,7 +112,7 @@ pub fn listen() -> impl Stream<Item = Result<NiriEvent, NiriStreamError>> {
             NiriStream::Connected(mut reader) => {
                 let event = match NiriStream::read(&mut reader).await {
                     Ok(event) => event,
-                    Err(err) => return Some((Err(err), NiriStream::Disconnected)),
+                    Err(err) => return Some((Err(err), NiriStream::Disconnected { attempts: 1 })),
                 };
 
                 Some((Ok(event), NiriStream::Connected(reader)))
