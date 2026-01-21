@@ -1,6 +1,6 @@
 use std::{env::var_os, ffi::OsString};
 
-use iced::futures::{Stream, StreamExt, stream};
+use iced::futures::{Stream, stream};
 use niri_ipc::{Event as NiriEvent, Reply, Request, socket};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -10,7 +10,7 @@ use tokio::{
 pub mod types;
 
 #[derive(Debug, thiserror::Error)]
-enum EventStreamError {
+pub enum NiriStreamError {
     #[error("No socket found for Niri")]
     NiriNoSocket,
 
@@ -18,7 +18,7 @@ enum EventStreamError {
     NiriConnectionError(#[from] std::io::Error),
 
     #[error("Niri refused connection")]
-    NiriConnectionRefused,
+    NiriConnectionClosed,
 
     #[error("Niri refused event stream")]
     NiriStreamRefused(String),
@@ -33,11 +33,11 @@ enum NiriStream {
 }
 
 impl NiriStream {
-    fn path() -> Result<OsString, EventStreamError> {
-        var_os(socket::SOCKET_PATH_ENV).ok_or(EventStreamError::NiriNoSocket)
+    fn path() -> Result<OsString, NiriStreamError> {
+        var_os(socket::SOCKET_PATH_ENV).ok_or(NiriStreamError::NiriNoSocket)
     }
 
-    pub async fn new() -> Result<BufReader<UnixStream>, EventStreamError> {
+    pub async fn new() -> Result<BufReader<UnixStream>, NiriStreamError> {
         let path = Self::path()?;
         let req_buff = serde_json::to_string(&Request::EventStream)? + "\n";
 
@@ -53,36 +53,47 @@ impl NiriStream {
         reader.read_line(&mut line).await?;
 
         let reply: Reply = serde_json::from_str(&line)?;
-        reply.map_err(EventStreamError::NiriStreamRefused)?;
+        reply.map_err(NiriStreamError::NiriStreamRefused)?;
 
         Ok(reader)
     }
 
-    async fn read(reader: &mut BufReader<UnixStream>) -> Result<NiriEvent, EventStreamError> {
+    async fn read(reader: &mut BufReader<UnixStream>) -> Result<NiriEvent, NiriStreamError> {
         let mut line = String::new();
         let bytes_read = reader.read_line(&mut line).await?;
         if bytes_read == 0 {
-            return Err(EventStreamError::NiriConnectionRefused);
+            return Err(NiriStreamError::NiriConnectionClosed);
         }
 
-        serde_json::from_str::<NiriEvent>(&line).map_err(EventStreamError::SerdeErr)
+        serde_json::from_str::<NiriEvent>(&line).map_err(NiriStreamError::SerdeErr)
     }
 }
 
-pub fn listen() -> impl Stream<Item = NiriEvent> {
+pub fn listen() -> impl Stream<Item = Result<NiriEvent, NiriStreamError>> {
     let eventstream = NiriStream::Disconnected;
     stream::unfold(eventstream, |es| async {
         match es {
             NiriStream::Disconnected => {
-                let mut reader = NiriStream::new().await.ok()?;
-                let event = NiriStream::read(&mut reader).await.ok()?;
-                Some((Some(event), NiriStream::Connected(reader)))
+                let mut reader = match NiriStream::new().await {
+                    Ok(reader) => reader,
+                    Err(err) => return Some((Err(err), NiriStream::Disconnected)),
+                };
+
+                let event = match NiriStream::read(&mut reader).await {
+                    Ok(event) => event,
+                    Err(err) => return Some((Err(err), NiriStream::Disconnected)),
+                };
+
+                Some((Ok(event), NiriStream::Connected(reader)))
             }
             NiriStream::Connected(mut reader) => {
-                let event = NiriStream::read(&mut reader).await.ok()?;
-                Some((Some(event), NiriStream::Connected(reader)))
+                let event = match NiriStream::read(&mut reader).await {
+                    Ok(event) => event,
+                    Err(err) => return Some((Err(err), NiriStream::Disconnected)),
+                };
+
+                Some((Ok(event), NiriStream::Connected(reader)))
             }
         }
     })
-    .filter_map(async |maybe_event| maybe_event)
 }
