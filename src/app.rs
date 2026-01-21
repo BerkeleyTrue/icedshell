@@ -1,6 +1,7 @@
 use iced::{
     Element, Length, Subscription, Task, widget::{container, text}
 };
+use tracing::info;
 
 use crate::niri;
 
@@ -16,8 +17,11 @@ impl App {
         Self {}
     }
 
-    pub fn subscription() -> Subscription<Message> {
-        niri::EventStream::new().listen().map(Message::noop)
+    pub fn subscription(&self) -> Subscription<Message> {
+        Subscription::run(niri::listen).filter_map(|event| {
+            info!("niri event {event:?}");
+            None
+        })
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {

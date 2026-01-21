@@ -1,6 +1,6 @@
 use std::{env::var_os, ffi::OsString};
 
-use iced::futures::{Stream, stream};
+use iced::futures::{Stream, StreamExt, stream};
 use niri_ipc::{Event as NiriEvent, Reply, Request, socket};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -10,7 +10,7 @@ use tokio::{
 pub mod types;
 
 #[derive(Debug, thiserror::Error)]
-pub enum EventStreamError {
+enum EventStreamError {
     #[error("No socket found for Niri")]
     NiriNoSocket,
 
@@ -27,16 +27,17 @@ pub enum EventStreamError {
     SerdeErr(#[from] serde_json::Error),
 }
 
-pub struct EventStream {
-    reader: BufReader<UnixStream>,
+enum EventStream {
+    Disconnected,
+    Connected(BufReader<UnixStream>),
 }
 
-impl<'a> EventStream {
+impl EventStream {
     fn path() -> Result<OsString, EventStreamError> {
         var_os(socket::SOCKET_PATH_ENV).ok_or(EventStreamError::NiriNoSocket)
     }
 
-    pub async fn new() -> Result<Self, EventStreamError> {
+    pub async fn new() -> Result<BufReader<UnixStream>, EventStreamError> {
         let path = Self::path()?;
         let req_buff = serde_json::to_string(&Request::EventStream)? + "\n";
 
@@ -54,20 +55,31 @@ impl<'a> EventStream {
         let reply: Reply = serde_json::from_str(&line)?;
         reply.map_err(EventStreamError::NiriStreamRefused)?;
 
-        Ok(Self { reader })
+        Ok(reader)
     }
+}
 
-    pub fn listen(self) -> impl Stream<Item = NiriEvent> {
-        stream::unfold(self.reader, |mut reader| async {
-            let mut line = String::new();
-            let bytes_read = reader.read_line(&mut line).await.ok()?;
-            if bytes_read == 0 {
-                return None;
+pub fn listen() -> impl Stream<Item = NiriEvent> {
+    let eventstream = EventStream::Disconnected;
+    stream::unfold(eventstream, |es| async {
+        match es {
+            EventStream::Disconnected => {
+                let reader = EventStream::new().await.ok()?;
+                Some((None, EventStream::Connected(reader)))
+            },
+            EventStream::Connected(mut reader) => {
+                let mut line = String::new();
+                let bytes_read = reader.read_line(&mut line).await.ok()?;
+                if bytes_read == 0 {
+                    return Some((None, EventStream::Disconnected));
+                }
+
+                match serde_json::from_str::<NiriEvent>(&line) {
+                    Ok(e) => Some((Some(e), EventStream::Connected(reader))),
+                    Err(_err) => None,
+                }
             }
-            match serde_json::from_str::<NiriEvent>(&line) {
-                Ok(e) => Some((e, reader)),
-                Err(_err) => None,
-            }
-        })
-    }
+        }
+    })
+    .filter_map(async |maybe_event| maybe_event)
 }

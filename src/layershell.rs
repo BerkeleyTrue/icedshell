@@ -54,7 +54,8 @@ impl Layershell {
                 _ => None,
             });
 
-        Subscription::batch(vec![quit_binds])
+        let app_sub = self.app.subscription().map(Message::App);
+        Subscription::batch(vec![quit_binds, app_sub])
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
