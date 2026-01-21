@@ -1,5 +1,6 @@
 use iced::{
-    Element, Length, Subscription, Task, widget::{container, text}
+    Element, Length, Subscription, Task,
+    widget::{container, text},
 };
 use tracing::info;
 
@@ -31,8 +32,6 @@ impl App {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        container(text("Hello World"))
-            .center_y(Length::Fill)
-            .into()
+        container(text("Hello World")).center_y(Length::Fill).into()
     }
 }

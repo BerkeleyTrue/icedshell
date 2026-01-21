@@ -27,12 +27,12 @@ enum EventStreamError {
     SerdeErr(#[from] serde_json::Error),
 }
 
-enum EventStream {
+enum NiriStream {
     Disconnected,
     Connected(BufReader<UnixStream>),
 }
 
-impl EventStream {
+impl NiriStream {
     fn path() -> Result<OsString, EventStreamError> {
         var_os(socket::SOCKET_PATH_ENV).ok_or(EventStreamError::NiriNoSocket)
     }
@@ -70,17 +70,17 @@ impl EventStream {
 }
 
 pub fn listen() -> impl Stream<Item = NiriEvent> {
-    let eventstream = EventStream::Disconnected;
+    let eventstream = NiriStream::Disconnected;
     stream::unfold(eventstream, |es| async {
         match es {
-            EventStream::Disconnected => {
-                let mut reader = EventStream::new().await.ok()?;
-                let event = EventStream::read(&mut reader).await.ok()?;
-                Some((Some(event), EventStream::Connected(reader)))
+            NiriStream::Disconnected => {
+                let mut reader = NiriStream::new().await.ok()?;
+                let event = NiriStream::read(&mut reader).await.ok()?;
+                Some((Some(event), NiriStream::Connected(reader)))
             }
-            EventStream::Connected(mut reader) => {
-                let event = EventStream::read(&mut reader).await.ok()?;
-                Some((Some(event), EventStream::Connected(reader)))
+            NiriStream::Connected(mut reader) => {
+                let event = NiriStream::read(&mut reader).await.ok()?;
+                Some((Some(event), NiriStream::Connected(reader)))
             }
         }
     })
