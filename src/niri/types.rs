@@ -1,8 +1,18 @@
 use niri_ipc::Event;
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::{BTreeMap, HashMap}, hash::Hash};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct WorkspaceId(u64);
+
+#[derive(Debug, Clone, Eq, Hash, PartialEq, PartialOrd, Ord)]
+pub struct WorkspaceIdx(u8);
+
+impl From<&niri_ipc::Workspace> for WorkspaceIdx {
+    fn from(ws: &niri_ipc::Workspace) -> Self {
+        Self(ws.idx)
+    }
+}
+
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Workspace {
@@ -26,18 +36,10 @@ impl<'a> From<&'a niri_ipc::Workspace> for Workspace {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-struct WorkspaceMap(HashMap<WorkspaceId, Workspace>);
+struct WsMap(BTreeMap<WorkspaceIdx, Workspace>);
 
-impl<'a> FromIterator<&'a niri_ipc::Workspace> for WorkspaceMap {
-    fn from_iter<T: IntoIterator<Item = &'a niri_ipc::Workspace>>(iter: T) -> Self {
-        let map: WorkspaceMap = WorkspaceMap(HashMap::new());
-        return iter.into_iter().fold(map, |mut map, workspace| {
-            let ws = Workspace::from(workspace);
-            map.0.insert(ws.id.clone(), ws);
-            map
-        });
-    }
-}
+#[derive(Debug, Clone, PartialEq)]
+struct WsIdxMap(HashMap<WorkspaceId, WorkspaceIdx>);
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct MonitorId(String);
@@ -49,17 +51,27 @@ pub struct Monitor {
 #[derive(Debug, Clone, PartialEq)]
 pub struct State {
     // pub outputs: HashMap<MonitorId, Monitor>,
-    pub workspaces: WorkspaceMap,
+    pub ws_map: WsMap,
+    pub ws_idx_map: WsIdxMap,
 }
 
 impl State {
     fn reduce(self, ev: Event) -> Self {
         match ev {
             Event::WorkspacesChanged { workspaces } => {
-                let workspaces: WorkspaceMap = workspaces.iter().collect();
-                Self {
-                    workspaces: workspaces,
-                }
+                let state = Self {
+                    ws_map: WsMap(BTreeMap::new()),
+                    ws_idx_map: WsIdxMap(HashMap::new()),
+                };
+                workspaces.iter().fold(state, |mut state, ws| {
+                    let my_ws = Workspace::from(ws);
+                    let idx = WorkspaceIdx::from(ws);
+
+                    state.ws_idx_map.0.insert(my_ws.id.clone(), idx.clone());
+                    state.ws_map.0.insert(idx.clone(), my_ws);
+
+                    state
+                })
             },
             _ => self,
         }
