@@ -69,6 +69,12 @@ impl<'a> From<&'a niri_ipc::Window> for Window {
 #[derive(Debug, Clone, PartialEq)]
 pub struct WinMap(HashMap<WinId, Window>);
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, From, PartialOrd, Ord)]
+pub struct WinIdx(usize);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct WinIdxMap(BTreeMap<WinIdx, WinId>);
+
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct MonitorId(String);
 #[derive(Debug, Clone, PartialEq)]
@@ -82,6 +88,7 @@ pub struct State {
     pub ws_map: WsMap,
     pub ws_idx_map: WsIdxMap,
     pub win_map: WinMap,
+    pub win_idx_map: WinIdxMap,
 }
 
 impl State {
@@ -92,6 +99,7 @@ impl State {
                     ws_map: WsMap(BTreeMap::new()),
                     ws_idx_map: WsIdxMap(HashMap::new()),
                     win_map: self.win_map,
+                    win_idx_map: self.win_idx_map,
                 };
                 workspaces.iter().fold(state, |mut state, ws| {
                     let my_ws = Workspace::from(ws);
@@ -103,10 +111,12 @@ impl State {
                     state
                 })
             }
+            // Event::WindowUrgencyChanged { id, urgent } =>
             Event::WindowsChanged { windows } => {
                 let state = Self {
                     ws_map: self.ws_map,
                     ws_idx_map: self.ws_idx_map,
+                    win_idx_map: WinIdxMap(BTreeMap::new()),
                     win_map: WinMap(HashMap::new()),
                 };
                 windows.iter().fold(state, |mut state, niri_win| {
@@ -115,6 +125,27 @@ impl State {
                     state
                 })
             }
+            Event::WindowLayoutsChanged { changes } => {
+                let state = Self {
+                    ws_map: self.ws_map,
+                    ws_idx_map: self.ws_idx_map,
+                    win_map: self.win_map,
+                    win_idx_map: WinIdxMap(BTreeMap::new()),
+                };
+                changes.iter().fold(state, |mut state, (win_id, change)| {
+                    if let Some((idx, _)) = change.pos_in_scrolling_layout {
+                        state.win_idx_map.0.insert(idx.into(), (*win_id).into());
+                    }
+                    state
+                })
+            }
+            Event::KeyboardLayoutsChanged {
+                keyboard_layouts: _,
+            }
+            | Event::KeyboardLayoutSwitched { idx: _ }
+            | Event::OverviewOpenedOrClosed { is_open: _ }
+            | Event::ConfigLoaded { failed: _ }
+            | Event::ScreenshotCaptured { path: _ } => self,
             _ => self,
         }
     }
