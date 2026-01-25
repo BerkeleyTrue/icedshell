@@ -32,10 +32,10 @@ impl<'a> From<&'a niri_ipc::Workspace> for Workspace {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct WsMap(BTreeMap<WorkspaceIdx, Workspace>);
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct WsIdxMap(HashMap<WorkspaceId, WorkspaceIdx>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, From)]
@@ -66,13 +66,13 @@ impl<'a> From<&'a niri_ipc::Window> for Window {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct WinMap(HashMap<WinId, Window>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, From, PartialOrd, Ord)]
 pub struct WinIdx(usize);
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct WinIdxMap(BTreeMap<WinIdx, WinId>);
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
@@ -82,7 +82,7 @@ pub struct Monitor {
     pub id: MonitorId,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct State {
     // pub outputs: HashMap<MonitorId, Monitor>,
     pub ws_map: WsMap,
@@ -96,10 +96,9 @@ impl State {
         match ev {
             Event::WorkspacesChanged { workspaces } => {
                 let state = Self {
-                    ws_map: WsMap(BTreeMap::new()),
-                    ws_idx_map: WsIdxMap(HashMap::new()),
-                    win_map: self.win_map,
-                    win_idx_map: self.win_idx_map,
+                    ws_map: WsMap::default(),
+                    ws_idx_map: WsIdxMap::default(),
+                    ..self
                 };
                 workspaces.iter().fold(state, |mut state, ws| {
                     let my_ws = Workspace::from(ws);
@@ -111,13 +110,11 @@ impl State {
                     state
                 })
             }
-            // Event::WindowUrgencyChanged { id, urgent } =>
             Event::WindowsChanged { windows } => {
                 let state = Self {
-                    ws_map: self.ws_map,
-                    ws_idx_map: self.ws_idx_map,
-                    win_idx_map: WinIdxMap(BTreeMap::new()),
-                    win_map: WinMap(HashMap::new()),
+                    win_idx_map: WinIdxMap::default(),
+                    win_map: WinMap::default(),
+                    ..self
                 };
                 windows.iter().fold(state, |mut state, niri_win| {
                     let win = Window::from(niri_win);
@@ -127,10 +124,8 @@ impl State {
             }
             Event::WindowLayoutsChanged { changes } => {
                 let state = Self {
-                    ws_map: self.ws_map,
-                    ws_idx_map: self.ws_idx_map,
-                    win_map: self.win_map,
-                    win_idx_map: WinIdxMap(BTreeMap::new()),
+                    win_idx_map: WinIdxMap::default(),
+                    ..self
                 };
                 changes.iter().fold(state, |mut state, (win_id, change)| {
                     if let Some((idx, _)) = change.pos_in_scrolling_layout {
@@ -138,6 +133,14 @@ impl State {
                     }
                     state
                 })
+            }
+            Event::WindowUrgencyChanged { id, urgent } => {
+                let id = WinId(id);
+                let mut win_map = self.win_map;
+                if let Some(win) = win_map.0.get_mut(&id) {
+                    win.is_urgent = urgent;
+                }
+                Self { win_map, ..self }
             }
             Event::KeyboardLayoutsChanged {
                 keyboard_layouts: _,
