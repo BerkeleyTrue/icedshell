@@ -142,6 +142,54 @@ impl State {
                 }
                 Self { win_map, ..self }
             }
+            Event::WindowFocusChanged { id } => {
+                if let Some(id) = id.map(WinId) {
+                    let mut win_map = self.win_map;
+                    win_map.0.iter_mut().for_each(|(win_id, win)| {
+                        win.is_focus = *win_id == id;
+                    });
+                    Self { win_map, ..self }
+                } else {
+                    self
+                }
+            }
+            // TODO: how do handle idx? Does WindowLayoutsChanged get sent after this?
+            Event::WindowOpenedOrChanged { window } => {
+                let mut win_map = self.win_map;
+
+                let id = WinId(window.id);
+                if window.is_focused {
+                    win_map
+                        .0
+                        .iter_mut()
+                        .for_each(|(win_id, win)| win.is_focus = false);
+                }
+                win_map.0.insert(id, Window::from(&window));
+                Self { win_map, ..self }
+            }
+            Event::WindowClosed { id } => {
+                let win_id = WinId::from(id);
+                let mut win_map = self.win_map;
+                let mut win_idx_map = self.win_idx_map;
+                win_map
+                    .0
+                    .remove(&win_id)
+                    .and_then(|win| { 
+                        let mut found = Some((win, None::<&WinIdx>));
+                        for (idx, id) in win_idx_map.0.iter() {
+                            if *id == win_id {
+                                win_idx_map.0.remove(&idx);
+                                found = Some((win, Some(idx)));
+                            }
+                        }
+                        found
+                    });
+                Self {
+                    win_map,
+                    win_idx_map,
+                    ..self
+                }
+            }
             Event::KeyboardLayoutsChanged {
                 keyboard_layouts: _,
             }
