@@ -4,8 +4,9 @@ use tracing::info;
 
 
 mod stream;
-mod types;
+mod state;
 
+#[derive(Debug, Clone)]
 pub enum Message {
     Noop(NiriEvent),
 }
@@ -14,15 +15,15 @@ pub struct NiriWS {}
 
 
 impl NiriWS {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {}
     }
-    fn update(&mut self) {}
-    fn subscription(&self) -> Subscription<Message> {
+    pub fn update(&mut self) {}
+    pub fn subscription(&self) -> Subscription<Message> {
         Subscription::run(stream::listen).filter_map(|event| {
             info!("niri event {event:?}");
             None
         })
     }
-    fn view() {}
+    pub fn view() {}
 }

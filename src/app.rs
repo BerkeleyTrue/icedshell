@@ -9,20 +9,22 @@ use crate::niri;
 #[derive(Debug)]
 pub enum Message {
     Noop,
+    Niri(niri::Message)
 }
 
-pub struct App {}
+pub struct App {
+    niri: niri::NiriWS
+}
 
 impl App {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            niri: niri::NiriWS::new(),
+        }
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::run(niri::listen).filter_map(|event| {
-            info!("niri event {event:?}");
-            None
-        })
+        self.niri.subscription().map(Message::Niri)
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
