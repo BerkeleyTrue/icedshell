@@ -5,63 +5,82 @@ use std::{
     hash::Hash,
 };
 
-#[derive(Debug, Clone, Eq, Hash, PartialEq, From)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, From, PartialOrd, Ord)]
 pub struct WorkspaceId(u64);
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq, PartialOrd, Ord, From)]
 pub struct WorkspaceIdx(u8);
 
+#[derive(Debug, Clone, Eq, Hash, PartialEq, From)]
+pub struct MonitorId(String);
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Workspace {
     pub id: WorkspaceId,
-    pub monitor_id: Option<MonitorId>,
+    pub idx: WorkspaceIdx,
+
     pub is_urgent: bool,
     pub is_active: bool,
     pub is_focused: bool,
+
+    pub monitor_id: Option<MonitorId>,
+    pub active_win_id: Option<WinId>,
 }
 
 impl<'a> From<&'a niri_ipc::Workspace> for Workspace {
     fn from(ws: &'a niri_ipc::Workspace) -> Self {
         Self {
             id: ws.id.into(),
-            monitor_id: ws.output.as_ref().map(|output| MonitorId(output.clone())),
+            idx: ws.idx.into(),
+
             is_active: ws.is_active,
             is_urgent: ws.is_urgent,
             is_focused: ws.is_focused,
+
+            monitor_id: ws.output.as_ref().map(|output| MonitorId(output.clone())),
+            active_win_id: ws.active_window_id.map(WinId),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct WsMap(BTreeMap<WorkspaceIdx, Workspace>);
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct WsIdxMap(HashMap<WorkspaceId, WorkspaceIdx>);
+pub struct WsMap(BTreeMap<WorkspaceId, Workspace>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, From)]
 pub struct WinId(u64);
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, From, PartialOrd, Ord)]
+pub struct WinIdx(usize);
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Window {
     pub id: WinId,
+
     pub title: Option<String>,
     pub app_id: Option<String>,
     pub ws_id: Option<WorkspaceId>,
+    pub col_idx: Option<WinIdx>,
+
     pub is_focus: bool,
     pub is_urgent: bool,
     pub is_floating: bool,
 }
 
 impl<'a> From<&'a niri_ipc::Window> for Window {
-    fn from(value: &'a niri_ipc::Window) -> Self {
+    fn from(niri_win: &'a niri_ipc::Window) -> Self {
         Self {
-            id: value.id.into(),
-            title: value.title.clone(),
-            ws_id: value.workspace_id.map(|id| id.into()),
-            app_id: value.app_id.clone(),
-            is_urgent: value.is_urgent,
-            is_focus: value.is_focused,
-            is_floating: value.is_floating,
+            id: niri_win.id.into(),
+            title: niri_win.title.clone(),
+            app_id: niri_win.app_id.clone(),
+            ws_id: niri_win.workspace_id.map(|id| id.into()),
+            col_idx: niri_win
+                .layout
+                .pos_in_scrolling_layout
+                .map(|(idx, _)| WinIdx(idx)),
+
+            is_urgent: niri_win.is_urgent,
+            is_focus: niri_win.is_focused,
+            is_floating: niri_win.is_floating,
         }
     }
 }
@@ -69,26 +88,10 @@ impl<'a> From<&'a niri_ipc::Window> for Window {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct WinMap(HashMap<WinId, Window>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, From, PartialOrd, Ord)]
-pub struct WinIdx(usize);
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct WinIdxMap(BTreeMap<WinIdx, WinId>);
-
-#[derive(Debug, Clone, Eq, Hash, PartialEq)]
-pub struct MonitorId(String);
-#[derive(Debug, Clone, PartialEq)]
-pub struct Monitor {
-    pub id: MonitorId,
-}
-
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct State {
-    // pub outputs: HashMap<MonitorId, Monitor>,
     pub ws_map: WsMap,
-    pub ws_idx_map: WsIdxMap,
     pub win_map: WinMap,
-    pub win_idx_map: WinIdxMap,
 }
 
 impl State {
@@ -97,22 +100,55 @@ impl State {
             Event::WorkspacesChanged { workspaces } => {
                 let state = Self {
                     ws_map: WsMap::default(),
-                    ws_idx_map: WsIdxMap::default(),
                     ..self
                 };
-                workspaces.iter().fold(state, |mut state, ws| {
-                    let my_ws = Workspace::from(ws);
-                    let idx = WorkspaceIdx::from(ws.idx);
+                workspaces.iter().fold(state, |mut state, niri_ws| {
+                    let ws = Workspace::from(niri_ws);
 
-                    state.ws_idx_map.0.insert(my_ws.id.clone(), idx.clone());
-                    state.ws_map.0.insert(idx.clone(), my_ws);
+                    state.ws_map.0.insert(ws.id.clone(), ws);
 
                     state
                 })
             }
+            Event::WorkspaceUrgencyChanged { id, urgent } => {
+                let ws_id = WorkspaceId(id);
+                let mut ws_map = self.ws_map;
+                ws_map.0.get_mut(&ws_id).map(move |ws| {
+                    ws.is_urgent = urgent;
+                    ws
+                });
+                Self { ws_map, ..self }
+            }
+            Event::WorkspaceActivated { id, focused } => {
+                let id = WorkspaceId(id);
+                let mut ws_map = self.ws_map;
+                ws_map.0.iter_mut().for_each(|(_, ws)| {
+                    ws.is_active = false;
+                    if focused {
+                        ws.is_focused = false;
+                    }
+                });
+                ws_map.0.get_mut(&id).map(|ws| {
+                    ws.is_focused = focused;
+                    ws.is_active = true;
+                });
+                Self { ws_map, ..self }
+            }
+            Event::WorkspaceActiveWindowChanged {
+                workspace_id,
+                active_window_id,
+            } => {
+                let ws_id = WorkspaceId(workspace_id);
+                let active_win_id = active_window_id.map(WinId);
+                let mut ws_map = self.ws_map;
+                ws_map.0.get_mut(&ws_id).map(move |ws| {
+                    ws.active_win_id = active_win_id;
+                    ws
+                });
+                Self { ws_map, ..self }
+            }
             Event::WindowsChanged { windows } => {
                 let state = Self {
-                    win_idx_map: WinIdxMap::default(),
                     win_map: WinMap::default(),
                     ..self
                 };
@@ -123,16 +159,18 @@ impl State {
                 })
             }
             Event::WindowLayoutsChanged { changes } => {
-                let state = Self {
-                    win_idx_map: WinIdxMap::default(),
-                    ..self
-                };
-                changes.iter().fold(state, |mut state, (win_id, change)| {
-                    if let Some((idx, _)) = change.pos_in_scrolling_layout {
-                        state.win_idx_map.0.insert(idx.into(), (*win_id).into());
-                    }
-                    state
-                })
+                let win_map = changes
+                    .iter()
+                    .fold(self.win_map, |mut win_map, (win_id, change)| {
+                        let id = WinId(*win_id);
+                        win_map.0.get_mut(&id).map(|win| {
+                            if let Some((idx, _)) = change.pos_in_scrolling_layout {
+                                win.col_idx = Some(idx.into());
+                            }
+                        });
+                        win_map
+                    });
+                Self { win_map, ..self }
             }
             Event::WindowUrgencyChanged { id, urgent } => {
                 let id = WinId(id);
@@ -146,14 +184,13 @@ impl State {
                 if let Some(id) = id.map(WinId) {
                     let mut win_map = self.win_map;
                     win_map.0.iter_mut().for_each(|(win_id, win)| {
-                        win.is_focus = *win_id == id;
+                        win.is_focus = win_id == &id;
                     });
                     Self { win_map, ..self }
                 } else {
                     self
                 }
             }
-            // TODO: how do handle idx? Does WindowLayoutsChanged get sent after this?
             Event::WindowOpenedOrChanged { window } => {
                 let mut win_map = self.win_map;
 
@@ -162,42 +199,29 @@ impl State {
                     win_map
                         .0
                         .iter_mut()
-                        .for_each(|(win_id, win)| win.is_focus = false);
+                        .for_each(|(_, win)| win.is_focus = false);
                 }
                 win_map.0.insert(id, Window::from(&window));
                 Self { win_map, ..self }
             }
             Event::WindowClosed { id } => {
-                let win_id = WinId::from(id);
+                let id = WinId::from(id);
                 let mut win_map = self.win_map;
-                let mut win_idx_map = self.win_idx_map;
-                win_map
-                    .0
-                    .remove(&win_id)
-                    .and_then(|win| { 
-                        let mut found = Some((win, None::<&WinIdx>));
-                        for (idx, id) in win_idx_map.0.iter() {
-                            if *id == win_id {
-                                win_idx_map.0.remove(&idx);
-                                found = Some((win, Some(idx)));
-                            }
-                        }
-                        found
-                    });
-                Self {
-                    win_map,
-                    win_idx_map,
-                    ..self
-                }
+                win_map.0.remove(&id);
+                Self { win_map, ..self }
             }
-            Event::KeyboardLayoutsChanged {
+            Event::WindowFocusTimestampChanged {
+                id: _,
+                focus_timestamp: _,
+            }
+            | Event::KeyboardLayoutsChanged {
                 keyboard_layouts: _,
             }
             | Event::KeyboardLayoutSwitched { idx: _ }
             | Event::OverviewOpenedOrClosed { is_open: _ }
             | Event::ConfigLoaded { failed: _ }
             | Event::ScreenshotCaptured { path: _ } => self,
-            _ => self,
+            // _ => self,
         }
     }
 }
