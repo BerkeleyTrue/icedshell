@@ -1,28 +1,42 @@
-use iced::Subscription;
-use stream::NiriEvent;
+use iced::{Subscription, Task};
+use stream::{NiriEvent, NiriStreamError};
 use tracing::info;
 
-
-mod stream;
 mod state;
+mod stream;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Message {
-    Noop(NiriEvent),
+    Event(NiriEvent),
+    Stream(NiriStreamError),
 }
 
-pub struct NiriWS {}
-
+pub struct NiriWS {
+    state: state::State,
+}
 
 impl NiriWS {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            state: state::State::new(),
+        }
     }
-    pub fn update(&mut self) {}
+    pub fn update(&mut self, message: Message) -> Task<Message> {
+        match message {
+            Message::Event(ev) => {
+                self.state.apply(ev);
+                Task::none()
+            }
+            _ => Task::none(),
+        }
+    }
     pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::run(stream::listen).filter_map(|event| {
+        Subscription::run(stream::listen).map(|event| {
             info!("niri event {event:?}");
-            None
+            match event {
+                Ok(ev) => Message::Event(ev),
+                Err(err) => Message::Stream(err),
+            }
         })
     }
     pub fn view() {}

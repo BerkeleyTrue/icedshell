@@ -95,44 +95,38 @@ pub struct State {
 }
 
 impl State {
-    fn reduce(self, ev: Event) -> Self {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn apply(&mut self, ev: Event) {
         match ev {
             Event::WorkspacesChanged { workspaces } => {
-                let state = Self {
-                    ws_map: WsMap::default(),
-                    ..self
-                };
-                workspaces.iter().fold(state, |mut state, niri_ws| {
+                self.ws_map = WsMap::default();
+                workspaces.iter().for_each(move |niri_ws| {
                     let ws = Workspace::from(niri_ws);
 
-                    state.ws_map.0.insert(ws.id.clone(), ws);
-
-                    state
-                })
+                    self.ws_map.0.insert(ws.id.clone(), ws);
+                });
             }
             Event::WorkspaceUrgencyChanged { id, urgent } => {
                 let ws_id = WorkspaceId(id);
-                let mut ws_map = self.ws_map;
-                ws_map.0.get_mut(&ws_id).map(move |ws| {
+                self.ws_map.0.get_mut(&ws_id).map(move |ws| {
                     ws.is_urgent = urgent;
                     ws
                 });
-                Self { ws_map, ..self }
             }
             Event::WorkspaceActivated { id, focused } => {
                 let id = WorkspaceId(id);
-                let mut ws_map = self.ws_map;
-                ws_map.0.iter_mut().for_each(|(_, ws)| {
+                self.ws_map.0.iter_mut().for_each(|(_, ws)| {
                     ws.is_active = false;
                     if focused {
                         ws.is_focused = false;
                     }
                 });
-                ws_map.0.get_mut(&id).map(|ws| {
+                self.ws_map.0.get_mut(&id).map(|ws| {
                     ws.is_focused = focused;
                     ws.is_active = true;
                 });
-                Self { ws_map, ..self }
             }
             Event::WorkspaceActiveWindowChanged {
                 workspace_id,
@@ -140,75 +134,54 @@ impl State {
             } => {
                 let ws_id = WorkspaceId(workspace_id);
                 let active_win_id = active_window_id.map(WinId);
-                let mut ws_map = self.ws_map;
-                ws_map.0.get_mut(&ws_id).map(move |ws| {
+                self.ws_map.0.get_mut(&ws_id).map(move |ws| {
                     ws.active_win_id = active_win_id;
                     ws
                 });
-                Self { ws_map, ..self }
             }
             Event::WindowsChanged { windows } => {
-                let state = Self {
-                    win_map: WinMap::default(),
-                    ..self
-                };
-                windows.iter().fold(state, |mut state, niri_win| {
+                self.win_map = WinMap::default();
+                windows.iter().for_each(move |niri_win| {
                     let win = Window::from(niri_win);
-                    state.win_map.0.insert(win.id.clone(), win);
-                    state
-                })
+                    self.win_map.0.insert(win.id.clone(), win);
+                });
             }
             Event::WindowLayoutsChanged { changes } => {
-                let win_map = changes
-                    .iter()
-                    .fold(self.win_map, |mut win_map, (win_id, change)| {
-                        let id = WinId(*win_id);
-                        win_map.0.get_mut(&id).map(|win| {
-                            if let Some((idx, _)) = change.pos_in_scrolling_layout {
-                                win.col_idx = Some(idx.into());
-                            }
-                        });
-                        win_map
+                changes.iter().for_each(move |(win_id, change)| {
+                    let id = WinId(*win_id);
+                    self.win_map.0.get_mut(&id).map(|win| {
+                        if let Some((idx, _)) = change.pos_in_scrolling_layout {
+                            win.col_idx = Some(idx.into());
+                        }
                     });
-                Self { win_map, ..self }
+                });
             }
             Event::WindowUrgencyChanged { id, urgent } => {
                 let id = WinId(id);
-                let mut win_map = self.win_map;
-                if let Some(win) = win_map.0.get_mut(&id) {
+                if let Some(win) = self.win_map.0.get_mut(&id) {
                     win.is_urgent = urgent;
                 }
-                Self { win_map, ..self }
             }
             Event::WindowFocusChanged { id } => {
                 if let Some(id) = id.map(WinId) {
-                    let mut win_map = self.win_map;
-                    win_map.0.iter_mut().for_each(|(win_id, win)| {
+                    self.win_map.0.iter_mut().for_each(|(win_id, win)| {
                         win.is_focus = win_id == &id;
                     });
-                    Self { win_map, ..self }
-                } else {
-                    self
                 }
             }
             Event::WindowOpenedOrChanged { window } => {
-                let mut win_map = self.win_map;
-
                 let id = WinId(window.id);
                 if window.is_focused {
-                    win_map
+                    self.win_map
                         .0
                         .iter_mut()
                         .for_each(|(_, win)| win.is_focus = false);
                 }
-                win_map.0.insert(id, Window::from(&window));
-                Self { win_map, ..self }
+                self.win_map.0.insert(id, Window::from(&window));
             }
             Event::WindowClosed { id } => {
                 let id = WinId::from(id);
-                let mut win_map = self.win_map;
-                win_map.0.remove(&id);
-                Self { win_map, ..self }
+                self.win_map.0.remove(&id);
             }
             Event::WindowFocusTimestampChanged {
                 id: _,
@@ -220,7 +193,7 @@ impl State {
             | Event::KeyboardLayoutSwitched { idx: _ }
             | Event::OverviewOpenedOrClosed { is_open: _ }
             | Event::ConfigLoaded { failed: _ }
-            | Event::ScreenshotCaptured { path: _ } => self,
+            | Event::ScreenshotCaptured { path: _ } => (),
             // _ => self,
         }
     }
