@@ -3,6 +3,7 @@ use niri_ipc::Event;
 use std::{
     collections::{BTreeMap, HashMap},
     hash::Hash,
+    iter::{Iterator},
 };
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq, From, PartialOrd, Ord)]
@@ -97,6 +98,13 @@ pub struct State {
 impl State {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn iter_ws(&self) -> impl Iterator<Item = &Workspace> {
+        self.ws_map.0.iter().map(|(_, ws)| ws)
+    }
+    pub fn iter_win(&self) -> impl Iterator<Item = &Window> {
+        self.win_map.0.iter().map(|(_, win)| win)
     }
     pub fn apply(&mut self, ev: Event) {
         match ev {

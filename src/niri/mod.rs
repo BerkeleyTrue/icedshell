@@ -1,11 +1,11 @@
-use iced::{Subscription, Task};
+use iced::{Element, Subscription, Task, widget::{Button, Text, container, row, text}};
 use stream::{NiriEvent, NiriStreamError};
 use tracing::info;
 
 mod state;
 mod stream;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Message {
     Event(NiriEvent),
     Stream(NiriStreamError),
@@ -39,5 +39,10 @@ impl NiriWS {
             }
         })
     }
-    pub fn view() {}
+    pub fn view(&self) -> Element<'_, Message> {
+        let ws = self.state.iter_ws().map(|_ws| {
+            Button::new(container(text!("Container"))).into()
+        });
+        row(ws).into()
+    }
 }

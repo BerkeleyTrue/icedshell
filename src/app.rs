@@ -33,6 +33,8 @@ impl App {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        container(text("Hello World")).center_y(Length::Fill).into()
+        container(self.niri.view().map(Message::Niri))
+            .center_y(Length::Fill)
+            .into()
     }
 }
