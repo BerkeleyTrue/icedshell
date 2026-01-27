@@ -8,13 +8,13 @@ use tokio::{
     net::UnixStream,
 };
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, Clone)]
 pub enum NiriStreamError {
     #[error("No socket found for Niri")]
     NiriNoSocket,
 
     #[error("Failed to connect to socket")]
-    NiriConnectionError(#[from] std::io::Error),
+    NiriConnectionError(String),
 
     #[error("Niri refused connection")]
     NiriConnectionClosed,
@@ -23,7 +23,19 @@ pub enum NiriStreamError {
     NiriStreamRefused(String),
 
     #[error("Serde failed to parse")]
-    SerdeErr(#[from] serde_json::Error),
+    SerdeErr(String),
+}
+
+impl From<std::io::Error> for NiriStreamError {
+    fn from(err: std::io::Error) -> Self {
+        Self::NiriConnectionError(err.to_string())
+    }
+}
+
+impl From<serde_json::Error> for NiriStreamError {
+    fn from(err: serde_json::Error) -> Self {
+        Self::SerdeErr(err.to_string())
+    }
 }
 
 enum NiriStream {
@@ -64,7 +76,7 @@ impl NiriStream {
             return Err(NiriStreamError::NiriConnectionClosed);
         }
 
-        serde_json::from_str::<NiriEvent>(&line).map_err(NiriStreamError::SerdeErr)
+        serde_json::from_str::<NiriEvent>(&line).map_err(NiriStreamError::from)
     }
 }
 
