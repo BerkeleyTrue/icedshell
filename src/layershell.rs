@@ -9,6 +9,12 @@ use iced_layershell::{
 
 use crate::{Cli, app, theme::{self as mytheme, PALETTE, REM}};
 
+#[derive(Clone)]
+enum Hosts {
+    Delora,
+    Rena,
+}
+
 #[to_layer_message]
 #[derive(Debug)]
 enum Message {
@@ -19,12 +25,24 @@ enum Message {
 #[derive(Clone)]
 pub struct Init {
     quit_keybinds: bool,
+    host: Hosts,
+}
+
+impl Init {
+    pub fn host(&mut self, host: &str)  {
+        self.host = match host {
+            "delora" => Hosts::Delora,
+            "rena" => Hosts::Rena,
+            _ => Hosts::Delora
+        };
+    }
 }
 
 impl From<Cli> for Init {
     fn from(cli: Cli) -> Self {
         Self {
             quit_keybinds: cli.quit_keybindings,
+            host: Hosts::Delora,
         }
     }
 }
