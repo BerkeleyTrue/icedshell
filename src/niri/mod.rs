@@ -1,4 +1,7 @@
-use iced::{Element, Subscription, Task, widget::{Button, Text, container, row, text}};
+use crate::theme;
+use iced::{
+    Element, Padding, Subscription, Task, border, widget::{Button, Text, button, container, row, text}
+};
 use stream::{NiriEvent, NiriStreamError};
 use tracing::info;
 
@@ -41,8 +44,21 @@ impl NiriWS {
     }
     pub fn view(&self) -> Element<'_, Message> {
         let ws = self.state.iter_ws().map(|_ws| {
-            Button::new(container(text!("Container"))).into()
+            Button::new(text!("*"))
+                .style(|_, _| button::Style {
+                    background: Some(theme::BASE.into()),
+                    text_color: theme::TEXT.into(),
+                    ..Default::default()
+                })
+                .into()
         });
-        row(ws).into()
+        container(row(ws))
+            .padding(Padding::default().left(20))
+            .style(|_| container::Style {
+                background: Some(theme::BASE.into()),
+                border: border::rounded(border::left(180)),
+                ..Default::default()
+            })
+            .into()
     }
 }

@@ -1,6 +1,6 @@
 // use std::collections::HashMap;
 
-use iced::{Element, Subscription, Task, Theme, keyboard::{self, Key, key::Named}, theme::Style, window::Id};
+use iced::{Color, Element, Subscription, Task, Theme, keyboard::{self, Key, key::Named}, theme::Style, window::Id};
 use iced_layershell::{
     reexport::{Anchor, KeyboardInteractivity, Layer},
     settings::LayerShellSettings,
@@ -80,7 +80,7 @@ pub fn start(init: Init) -> iced_layershell::Result {
     .theme(Theme::custom("catppuccin", PALETTE))
     .subscription(Layershell::subscription)
     .style(|_layer, _theme| Style {
-        background_color: mytheme::BASE,
+        background_color: Color::TRANSPARENT,
         text_color: mytheme::TEXT,
     })
     .layer_settings(LayerShellSettings {
