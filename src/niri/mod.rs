@@ -4,7 +4,7 @@ use iced::{
     widget::{Button, button, container, row, text},
 };
 use stream::{NiriEvent, NiriStreamError};
-use tracing::info;
+use tracing::debug;
 
 mod state;
 mod stream;
@@ -27,7 +27,7 @@ impl NiriWS {
     }
     pub fn subscription(&self) -> Subscription<Message> {
         Subscription::run(stream::listen).map(|event| {
-            info!("niri event {event:?}");
+            debug!("niri event {event:?}");
             match event {
                 Ok(ev) => Message::Event(ev),
                 Err(err) => Message::Stream(err),
