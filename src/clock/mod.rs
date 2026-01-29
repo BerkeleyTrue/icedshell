@@ -3,8 +3,17 @@ use iced::{
     time::{every, milliseconds},
     widget::text,
 };
-use time::OffsetDateTime;
+use time::{OffsetDateTime, format_description::BorrowedFormatItem};
 use time_macros::format_description;
+
+const FORMAT: &[BorrowedFormatItem] = format_description!("[hour]:[minute]:[second]");
+
+fn gen_time() -> String {
+    OffsetDateTime::now_local()
+        .ok()
+        .and_then(|time| time.format(FORMAT).ok())
+        .unwrap_or(String::from("00:00:00"))
+}
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -13,15 +22,11 @@ pub enum Message {
 
 pub struct Clock {
     time: String,
-    // format:
 }
 
 impl Clock {
     pub fn new() -> Self {
-        // let format = format_description!("[hour]:[minute]:[second]");
-        Self {
-            time: String::default(),
-        }
+        Self { time: gen_time() }
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
@@ -31,17 +36,7 @@ impl Clock {
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Tick => {
-                OffsetDateTime::now_local()
-                    .ok()
-                    .and_then(|time| {
-                        let format = format_description!("[hour]:[minute]:[second]");
-                        time.format(&format).ok()
-                    })
-                    .map(move |time| {
-                        self.time = time;
-                        ()
-                    });
-
+                self.time = gen_time();
                 Task::none()
             }
         }
