@@ -2,6 +2,7 @@ mod app;
 mod layershell;
 mod niri;
 mod theme;
+mod clock;
 
 use crate::layershell::{Init, start};
 use clap::Parser;
