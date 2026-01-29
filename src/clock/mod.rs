@@ -1,10 +1,12 @@
 use iced::{
-    Subscription, Task,
+    Color, Element, Subscription, Task,
     time::{every, milliseconds},
+    widget::text,
 };
 use time::OffsetDateTime;
 use time_macros::format_description;
 
+#[derive(Debug, Clone)]
 pub enum Message {
     Tick,
 }
@@ -43,5 +45,10 @@ impl Clock {
                 Task::none()
             }
         }
+    }
+
+    pub fn view(&self, color: impl Into<Color>) -> Element<'_, Message> {
+        let time = self.time.clone();
+        text(time).color(color).into()
     }
 }
