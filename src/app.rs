@@ -45,7 +45,10 @@ impl App {
         let left_widgets = row![clock_view, niri_ws_view];
 
         container(left_widgets)
-            .background(Color::TRANSPARENT)
+            .styl(container::Style {
+                background: Some(Color::TRANSPARENT.into()),
+                ..Default::default()
+            })
             .padding(padding::left(10.0).bottom(3))
             .center_y(Length::Fill)
             .into()

@@ -53,9 +53,12 @@ impl NiriWS {
                 .into()
         });
         container(row(ws))
+            .styl(container::Style {
+                background: Some(theme::BASE.into()),
+                border: border::rounded(border::left(180)),
+                ..Default::default()
+            })
             .padding(Padding::default().left(20))
-            .background(theme::BASE)
-            .border(border::rounded(border::left(180)))
             .into()
     }
 }
