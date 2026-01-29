@@ -3,7 +3,7 @@ mod layershell;
 mod niri;
 mod theme;
 mod clock;
-mod widget_ext;
+// mod widget_ext;
 
 use crate::layershell::{Init, start};
 use clap::Parser;

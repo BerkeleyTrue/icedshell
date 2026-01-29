@@ -4,7 +4,7 @@ use iced::{
 };
 // use tracing::info;
 
-use crate::{clock, niri, theme as my_theme, widget_ext::*};
+use crate::{clock, niri, theme as my_theme};
 
 #[derive(Debug)]
 pub enum Message {
@@ -45,7 +45,7 @@ impl App {
         let left_widgets = row![clock_view, niri_ws_view];
 
         container(left_widgets)
-            .styl(container::Style {
+            .style(|_| container::Style {
                 background: Some(Color::TRANSPARENT.into()),
                 ..Default::default()
             })

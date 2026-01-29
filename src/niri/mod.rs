@@ -1,6 +1,7 @@
-use crate::{theme, widget_ext::ContainExt};
+use crate::theme;
 use iced::{
-    Element, Padding, Subscription, Task, border, widget::{Button, button, container, row, text}
+    Element, Padding, Subscription, Task, border,
+    widget::{Button, button, container, row, text},
 };
 use stream::{NiriEvent, NiriStreamError};
 use tracing::info;
@@ -53,7 +54,7 @@ impl NiriWS {
                 .into()
         });
         container(row(ws))
-            .styl(container::Style {
+            .style(|_| container::Style {
                 background: Some(theme::BASE.into()),
                 border: border::rounded(border::left(180)),
                 ..Default::default()
