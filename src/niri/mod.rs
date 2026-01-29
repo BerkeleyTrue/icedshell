@@ -1,4 +1,4 @@
-use crate::theme;
+use crate::{theme, widget_ext::ContainExt};
 use iced::{
     Element, Padding, Subscription, Task, border, widget::{Button, button, container, row, text}
 };
@@ -47,18 +47,15 @@ impl NiriWS {
             Button::new(text!("*"))
                 .style(|_, _| button::Style {
                     background: Some(theme::BASE.into()),
-                    text_color: theme::TEXT.into(),
+                    text_color: theme::TEXT,
                     ..Default::default()
                 })
                 .into()
         });
         container(row(ws))
             .padding(Padding::default().left(20))
-            .style(|_| container::Style {
-                background: Some(theme::BASE.into()),
-                border: border::rounded(border::left(180)),
-                ..Default::default()
-            })
+            .background(theme::BASE)
+            .border(border::rounded(border::left(180)))
             .into()
     }
 }
