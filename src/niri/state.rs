@@ -12,8 +12,20 @@ pub struct WorkspaceId(u64);
 #[derive(Debug, Clone, Eq, Hash, PartialEq, PartialOrd, Ord, From)]
 pub struct WorkspaceIdx(u8);
 
+impl WorkspaceIdx {
+    pub fn get(&self) -> u8 {
+        self.0
+    }
+}
+
 #[derive(Debug, Clone, Eq, Hash, PartialEq, From)]
 pub struct MonitorId(String);
+
+impl MonitorId {
+    pub fn get(&self) -> String {
+        self.0.clone()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Workspace {
