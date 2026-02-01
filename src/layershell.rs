@@ -1,13 +1,11 @@
-// use std::collections::HashMap;
-
-use iced::{Color, Element, Subscription, Task, Theme, keyboard::{self, Key, key::Named}, theme::Style, window::Id};
+use iced::{Color, Element, Subscription, Task, keyboard::{self, Key, key::Named}, theme::Style, window::Id};
 use iced_layershell::{
     reexport::{Anchor, KeyboardInteractivity, Layer},
     settings::LayerShellSettings,
     to_layer_message,
 };
 
-use crate::{Cli, app, theme::{self as mytheme, PALETTE, REM}};
+use crate::{Cli, app, theme::{self as mytheme}};
 
 #[derive(Clone)]
 enum Hosts {
@@ -89,22 +87,23 @@ impl Layershell {
 }
 
 pub fn start(init: Init) -> iced_layershell::Result {
+    let theme = mytheme::app_theme();
     iced_layershell::daemon(
         move || Layershell::new(init.clone()),
         || "Icedshell".to_string(),
         Layershell::update,
         Layershell::view,
     )
-    .theme(Theme::custom("catppuccin", PALETTE))
+    .theme(theme.theme())
     .subscription(Layershell::subscription)
-    .style(|_layer, _theme| Style {
+    .style(|_layer, theme| Style {
         background_color: Color::TRANSPARENT,
-        text_color: mytheme::TEXT,
+        text_color: theme.palette().text,
     })
     .layer_settings(LayerShellSettings {
         layer: Layer::Top,
-        size: Some((0, REM * 2)),
-        exclusive_zone: (REM * 2) as i32,
+        size: Some((0, theme.spacing().xl() as u32)),
+        exclusive_zone: (theme.spacing().xl()) as i32,
         anchor: Anchor::Left | Anchor::Bottom | Anchor::Right,
         keyboard_interactivity: KeyboardInteractivity::None,
         ..Default::default()

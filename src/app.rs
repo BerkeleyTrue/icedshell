@@ -4,7 +4,10 @@ use iced::{
 };
 // use tracing::info;
 
-use crate::{clock, niri, theme as my_theme};
+use crate::{
+    clock, niri,
+    theme::{self as my_theme, Shade},
+};
 
 #[derive(Debug)]
 pub enum Message {
@@ -39,9 +42,16 @@ impl App {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        let clock_view = container(self.clock.view(my_theme::MANTLE).map(Message::Clock))
-            .padding(padding::right(8));
+        let theme = my_theme::app_theme();
+        let clock_view = container(
+            self.clock
+                .view(theme.background())
+                .map(Message::Clock),
+        )
+        .padding(padding::right(theme.spacing().sm()));
+
         let niri_ws_view = self.niri.view().map(Message::Niri);
+
         let left_widgets = row![clock_view, niri_ws_view];
 
         container(left_widgets)
@@ -49,7 +59,7 @@ impl App {
                 background: Some(Color::TRANSPARENT.into()),
                 ..Default::default()
             })
-            .padding(padding::left(10.0).bottom(3))
+            .padding(padding::left(theme.spacing().md()).bottom(theme.spacing().xxs()))
             .center_y(Length::Fill)
             .into()
     }

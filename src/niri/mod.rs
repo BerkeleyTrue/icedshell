@@ -1,9 +1,9 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
-use crate::{niri::state::MonitorId, theme};
+use crate::theme::{self, AppTheme, Shade};
 use iced::{
     Element, Padding, Subscription, Task, border, padding,
-    widget::{Button, Container, button, container, row, text},
+    widget::{container, row, text},
 };
 use stream::{NiriEvent, NiriStreamError};
 use tracing::debug;
@@ -22,12 +22,14 @@ type MonitorMap<'a> = BTreeMap<String, WSMap<'a>>;
 
 pub struct NiriWS {
     state: state::State,
+    theme: AppTheme<'static>,
 }
 
 impl NiriWS {
     pub fn new() -> Self {
         Self {
             state: state::State::new(),
+            theme: theme::app_theme(),
         }
     }
     pub fn subscription(&self) -> Subscription<Message> {
@@ -49,6 +51,7 @@ impl NiriWS {
         }
     }
     pub fn view(&self) -> Element<'_, Message> {
+        let theme = &self.theme;
         let monitor_map = self
             .state
             .iter_ws()
@@ -70,26 +73,26 @@ impl NiriWS {
             let mon_content = mon.iter().map(|(idx, _ws)| {
                 container(text!("*"))
                     .id(format!("ws-{idx}"))
-                    .padding(padding::horizontal(4))
+                    .padding(padding::horizontal(theme.spacing().sm()))
                     .into()
             });
             container(row(mon_content))
                 .id(format!("mon-{mon_id}"))
-                .padding(padding::horizontal(10))
+                .padding(padding::horizontal(theme.spacing().sm()))
                 .style(|_| container::Style {
-                    background: Some(theme::BLUE.into()),
-                    border: border::rounded(90),
+                    background: Some(theme.neutral(Shade::S800).into()),
+                    border: border::rounded(theme.radius().xs()),
                     ..Default::default()
                 })
                 .into()
         });
-        container(row(niri_content).padding(padding::vertical(3)).spacing(4))
+        container(row(niri_content).padding(padding::vertical(theme.spacing().xxs())).spacing(theme.spacing().xs()))
             .style(|_| container::Style {
-                background: Some(theme::BASE.into()),
-                border: border::rounded(border::left(180)),
+                background: Some(theme.background().into()),
+                border: border::rounded(border::left(theme.radius().xl())),
                 ..Default::default()
             })
-            .padding(Padding::default().left(20))
+            .padding(Padding::default().left(theme.spacing().lg()))
             .into()
     }
 }
