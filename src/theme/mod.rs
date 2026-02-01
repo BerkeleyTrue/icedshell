@@ -1,123 +1,17 @@
+mod app_theme;
 mod color;
 mod radius;
 mod spacing;
 
-use std::borrow::Cow;
+use iced::{Color, color};
 
-use iced::{Color, Window, color, theme::Palette, window};
-
+use crate::theme::app_theme::Tokens;
 pub use crate::theme::{
+    app_theme::AppTheme,
     color::{ColorPalette, ColorScale, Shade},
     radius::RadiusScale,
     spacing::SpacingScale,
 };
-
-#[derive(Debug, Clone)]
-pub struct Tokens {
-    spacing: SpacingScale,
-    colors: ColorPalette,
-    radius: RadiusScale,
-}
-
-#[derive(Debug, Clone)]
-pub struct AppTheme<'a> {
-    tokens: Cow<'a, Tokens>,
-}
-
-impl<'a> AppTheme<'a> {
-    #[must_use]
-    pub fn tokens(&self) -> &Tokens {
-        &self.tokens
-    }
-
-    #[must_use]
-    pub fn spacing(&self) -> &SpacingScale {
-        &self.tokens.spacing
-    }
-
-    #[must_use]
-    pub fn colors(&self) -> &ColorPalette {
-        &self.tokens.colors
-    }
-
-    #[must_use]
-    pub fn radius(&self) -> &RadiusScale {
-        &self.tokens.radius
-    }
-
-    // Color helpers
-
-    #[must_use]
-    pub fn primary(&self, shade: Shade) -> iced::Color {
-        self.tokens.colors.primary.get(shade)
-    }
-
-    #[must_use]
-    pub fn secondary(&self, shade: Shade) -> iced::Color {
-        self.tokens.colors.secondary.get(shade)
-    }
-
-    #[must_use]
-    pub fn neutral(&self, shade: Shade) -> iced::Color {
-        self.tokens.colors.neutral.get(shade)
-    }
-
-    #[must_use]
-    pub fn success(&self, shade: Shade) -> iced::Color {
-        self.tokens.colors.success.get(shade)
-    }
-
-    #[must_use]
-    pub fn warning(&self, shade: Shade) -> iced::Color {
-        self.tokens.colors.warning.get(shade)
-    }
-
-    #[must_use]
-    pub fn destructive(&self, shade: Shade) -> iced::Color {
-        self.tokens.colors.destructive.get(shade)
-    }
-
-    #[must_use]
-    pub fn info(&self, shade: Shade) -> iced::Color {
-        self.tokens.colors.info.get(shade)
-    }
-
-    #[must_use]
-    pub fn background(&self) -> iced::Color {
-        self.neutral(Shade::S900)
-    }
-
-    /// Get the surface color (slightly elevated background).
-    #[must_use]
-    pub fn surface(&self) -> iced::Color {
-        self.neutral(Shade::S800)
-    }
-
-    /// Get the text color (high contrast against background).
-    #[must_use]
-    pub fn text(&self) -> iced::Color {
-        self.neutral(Shade::S50)
-    }
-
-    /// Get the muted text color (lower contrast).
-    #[must_use]
-    pub fn text_muted(&self) -> iced::Color {
-        self.neutral(Shade::S400)
-    }
-
-    /// Get the border color.
-    #[must_use]
-    pub fn border(&self) -> iced::Color {
-        self.neutral(Shade::S700)
-    }
-
-    /// iced layershell daemon themefn
-    pub fn theme(&self) -> iced::Theme {
-        let color_palette = self.colors().clone();
-        let palette: Palette = color_palette.into();
-        iced::Theme::custom("catppuccin", palette)
-    }
-}
 
 pub const ROSEWATER: Color = color!(0xf2d5cf); // #f2d5cf
 pub const FLAMINGO: Color = color!(0xeebebe); // #eebebe
@@ -147,17 +41,15 @@ pub const MANTLE: Color = color!(0x292c3c); // #292c3c
 pub const CRUST: Color = color!(0x232634); // #232634
 
 pub fn app_theme<'a>() -> AppTheme<'a> {
-    AppTheme {
-        tokens: Cow::Owned(catppuccin_tokens()),
-    }
+    AppTheme::new(catppuccin_tokens())
 }
 
 fn catppuccin_tokens() -> Tokens {
-    Tokens {
-        colors: catppuccin_colors(),
-        spacing: SpacingScale::DEFAULT,
-        radius: RadiusScale::DEFAULT,
-    }
+    Tokens::new(
+        SpacingScale::DEFAULT,
+        catppuccin_colors(),
+        RadiusScale::DEFAULT,
+    )
 }
 
 pub fn catppuccin_colors() -> ColorPalette {
@@ -188,15 +80,7 @@ pub fn catppuccin_colors() -> ColorPalette {
         ),
 
         neutral: ColorScale::new(
-            TEXT,
-            SUBTEXT1,
-            SUBTEXT0,
-            OVERLAY2,
-            OVERLAY1,
-            OVERLAY0,
-            SURFACE2,
-            SURFACE1,
-            SURFACE0,
+            TEXT, SUBTEXT1, SUBTEXT0, OVERLAY2, OVERLAY1, OVERLAY0, SURFACE2, SURFACE1, SURFACE0,
             BASE,
         ),
         success: ColorScale::new(
