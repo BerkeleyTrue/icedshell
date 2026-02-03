@@ -22,7 +22,7 @@ type MonitorMap<'a> = BTreeMap<String, WSMap<'a>>;
 
 pub struct NiriWS {
     state: state::State,
-    theme: AppTheme<'static>,
+    theme: AppTheme,
 }
 
 impl NiriWS {

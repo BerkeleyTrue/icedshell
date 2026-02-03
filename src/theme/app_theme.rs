@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use iced::theme::Palette;
 
 pub use crate::theme::{
@@ -26,15 +24,13 @@ impl Tokens {
 }
 
 #[derive(Debug, Clone)]
-pub struct AppTheme<'a> {
-    tokens: Cow<'a, Tokens>,
+pub struct AppTheme {
+    tokens: Tokens,
 }
 
-impl<'a> AppTheme<'a> {
+impl AppTheme {
     pub fn new(tokens: Tokens) -> Self {
-        Self {
-            tokens: Cow::Owned(tokens),
-        }
+        Self { tokens: tokens }
     }
 
     #[must_use]

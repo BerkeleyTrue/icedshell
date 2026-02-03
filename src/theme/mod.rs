@@ -40,7 +40,7 @@ pub const BASE: Color = color!(0x303446); // #303446
 pub const MANTLE: Color = color!(0x292c3c); // #292c3c
 pub const CRUST: Color = color!(0x232634); // #232634
 
-pub fn app_theme<'a>() -> AppTheme<'a> {
+pub fn app_theme() -> AppTheme {
     AppTheme::new(catppuccin_tokens())
 }
 
