@@ -2,11 +2,10 @@ use iced::{
     Color, Element, Length, Subscription, Task, padding,
     widget::{container, row},
 };
-// use tracing::info;
 
 use crate::{
     clock, niri,
-    theme::{self as my_theme, Shade},
+    theme::{self as my_theme},
 };
 
 #[derive(Debug)]
