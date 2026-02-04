@@ -6,6 +6,8 @@ use std::{
     iter::{Iterator},
 };
 
+use crate::config::MonitorId;
+
 #[derive(Debug, Clone, Eq, Hash, PartialEq, From, PartialOrd, Ord)]
 pub struct WorkspaceId(u64);
 
@@ -15,15 +17,6 @@ pub struct WorkspaceIdx(u8);
 impl WorkspaceIdx {
     pub fn get(&self) -> u8 {
         self.0
-    }
-}
-
-#[derive(Debug, Clone, Eq, Hash, PartialEq, From)]
-pub struct MonitorId(String);
-
-impl MonitorId {
-    pub fn get(&self) -> String {
-        self.0.clone()
     }
 }
 
@@ -50,7 +43,7 @@ impl<'a> From<&'a niri_ipc::Workspace> for Workspace {
             is_urgent: ws.is_urgent,
             is_focused: ws.is_focused,
 
-            monitor_id: ws.output.as_ref().map(|output| MonitorId(output.clone())),
+            monitor_id: ws.output.as_ref().map(|output| MonitorId::from(output)),
             active_win_id: ws.active_window_id.map(WinId),
         }
     }
