@@ -13,9 +13,9 @@ enum Hosts {
     Rena,
 }
 
-#[to_layer_message]
+#[to_layer_message(multi)]
 #[derive(Debug)]
-enum Message {
+pub enum Message {
     App(app::Message),
     Quit,
 }

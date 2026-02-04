@@ -4,6 +4,7 @@ mod niri;
 mod theme;
 mod clock;
 mod config;
+mod feature;
 
 use crate::layershell::{Init, start};
 use clap::Parser;
