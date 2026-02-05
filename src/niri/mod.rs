@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use crate::theme::{self, AppTheme, Shade};
+use crate::{
+    feature::Comp,
+    theme::{self, AppTheme, Shade},
+};
 use iced::{
     Element, Padding, Subscription, Task, border, padding,
     widget::{container, row, text},
@@ -25,14 +28,17 @@ pub struct NiriWS {
     theme: AppTheme,
 }
 
-impl NiriWS {
-    pub fn new() -> Self {
+impl Comp for NiriWS {
+    type Message = Message;
+    type Init = ();
+
+    fn new(_init: Self::Init) -> Self {
         Self {
             state: state::State::new(),
             theme: theme::app_theme(),
         }
     }
-    pub fn subscription(&self) -> Subscription<Message> {
+    fn subscription(&self) -> Subscription<Message> {
         Subscription::run(stream::listen).map(|event| {
             debug!("niri event {event:?}");
             match event {
@@ -41,7 +47,7 @@ impl NiriWS {
             }
         })
     }
-    pub fn update(&mut self, message: Message) -> Task<Message> {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Event(ev) => {
                 self.state.apply(ev);
@@ -50,7 +56,7 @@ impl NiriWS {
             _ => Task::none(),
         }
     }
-    pub fn view(&self) -> Element<'_, Message> {
+    fn view(&self) -> Element<'_, Self::Message> {
         let theme = &self.theme;
         let monitor_map = self
             .state
@@ -86,13 +92,17 @@ impl NiriWS {
                 })
                 .into()
         });
-        container(row(niri_content).padding(padding::vertical(theme.spacing().xxs())).spacing(theme.spacing().xs()))
-            .style(|_| container::Style {
-                background: Some(theme.background().into()),
-                border: border::rounded(border::left(theme.radius().xl())),
-                ..Default::default()
-            })
-            .padding(Padding::default().left(theme.spacing().lg()))
-            .into()
+        container(
+            row(niri_content)
+                .padding(padding::vertical(theme.spacing().xxs()))
+                .spacing(theme.spacing().xs()),
+        )
+        .style(|_| container::Style {
+            background: Some(theme.background().into()),
+            border: border::rounded(border::left(theme.radius().xl())),
+            ..Default::default()
+        })
+        .padding(Padding::default().left(theme.spacing().lg()))
+        .into()
     }
 }

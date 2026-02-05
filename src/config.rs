@@ -15,7 +15,7 @@ pub struct Bar {
     pub output: MonitorId
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Config {
     pub bars: Vec<Bar>
 }

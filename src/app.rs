@@ -4,7 +4,10 @@ use iced::{
 };
 
 use crate::{
-    clock, niri,
+    clock,
+    config::Config,
+    feature::{Comp, CompWithProps},
+    niri,
     theme::{self as my_theme},
 };
 
@@ -17,37 +20,38 @@ pub enum Message {
 pub struct App {
     niri: niri::NiriWS,
     clock: clock::Clock,
+    config: Config,
 }
 
-impl App {
-    pub fn new() -> Self {
+impl Comp for App {
+    type Message = Message;
+    type Init = ();
+
+    fn new(_init: Self::Init) -> Self {
         Self {
-            niri: niri::NiriWS::new(),
-            clock: clock::Clock::new(),
+            niri: niri::NiriWS::new(()),
+            clock: clock::Clock::new(()),
+            config: Config::default(),
         }
     }
 
-    pub fn subscription(&self) -> Subscription<Message> {
+    fn subscription(&self) -> Subscription<Self::Message> {
         let clock = self.clock.subscription().map(Message::Clock);
         let niri_ws = self.niri.subscription().map(Message::Niri);
         Subscription::batch(vec![clock, niri_ws])
     }
 
-    pub fn update(&mut self, message: Message) -> Task<Message> {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Niri(message) => self.niri.update(message).map(Message::Niri),
             Message::Clock(message) => self.clock.update(message).map(Message::Clock),
         }
     }
 
-    pub fn view(&self) -> Element<'_, Message> {
+    fn view(&self) -> Element<'_, Message> {
         let theme = my_theme::app_theme();
-        let clock_view = container(
-            self.clock
-                .view(theme.background())
-                .map(Message::Clock),
-        )
-        .padding(padding::right(theme.spacing().sm()));
+        let clock_view = container(self.clock.view(theme.background()).map(Message::Clock))
+            .padding(padding::right(theme.spacing().sm()));
 
         let niri_ws_view = self.niri.view().map(Message::Niri);
 

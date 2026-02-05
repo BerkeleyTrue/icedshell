@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use iced::{Element, Subscription, Task, window};
 use iced_layershell::reexport::NewLayerShellSettings;
 use tracing::debug;
@@ -12,18 +14,56 @@ where
     pub view: T,
 }
 
-pub trait Comp: Sized {
-    type InnerMessage;
+impl<T> Deref for Window<T>
+where
+    T: Feature,
+{
+    type Target = T;
 
-    fn subscriptions(&self) -> Subscription<Self::InnerMessage> {
+    fn deref(&self) -> &Self::Target {
+        &self.view
+    }
+}
+
+impl<T> DerefMut for Window<T>
+where
+    T: Feature,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.view
+    }
+}
+
+pub trait Comp {
+    type Message;
+    type Init;
+
+    fn new(input: Self::Init) -> Self;
+
+    fn subscription(&self) -> Subscription<Self::Message> {
+        Subscription::none()
+    }
+
+    fn update(&mut self, message: Self::Message) -> Task<Self::Message>;
+    fn view(&self) -> Element<'_, Self::Message>;
+}
+
+pub trait CompWithProps {
+    type InnerMessage;
+    type Init;
+    type Props;
+
+    fn new(input: Self::Init) -> Self;
+
+    fn subscription(&self) -> Subscription<Self::InnerMessage> {
         Subscription::none()
     }
 
     fn update(&mut self, message: Self::InnerMessage) -> Task<Self::InnerMessage>;
-    fn view(&self) -> impl Into<Element<'_, Self::InnerMessage>>;
+    fn view(&self, props: Self::Props) -> Element<'_, Self::InnerMessage>;
 }
 
-pub trait Feature: Sized {
+pub trait Feature: Sized + Comp {
     fn layer(&self) -> NewLayerShellSettings;
 
     fn is_animating(&self) -> bool {

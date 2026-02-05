@@ -6,6 +6,8 @@ use iced::{
 use time::{OffsetDateTime, format_description::BorrowedFormatItem};
 use time_macros::format_description;
 
+use crate::feature::CompWithProps;
+
 const FORMAT: &[BorrowedFormatItem] = format_description!("[hour]:[minute]:[second]");
 
 fn gen_time() -> String {
@@ -24,16 +26,20 @@ pub struct Clock {
     time: String,
 }
 
-impl Clock {
-    pub fn new() -> Self {
+impl CompWithProps for Clock {
+    type InnerMessage = Message;
+    type Init = ();
+    type Props = Color;
+
+    fn new(_init: Self::Init) -> Self {
         Self { time: gen_time() }
     }
 
-    pub fn subscription(&self) -> Subscription<Message> {
+    fn subscription(&self) -> Subscription<Message> {
         every(milliseconds(500)).map(|_| Message::Tick)
     }
 
-    pub fn update(&mut self, message: Message) -> Task<Message> {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Tick => {
                 self.time = gen_time();
@@ -42,7 +48,7 @@ impl Clock {
         }
     }
 
-    pub fn view(&self, color: impl Into<Color>) -> Element<'_, Message> {
+    fn view(&self, color: Color) -> Element<'_, Message> {
         let time = self.time.clone();
         text(time).color(color).into()
     }

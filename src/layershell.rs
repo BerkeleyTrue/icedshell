@@ -1,11 +1,20 @@
-use iced::{Color, Element, Subscription, Task, keyboard::{self, Key, key::Named}, theme::Style, window::Id};
+use iced::{
+    Color, Element, Subscription, Task,
+    keyboard::{self, Key, key::Named},
+    theme::Style,
+    window::Id,
+};
 use iced_layershell::{
     reexport::{Anchor, KeyboardInteractivity, Layer},
     settings::LayerShellSettings,
     to_layer_message,
 };
 
-use crate::{Cli, app, theme::{self as mytheme}};
+use crate::{
+    Cli, app,
+    feature::Comp,
+    theme::{self as mytheme},
+};
 
 #[derive(Clone)]
 enum Hosts {
@@ -27,11 +36,11 @@ pub struct Init {
 }
 
 impl Init {
-    pub fn host(&mut self, host: &str)  {
+    pub fn host(&mut self, host: &str) {
         self.host = match host {
             "delora" => Hosts::Delora,
             "rena" => Hosts::Rena,
-            _ => Hosts::Delora
+            _ => Hosts::Delora,
         };
     }
 }
@@ -53,7 +62,7 @@ struct Layershell {
 impl Layershell {
     fn new(init: Init) -> Self {
         Self {
-            app: app::App::new(),
+            app: app::App::new(()),
             quit_keybinds: init.quit_keybinds,
         }
     }
