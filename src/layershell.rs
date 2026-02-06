@@ -2,6 +2,7 @@ use iced::{
     Color, Element, Subscription, Task,
     keyboard::{self, Key, key::Named},
     theme::Style,
+    widget::{container, space},
     window::Id,
 };
 use iced_layershell::{
@@ -11,8 +12,9 @@ use iced_layershell::{
 };
 
 use crate::{
-    Cli, app,
-    feature::Comp,
+    Cli,
+    delora::{self, DeloraMain},
+    feature::{Comp, Feature, Window},
     theme::{self as mytheme},
 };
 
@@ -25,7 +27,7 @@ enum Hosts {
 #[to_layer_message(multi)]
 #[derive(Debug)]
 pub enum Message {
-    App(app::Message),
+    Delora(delora::Message),
     Quit,
 }
 
@@ -55,43 +57,56 @@ impl From<Cli> for Init {
 }
 
 struct Layershell {
-    app: app::App,
+    delora_main: Window<DeloraMain>,
     quit_keybinds: bool,
 }
 
 impl Layershell {
-    fn new(init: Init) -> Self {
-        Self {
-            app: app::App::new(()),
-            quit_keybinds: init.quit_keybinds,
-        }
+    fn new(init: Init) -> (Self, Task<Message>) {
+        let (delora_window, layer_settings) = DeloraMain::new(()).open();
+        let delora_window_id = delora_window.id.clone();
+        (
+            Self {
+                delora_main: delora_window,
+                quit_keybinds: init.quit_keybinds,
+            },
+            Task::done(Message::NewLayerShell {
+                id: delora_window_id,
+                settings: layer_settings,
+            }),
+        )
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        let quit_binds = keyboard::listen()
-            .with(self.quit_keybinds)
-            .filter_map(|(quit_keybinds, event)| match (quit_keybinds, event) {
-                (false, keyboard::Event::KeyPressed { key, .. }) => Some(key),
-                _ => None,
-            })
-            .filter_map(|key| match key.as_ref() {
-                Key::Named(Named::Escape) | Key::Character("q") => Some(Message::Quit),
-                _ => None,
-            });
-
-        let app_sub = self.app.subscription().map(Message::App);
-        Subscription::batch(vec![quit_binds, app_sub])
+        // let quit_binds = keyboard::listen()
+        //     .with(self.quit_keybinds)
+        //     .filter_map(|(quit_keybinds, event)| match (quit_keybinds, event) {
+        //         (false, keyboard::Event::KeyPressed { key, .. }) => Some(key),
+        //         _ => None,
+        //     })
+        //     .filter_map(|key| match key.as_ref() {
+        //         Key::Named(Named::Escape) | Key::Character("q") => Some(Message::Quit),
+        //         _ => None,
+        //     });
+        //
+        // let app_sub = self.app.subscription().map(Message::App);
+        // Subscription::batch(vec![quit_binds, app_sub])
+        Subscription::none()
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::App(message) => self.app.update(message).map(Message::App),
+            // Message::App(message) => self.app.update(message).map(Message::App),
             _ => Task::none(),
         }
     }
 
-    fn view(&self, _id: Id) -> Element<'_, Message> {
-        self.app.view().map(Message::App)
+    fn view(&self, id: Id) -> Element<'_, Message> {
+        if self.delora_main.id == id {
+            self.delora_main.view().map(Message::Delora)
+        } else {
+            container(space()).into()
+        }
     }
 }
 

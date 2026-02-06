@@ -4,8 +4,6 @@ use iced::{Element, Subscription, Task, window};
 use iced_layershell::reexport::NewLayerShellSettings;
 use tracing::debug;
 
-use crate::layershell;
-
 pub struct Window<T>
 where
     T: Feature,
@@ -71,14 +69,11 @@ pub trait Feature: Sized + Comp {
     }
 
     /// open window, consuming self
-    fn open(self) -> (Window<Self>, Task<layershell::Message>) {
+    fn open(self) -> (Window<Self>, NewLayerShellSettings) {
         let id = window::Id::unique();
         debug!("{id:}");
         let settings = self.layer();
 
-        (
-            Window { id, view: self },
-            Task::done(layershell::Message::NewLayerShell { settings, id }),
-        )
+        (Window { id, view: self }, settings)
     }
 }
