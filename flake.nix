@@ -5,6 +5,9 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     nixgl.url = "github:nix-community/nixGL";
 
+    git-hooks.url = "github:cachix/git-hooks.nix";
+    git-hooks.inputs.nixpkgs.follows = "nixpkgs";
+
     flake-parts.url = "github:hercules-ci/flake-parts";
   };
 
@@ -12,6 +15,7 @@
     flake-parts,
     nixpkgs,
     nixgl,
+    git-hooks,
     ...
   }: let
     winitRuntimeLibs = pkgs:
@@ -53,9 +57,12 @@
       };
   in
     flake-parts.lib.mkFlake {inherit inputs;} {
-      imports = [];
+      imports = [
+        inputs.git-hooks.flakeModule
+      ];
       systems = ["x86_64-linux"];
       perSystem = {
+        config,
         system,
         lib,
         ...
@@ -72,6 +79,11 @@
       in {
         packages.default = mkPackage pkgs;
         formatter.default = pkgs.alejandra;
+
+        pre-commit.settings.hooks.alejandra.enable = true;
+        pre-commit.settings.hooks.clippy.enable = true;
+        pre-commit.settings.hooks.rustfmt.enable = true;
+
         devShells.default = pkgs.mkShell {
           name = "${manifest.name}";
 
@@ -106,6 +118,8 @@
           RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
 
           shellHook = ''
+            ${config.pre-commit.shellHook}
+
             function menu () {
               echo
               echo -e "\033[1;34m>==> ️  '$name' shell\n\033[0m"
