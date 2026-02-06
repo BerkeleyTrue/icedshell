@@ -56,12 +56,12 @@ impl From<Cli> for Init {
     }
 }
 
-struct Layershell {
+struct Daemon {
     delora_main: Window<DeloraMain>,
     quit_keybinds: bool,
 }
 
-impl Layershell {
+impl Daemon {
     fn new(init: Init) -> (Self, Task<Message>) {
         let (delora_window, layer_settings) = DeloraMain::new(()).open();
         let delora_window_id = delora_window.id;
@@ -111,13 +111,13 @@ impl Layershell {
 pub fn start(init: Init) -> iced_layershell::Result {
     let theme = mytheme::app_theme();
     iced_layershell::daemon(
-        move || Layershell::new(init.clone()),
+        move || Daemon::new(init.clone()),
         || "Icedshell".to_string(),
-        Layershell::update,
-        Layershell::view,
+        Daemon::update,
+        Daemon::view,
     )
     .theme(theme.theme())
-    .subscription(Layershell::subscription)
+    .subscription(Daemon::subscription)
     .style(|_layer, theme| Style {
         background_color: Color::TRANSPARENT,
         text_color: theme.palette().text,

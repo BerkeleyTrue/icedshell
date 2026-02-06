@@ -1,13 +1,12 @@
-mod app;
 mod clock;
 mod config;
+mod daemon;
 mod delora;
 mod feature;
-mod layershell;
 mod niri;
 mod theme;
 
-use crate::layershell::{Init, start};
+use crate::daemon::{Init, start};
 use clap::Parser;
 use tracing::{Level, info};
 use tracing_subscriber::FmtSubscriber;
