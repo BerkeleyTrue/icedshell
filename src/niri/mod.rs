@@ -66,8 +66,7 @@ impl Comp for NiriWS {
                     .monitor_id
                     .as_ref()
                     .map(|mon_id| mon_id.get())
-                    .or(Some("NA".to_string()))
-                    .unwrap();
+                    .unwrap_or("NA".to_string());
 
                 let ws_map = mon_map.entry(monitor_id).or_default();
 
@@ -76,7 +75,7 @@ impl Comp for NiriWS {
                 mon_map
             });
         let niri_content = monitor_map.iter().map(|(mon_id, mon)| {
-            let mon_content = mon.iter().map(|(idx, _ws)| {
+            let mon_content = mon.keys().map(|idx| {
                 container(text!("*"))
                     .id(format!("ws-{idx}"))
                     .padding(padding::horizontal(theme.spacing().sm()))

@@ -28,8 +28,7 @@ fn main() -> iced_layershell::Result {
     let host = hostname::get()
         .map(|os| os.to_string_lossy().to_string())
         .ok()
-        .or(Some(String::from("NA")))
-        .unwrap();
+        .unwrap_or(String::from("NA"));
 
     // initialize tracing
     let log_level = match args.verbose {

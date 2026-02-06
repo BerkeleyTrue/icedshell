@@ -6,7 +6,7 @@ use iced::{
     window::Id,
 };
 use iced_layershell::{
-    reexport::{Anchor, KeyboardInteractivity, Layer},
+    reexport::KeyboardInteractivity,
     settings::{LayerShellSettings, StartMode},
     to_layer_message,
 };
@@ -64,7 +64,7 @@ struct Layershell {
 impl Layershell {
     fn new(init: Init) -> (Self, Task<Message>) {
         let (delora_window, layer_settings) = DeloraMain::new(()).open();
-        let delora_window_id = delora_window.id.clone();
+        let delora_window_id = delora_window.id;
         (
             Self {
                 delora_main: delora_window,

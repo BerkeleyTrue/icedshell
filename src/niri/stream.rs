@@ -48,7 +48,7 @@ impl NiriStream {
         var_os(socket::SOCKET_PATH_ENV).ok_or(NiriStreamError::NiriNoSocket)
     }
 
-    pub async fn new() -> Result<BufReader<UnixStream>, NiriStreamError> {
+    pub async fn connect() -> Result<BufReader<UnixStream>, NiriStreamError> {
         let path = Self::path()?;
         let req_buff = serde_json::to_string(&Request::EventStream)? + "\n";
 
@@ -90,11 +90,11 @@ pub fn listen() -> impl Stream<Item = Result<NiriEvent, NiriStreamError>> {
                 }
 
                 if attempts > 0 {
-                    let duration = Duration::from_secs(1 * 2_u64.pow(attempts));
+                    let duration = Duration::from_secs(2_u64.pow(attempts));
                     tokio::time::sleep(duration).await;
                 }
 
-                let mut reader = match NiriStream::new().await {
+                let mut reader = match NiriStream::connect().await {
                     Ok(reader) => reader,
                     Err(err) => {
                         return Some((

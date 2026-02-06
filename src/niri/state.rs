@@ -43,7 +43,7 @@ impl<'a> From<&'a niri_ipc::Workspace> for Workspace {
             is_urgent: ws.is_urgent,
             is_focused: ws.is_focused,
 
-            monitor_id: ws.output.as_ref().map(|output| MonitorId::from(output)),
+            monitor_id: ws.output.as_ref().map(MonitorId::from),
             active_win_id: ws.active_window_id.map(WinId),
         }
     }
@@ -106,10 +106,10 @@ impl State {
     }
 
     pub fn iter_ws(&self) -> impl Iterator<Item = &Workspace> {
-        self.ws_map.0.iter().map(|(_, ws)| ws)
+        self.ws_map.0.values()
     }
     pub fn iter_win(&self) -> impl Iterator<Item = &Window> {
-        self.win_map.0.iter().map(|(_, win)| win)
+        self.win_map.0.values()
     }
     pub fn apply(&mut self, ev: Event) {
         match ev {
@@ -123,10 +123,9 @@ impl State {
             }
             Event::WorkspaceUrgencyChanged { id, urgent } => {
                 let ws_id = WorkspaceId(id);
-                self.ws_map.0.get_mut(&ws_id).map(move |ws| {
+                if let Some(ws) = self.ws_map.0.get_mut(&ws_id) {
                     ws.is_urgent = urgent;
-                    ws
-                });
+                };
             }
             Event::WorkspaceActivated { id, focused } => {
                 let id = WorkspaceId(id);
@@ -136,10 +135,11 @@ impl State {
                         ws.is_focused = false;
                     }
                 });
-                self.ws_map.0.get_mut(&id).map(|ws| {
+
+                if let Some(ws) = self.ws_map.0.get_mut(&id) {
                     ws.is_focused = focused;
                     ws.is_active = true;
-                });
+                }
             }
             Event::WorkspaceActiveWindowChanged {
                 workspace_id,
@@ -147,10 +147,9 @@ impl State {
             } => {
                 let ws_id = WorkspaceId(workspace_id);
                 let active_win_id = active_window_id.map(WinId);
-                self.ws_map.0.get_mut(&ws_id).map(move |ws| {
+                if let Some(ws) = self.ws_map.0.get_mut(&ws_id) {
                     ws.active_win_id = active_win_id;
-                    ws
-                });
+                }
             }
             Event::WindowsChanged { windows } => {
                 self.win_map = WinMap::default();
@@ -162,11 +161,12 @@ impl State {
             Event::WindowLayoutsChanged { changes } => {
                 changes.iter().for_each(move |(win_id, change)| {
                     let id = WinId(*win_id);
-                    self.win_map.0.get_mut(&id).map(|win| {
-                        if let Some((idx, _)) = change.pos_in_scrolling_layout {
-                            win.col_idx = Some(idx.into());
-                        }
-                    });
+
+                    if let Some(win) = self.win_map.0.get_mut(&id)
+                        && let Some((idx, _)) = change.pos_in_scrolling_layout
+                    {
+                        win.col_idx = Some(idx.into());
+                    }
                 });
             }
             Event::WindowUrgencyChanged { id, urgent } => {
