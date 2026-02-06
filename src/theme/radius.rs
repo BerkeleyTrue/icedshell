@@ -85,7 +85,7 @@ impl RadiusScale {
         self.values[6]
     }
 
-    /// full 
+    /// full
     #[inline(always)]
     #[must_use]
     pub const fn full(&self) -> f32 {

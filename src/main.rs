@@ -1,11 +1,11 @@
 mod app;
+mod clock;
+mod config;
+mod delora;
+mod feature;
 mod layershell;
 mod niri;
 mod theme;
-mod clock;
-mod config;
-mod feature;
-mod delora;
 
 use crate::layershell::{Init, start};
 use clap::Parser;

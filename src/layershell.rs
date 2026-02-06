@@ -7,7 +7,7 @@ use iced::{
 };
 use iced_layershell::{
     reexport::{Anchor, KeyboardInteractivity, Layer},
-    settings::LayerShellSettings,
+    settings::{LayerShellSettings, StartMode},
     to_layer_message,
 };
 
@@ -78,25 +78,23 @@ impl Layershell {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        // let quit_binds = keyboard::listen()
-        //     .with(self.quit_keybinds)
-        //     .filter_map(|(quit_keybinds, event)| match (quit_keybinds, event) {
-        //         (false, keyboard::Event::KeyPressed { key, .. }) => Some(key),
-        //         _ => None,
-        //     })
-        //     .filter_map(|key| match key.as_ref() {
-        //         Key::Named(Named::Escape) | Key::Character("q") => Some(Message::Quit),
-        //         _ => None,
-        //     });
-        //
-        // let app_sub = self.app.subscription().map(Message::App);
-        // Subscription::batch(vec![quit_binds, app_sub])
-        Subscription::none()
+        let quit_binds = keyboard::listen()
+            .with(self.quit_keybinds)
+            .filter_map(|(quit_keybinds, event)| match (quit_keybinds, event) {
+                (false, keyboard::Event::KeyPressed { key, .. }) => Some(key),
+                _ => None,
+            })
+            .filter_map(|key| match key.as_ref() {
+                Key::Named(Named::Escape) | Key::Character("q") => Some(Message::Quit),
+                _ => None,
+            });
+
+        Subscription::batch(vec![quit_binds])
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            // Message::App(message) => self.app.update(message).map(Message::App),
+            Message::Delora(message) => self.delora_main.update(message).map(Message::Delora),
             _ => Task::none(),
         }
     }
@@ -125,11 +123,8 @@ pub fn start(init: Init) -> iced_layershell::Result {
         text_color: theme.palette().text,
     })
     .layer_settings(LayerShellSettings {
-        layer: Layer::Top,
-        size: Some((0, theme.spacing().xl() as u32)),
-        exclusive_zone: (theme.spacing().xl()) as i32,
-        anchor: Anchor::Left | Anchor::Bottom | Anchor::Right,
         keyboard_interactivity: KeyboardInteractivity::None,
+        start_mode: StartMode::Background,
         ..Default::default()
     })
     .run()

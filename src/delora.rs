@@ -1,7 +1,17 @@
-use iced::{Color, Length, Task, padding, widget::{container, row}};
-use iced_layershell::reexport::{Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption};
+use iced::{
+    Color, Length, Subscription, Task, padding,
+    widget::{container, row},
+};
+use iced_layershell::reexport::{
+    Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
+};
 
-use crate::{clock, feature::{Comp, CompWithProps, Feature}, niri, theme::{self, AppTheme}};
+use crate::{
+    clock,
+    feature::{Comp, CompWithProps, Feature},
+    niri,
+    theme::{self, AppTheme},
+};
 
 #[derive(Debug)]
 pub enum Message {
@@ -27,8 +37,17 @@ impl Comp for DeloraMain {
         }
     }
 
-    fn update(&mut self, _message: Self::Message) -> iced::Task<Self::Message> {
-        Task::none()
+    fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
+        match message {
+            Message::Niri(message) => self.niri.update(message).map(Message::Niri),
+            Message::Clock(message) => self.clock.update(message).map(Message::Clock),
+        }
+    }
+
+    fn subscription(&self) -> Subscription<Self::Message> {
+        let clock = self.clock.subscription().map(Message::Clock);
+        let niri_ws = self.niri.subscription().map(Message::Niri);
+        Subscription::batch(vec![clock, niri_ws])
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {

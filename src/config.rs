@@ -12,10 +12,10 @@ impl MonitorId {
 
 #[derive(Debug, Clone)]
 pub struct Bar {
-    pub output: MonitorId
+    pub output: MonitorId,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct Config {
-    pub bars: Vec<Bar>
+    pub bars: Vec<Bar>,
 }

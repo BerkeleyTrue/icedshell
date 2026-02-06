@@ -28,7 +28,6 @@ impl SpacingScale {
         values: [2.0, 4.0, 8.0, 12.0, 16.0, 24.0, 32.0, 48.0, 64.0, 96.0],
     };
 
-
     /// get a value by size
     #[inline(always)]
     #[must_use]

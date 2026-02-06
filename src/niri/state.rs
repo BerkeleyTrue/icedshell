@@ -3,7 +3,7 @@ use niri_ipc::Event;
 use std::{
     collections::{BTreeMap, HashMap},
     hash::Hash,
-    iter::{Iterator},
+    iter::Iterator,
 };
 
 use crate::config::MonitorId;
