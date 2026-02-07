@@ -8,8 +8,9 @@ use iced::{
     Element, Padding, Subscription, Task, border, padding,
     widget::{container, row, text},
 };
+use lucide_icons::Icon;
 use stream::{NiriEvent, NiriStreamError};
-use tracing::debug;
+use tracing::{debug, info};
 
 mod state;
 pub mod stream;
@@ -53,7 +54,10 @@ impl Comp for NiriWS {
                 self.state.apply(ev);
                 Task::none()
             }
-            _ => Task::none(),
+            Message::Stream(err) => {
+                info!("Stream err: {err:}");
+                Task::none()
+            }
         }
     }
     fn view(&self) -> Element<'_, Self::Message> {
@@ -74,13 +78,27 @@ impl Comp for NiriWS {
 
                 mon_map
             });
+
         let niri_content = monitor_map.iter().map(|(mon_id, mon)| {
-            let mon_content = mon.keys().map(|idx| {
-                container(text!("*"))
+            let mon_content = mon.iter().map(|(idx, ws)| {
+                let mut icon = if ws.is_active {
+                    Icon::CircleDot.widget()
+                } else {
+                    Icon::CircleDashed.widget()
+                };
+
+                if ws.is_focused {
+                    icon = icon.color(theme.destructive(Shade::S500))
+                }
+
+                // ws
+                container(icon)
                     .id(format!("ws-{idx}"))
                     .padding(padding::horizontal(theme.spacing().sm()))
                     .into()
             });
+
+            // monitor
             container(row(mon_content))
                 .id(format!("mon-{mon_id}"))
                 .padding(padding::horizontal(theme.spacing().sm()))
