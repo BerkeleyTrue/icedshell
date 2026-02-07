@@ -8,6 +8,7 @@ use iced_layershell::reexport::{
 
 use crate::{
     clock,
+    divider::{Direction, Heading, divider},
     feature::{Comp, CompWithProps, Feature},
     niri,
     theme::{self, AppTheme},
@@ -57,7 +58,13 @@ impl Comp for DeloraMain {
 
         let niri_ws_view = self.niri.view().map(self::Message::Niri);
 
-        let left_widgets = row![clock_view, niri_ws_view];
+        let div = divider::<Self::Message>(
+            theme.background(),
+            Direction::Right,
+            Heading::North,
+            theme.spacing().xl(),
+        );
+        let left_widgets = row![clock_view, niri_ws_view, div];
 
         container(left_widgets)
             .style(|_| container::Style {

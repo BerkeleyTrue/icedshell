@@ -2,6 +2,7 @@ mod clock;
 mod config;
 mod daemon;
 mod delora;
+mod divider;
 mod feature;
 mod niri;
 mod theme;
