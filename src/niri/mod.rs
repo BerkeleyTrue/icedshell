@@ -91,8 +91,16 @@ impl Comp for NiriWS {
                 })
                 .into()
         });
-        container(
+        let niri_row = if niri_content.len() > 0 {
             row(niri_content)
+        } else {
+            row([container(lucide_icons::Icon::CircleSlash2.widget())
+                .padding(padding::right(theme.spacing().sm()))
+                .into()])
+        };
+
+        container(
+            niri_row
                 .padding(padding::vertical(theme.spacing().xxs()))
                 .spacing(theme.spacing().xs()),
         )

@@ -3,7 +3,7 @@ use iced::{
     mouse::Cursor,
     widget::{
         Canvas,
-        canvas::{Frame, Geometry, Path, Program, Stroke},
+        canvas::{Frame, Geometry, Path, Program},
         container,
     },
 };
