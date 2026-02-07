@@ -63,25 +63,17 @@ impl From<Cli> for Init {
 
 struct Daemon {
     monitors: Vec<MonitorId>,
-    delora_main: Window<DeloraMain>,
+    delora_main: Option<Window<DeloraMain>>,
     quit_keybinds: bool,
 }
 
 impl Daemon {
-    fn new(init: Init) -> (Self, Task<Message>) {
-        let (delora_window, layer_settings) = DeloraMain::new(()).open();
-        let delora_window_id = delora_window.id;
-        (
-            Self {
-                monitors: vec![],
-                delora_main: delora_window,
-                quit_keybinds: init.quit_keybinds,
-            },
-            Task::done(Message::NewLayerShell {
-                id: delora_window_id,
-                settings: layer_settings,
-            }),
-        )
+    fn new(init: Init) -> Self {
+        Self {
+            monitors: vec![],
+            delora_main: None,
+            quit_keybinds: init.quit_keybinds,
+        }
     }
 
     fn subscription(&self) -> Subscription<Message> {
@@ -96,7 +88,12 @@ impl Daemon {
                 _ => None,
             });
 
-        let delora_subs = self.delora_main.subscription().map(Message::Delora);
+        let delora_subs = self
+            .delora_main
+            .as_ref()
+            .map(|delora| delora.subscription().map(Message::Delora))
+            .unwrap_or(Subscription::none());
+
         let niri_sub = Subscription::run(niri::stream::listen)
             .filter_map(|res| res.ok())
             .filter_map(|event| match event {
@@ -118,19 +115,45 @@ impl Daemon {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Delora(message) => self.delora_main.update(message).map(Message::Delora),
+            Message::Delora(message) => self
+                .delora_main
+                .as_mut()
+                .map(|delora| delora.update(message).map(Message::Delora))
+                .unwrap_or(Task::none()),
+
             Message::UpdateMonitors(monitors) => {
                 self.monitors = monitors;
                 info!("monitors {0:?}", self.monitors);
-                Task::none()
+                let tasks: Vec<Task<Message>> = self
+                    .monitors
+                    .iter()
+                    .map(|mon| match mon.0.as_str() {
+                        "HDMI-A-1" => {
+                            let (main_bar, main_layer_settings) = DeloraMain::new(()).open();
+                            let main_id = main_bar.id;
+
+                            self.delora_main.replace(main_bar);
+
+                            Task::done(Message::NewLayerShell {
+                                settings: main_layer_settings,
+                                id: main_id,
+                            })
+                        }
+                        _ => Task::none(),
+                    })
+                    .collect();
+
+                Task::batch(tasks)
             }
             _ => Task::none(),
         }
     }
 
-    fn view(&self, id: Id) -> Element<'_, Message> {
-        if self.delora_main.id == id {
-            self.delora_main.view().map(Message::Delora)
+    fn view(&self, win_id: Id) -> Element<'_, Message> {
+        if let Some(delora) = self.delora_main.as_ref()
+            && delora.id == win_id
+        {
+            delora.view().map(Message::Delora)
         } else {
             container(space()).into()
         }
