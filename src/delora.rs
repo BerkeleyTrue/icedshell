@@ -11,14 +11,14 @@ use crate::{
     config::MonitorId,
     divider::{Direction, Heading, divider},
     feature::{Comp, CompWithProps, Feature},
-    niri,
+    niri::ws,
     theme::{self, AppTheme},
 };
 
 #[derive(Debug)]
 pub enum Message {
     Clock(clock::Message),
-    Niri(niri::Message),
+    Niri(ws::Message),
 }
 
 pub struct Init {
@@ -26,7 +26,7 @@ pub struct Init {
 }
 
 pub struct DeloraMain {
-    niri: niri::NiriWS,
+    niri: ws::NiriWS,
     clock: clock::Clock,
     theme: AppTheme,
     output_name: String,
@@ -38,7 +38,7 @@ impl Comp for DeloraMain {
 
     fn new(input: Self::Init) -> Self {
         Self {
-            niri: niri::NiriWS::new(niri::Init {
+            niri: ws::NiriWS::new(ws::Init {
                 main_mon: MonitorId(input.output_name.clone()),
             }),
             clock: clock::Clock::new(()),
