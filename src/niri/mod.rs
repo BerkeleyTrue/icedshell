@@ -12,7 +12,7 @@ use stream::{NiriEvent, NiriStreamError};
 use tracing::debug;
 
 mod state;
-mod stream;
+pub mod stream;
 
 #[derive(Debug, Clone)]
 pub enum Message {
