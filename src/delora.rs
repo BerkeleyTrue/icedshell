@@ -8,6 +8,7 @@ use iced_layershell::reexport::{
 
 use crate::{
     clock,
+    config::MonitorId,
     divider::{Direction, Heading, divider},
     feature::{Comp, CompWithProps, Feature},
     niri,
@@ -37,7 +38,9 @@ impl Comp for DeloraMain {
 
     fn new(input: Self::Init) -> Self {
         Self {
-            niri: niri::NiriWS::new(()),
+            niri: niri::NiriWS::new(niri::Init {
+                main_mon: MonitorId(input.output_name.clone()),
+            }),
             clock: clock::Clock::new(()),
             theme: theme::app_theme(),
             output_name: input.output_name,

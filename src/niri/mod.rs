@@ -1,12 +1,13 @@
 use std::collections::BTreeMap;
 
 use crate::{
+    config::MonitorId,
     feature::Comp,
     theme::{self, AppTheme, Shade},
 };
 use iced::{
     Element, Padding, Subscription, Task, border, padding,
-    widget::{container, row, text},
+    widget::{container, row},
 };
 use lucide_icons::Icon;
 use stream::{NiriEvent, NiriStreamError};
@@ -22,21 +23,27 @@ pub enum Message {
 }
 
 type WSMap<'a> = BTreeMap<u8, &'a state::Workspace>;
-type MonitorMap<'a> = BTreeMap<String, WSMap<'a>>;
+type MonitorMap<'a> = BTreeMap<(u8, String), WSMap<'a>>;
+
+pub struct Init {
+    pub main_mon: MonitorId,
+}
 
 pub struct NiriWS {
     state: state::State,
     theme: AppTheme,
+    main_mon: MonitorId,
 }
 
 impl Comp for NiriWS {
     type Message = Message;
-    type Init = ();
+    type Init = Init;
 
-    fn new(_init: Self::Init) -> Self {
+    fn new(init: Self::Init) -> Self {
         Self {
             state: state::State::new(),
             theme: theme::app_theme(),
+            main_mon: init.main_mon,
         }
     }
     fn subscription(&self) -> Subscription<Message> {
@@ -72,14 +79,16 @@ impl Comp for NiriWS {
                     .map(|mon_id| mon_id.get())
                     .unwrap_or("NA".to_string());
 
-                let ws_map = mon_map.entry(monitor_id).or_default();
+                let priority = if monitor_id == self.main_mon.0 { 0 } else { 1 };
+                let ws_map = mon_map.entry((priority, monitor_id)).or_default();
 
                 ws_map.insert(ws.idx.get(), ws);
 
                 mon_map
             });
 
-        let niri_content = monitor_map.iter().map(|(mon_id, mon)| {
+        let niri_content = monitor_map.iter().map(|((priority, mon_id), mon)| {
+            let pri = *priority;
             let mon_content = mon.iter().map(|(idx, ws)| {
                 let mut icon = if ws.is_active {
                     Icon::CircleDot.widget()
@@ -94,7 +103,7 @@ impl Comp for NiriWS {
                 // ws
                 container(icon)
                     .id(format!("ws-{idx}"))
-                    .padding(padding::horizontal(theme.spacing().sm()))
+                    .padding(padding::horizontal(theme.spacing().xs()))
                     .into()
             });
 
@@ -102,8 +111,12 @@ impl Comp for NiriWS {
             container(row(mon_content))
                 .id(format!("mon-{mon_id}"))
                 .padding(padding::horizontal(theme.spacing().sm()))
-                .style(|_| container::Style {
-                    background: Some(theme.neutral(Shade::S800).into()),
+                .style(move |_| container::Style {
+                    background: Some(
+                        theme
+                            .neutral(if pri == 0 { Shade::S700 } else { Shade::S800 })
+                            .into(),
+                    ),
                     border: border::rounded(theme.radius().xs()),
                     ..Default::default()
                 })
