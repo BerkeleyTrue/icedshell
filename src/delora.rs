@@ -77,7 +77,7 @@ impl Comp for DeloraMain {
                 background: Some(Color::TRANSPARENT.into()),
                 ..Default::default()
             })
-            .padding(padding::left(theme.spacing().md()).bottom(theme.spacing().xxs()))
+            .padding(padding::left(theme.spacing().md()))
             .center_y(Length::Fill)
             .into()
     }

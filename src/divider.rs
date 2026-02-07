@@ -3,7 +3,7 @@ use iced::{
     mouse::Cursor,
     widget::{
         Canvas,
-        canvas::{Frame, Geometry, Path, Program},
+        canvas::{Frame, Geometry, Path, Program, Stroke},
         container,
     },
 };
@@ -93,7 +93,7 @@ pub fn divider<'a, Message: 'a>(
     container(
         Canvas::new(Divider::new(color, direction, heading))
             .height(height)
-            .width(height / 1.5),
+            .width((height / 1.75).round_ties_even()),
     )
     .align_y(alignment::Alignment::End)
     .into()
