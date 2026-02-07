@@ -4,11 +4,14 @@ mod daemon;
 mod delora;
 mod divider;
 mod feature;
+mod fira_fonts;
 mod niri;
 mod theme;
 
 use crate::daemon::{Init, start};
 use clap::Parser;
+use iced_layershell::Settings;
+use lucide_icons::LUCIDE_FONT_BYTES;
 use tracing::{Level, info};
 use tracing_subscriber::FmtSubscriber;
 
@@ -41,7 +44,21 @@ fn main() -> iced_layershell::Result {
     tracing::subscriber::set_global_default(subscriber).expect("Failed to setup tracing");
 
     info!("host: {host:?}");
+
     let mut init = Init::from(args);
     init.host(&host);
-    start(init)
+
+    start(
+        init,
+        Settings {
+            id: Some("Icedshell".into()),
+            fonts: vec![
+                LUCIDE_FONT_BYTES.into(),
+                fira_fonts::BOLD_BYTES.into(),
+                fira_fonts::REGULAR_BYTES.into(),
+            ],
+            default_font: fira_fonts::FIRA_CODE,
+            ..Default::default()
+        },
+    )
 }

@@ -162,7 +162,7 @@ impl Daemon {
     }
 }
 
-pub fn start(init: Init) -> iced_layershell::Result {
+pub fn start(init: Init, settings: iced_layershell::Settings) -> iced_layershell::Result {
     let theme = mytheme::app_theme();
     iced_layershell::daemon(
         move || Daemon::new(init.clone()),
@@ -176,6 +176,7 @@ pub fn start(init: Init) -> iced_layershell::Result {
         background_color: Color::TRANSPARENT,
         text_color: theme.palette().text,
     })
+    .settings(settings)
     .layer_settings(LayerShellSettings {
         keyboard_interactivity: KeyboardInteractivity::None,
         start_mode: StartMode::Background,
