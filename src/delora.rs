@@ -1,6 +1,8 @@
 use iced::{
-    Color, Length, Subscription, padding,
-    widget::{container, row},
+    Color, Length, Subscription,
+    border::left,
+    padding,
+    widget::{container, row, space},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
@@ -11,14 +13,15 @@ use crate::{
     config::MonitorId,
     divider::{Direction, Heading, divider},
     feature::{Comp, CompWithProps, Feature},
-    niri::ws,
+    niri::{window, ws},
     theme::{self, AppTheme},
 };
 
 #[derive(Debug)]
 pub enum Message {
     Clock(clock::Message),
-    Niri(ws::Message),
+    Ws(ws::Message),
+    Win(window::Message),
 }
 
 pub struct Init {
@@ -26,7 +29,8 @@ pub struct Init {
 }
 
 pub struct DeloraMain {
-    niri: ws::NiriWS,
+    ws: ws::NiriWS,
+    win: window::NiriWin,
     clock: clock::Clock,
     theme: AppTheme,
     output_name: String,
@@ -38,9 +42,10 @@ impl Comp for DeloraMain {
 
     fn new(input: Self::Init) -> Self {
         Self {
-            niri: ws::NiriWS::new(ws::Init {
+            ws: ws::NiriWS::new(ws::Init {
                 main_mon: MonitorId(input.output_name.clone()),
             }),
+            win: window::NiriWin::new(window::Init {}),
             clock: clock::Clock::new(()),
             theme: theme::app_theme(),
             output_name: input.output_name,
@@ -49,14 +54,14 @@ impl Comp for DeloraMain {
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
-            Message::Niri(message) => self.niri.update(message).map(Message::Niri),
+            Message::Ws(message) => self.ws.update(message).map(Message::Ws),
             Message::Clock(message) => self.clock.update(message).map(Message::Clock),
         }
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
         let clock = self.clock.subscription().map(Message::Clock);
-        let niri_ws = self.niri.subscription().map(Message::Niri);
+        let niri_ws = self.ws.subscription().map(Message::Ws);
         Subscription::batch(vec![clock, niri_ws])
     }
 
@@ -65,7 +70,7 @@ impl Comp for DeloraMain {
         let clock_view = container(self.clock.view(theme.background()).map(Message::Clock))
             .padding(padding::right(theme.spacing().sm()));
 
-        let niri_ws_view = self.niri.view().map(self::Message::Niri);
+        let niri_ws_view = self.ws.view().map(self::Message::Ws);
 
         let div = divider::<Self::Message>(
             theme.background(),
@@ -75,14 +80,26 @@ impl Comp for DeloraMain {
         );
         let left_widgets = row![clock_view, niri_ws_view, div];
 
-        container(left_widgets)
-            .style(|_| container::Style {
-                background: Some(Color::TRANSPARENT.into()),
-                ..Default::default()
-            })
-            .padding(padding::left(theme.spacing().md()))
-            .center_y(Length::Fill)
-            .into()
+        let win = self.win.view().map(Message::Win);
+
+        let center_widgets = row![win];
+
+        let right_widgets = row![];
+
+        container(row![
+            left_widgets,
+            space::horizontal(),
+            center_widgets,
+            space::horizontal(),
+            right_widgets
+        ])
+        .style(|_| container::Style {
+            background: Some(Color::TRANSPARENT.into()),
+            ..Default::default()
+        })
+        .padding(padding::left(theme.spacing().md()))
+        .center_y(Length::Fill)
+        .into()
     }
 }
 
