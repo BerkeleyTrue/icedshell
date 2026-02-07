@@ -129,16 +129,25 @@ impl State {
             }
             Event::WorkspaceActivated { id, focused } => {
                 let id = WorkspaceId(id);
-                self.ws_map.0.iter_mut().for_each(|(_, ws)| {
-                    ws.is_active = false;
-                    if focused {
-                        ws.is_focused = false;
-                    }
-                });
 
                 if let Some(ws) = self.ws_map.0.get_mut(&id) {
                     ws.is_focused = focused;
                     ws.is_active = true;
+                    let mon_id = ws.monitor_id.clone();
+
+                    self.ws_map.0.iter_mut().for_each(|(_, ws)| {
+                        if ws.id == id {
+                            return;
+                        }
+
+                        if focused {
+                            ws.is_focused = false;
+                        }
+
+                        if ws.monitor_id == mon_id {
+                            ws.is_active = false;
+                        }
+                    });
                 }
             }
             Event::WorkspaceActiveWindowChanged {
