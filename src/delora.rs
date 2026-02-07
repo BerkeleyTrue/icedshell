@@ -20,21 +20,27 @@ pub enum Message {
     Niri(niri::Message),
 }
 
+pub struct Init {
+    pub output_name: String,
+}
+
 pub struct DeloraMain {
     niri: niri::NiriWS,
     clock: clock::Clock,
     theme: AppTheme,
+    output_name: String,
 }
 
 impl Comp for DeloraMain {
     type Message = Message;
-    type Init = ();
+    type Init = Init;
 
-    fn new(_input: Self::Init) -> Self {
+    fn new(input: Self::Init) -> Self {
         Self {
             niri: niri::NiriWS::new(()),
             clock: clock::Clock::new(()),
             theme: theme::app_theme(),
+            output_name: input.output_name,
         }
     }
 
@@ -79,13 +85,14 @@ impl Comp for DeloraMain {
 
 impl Feature for DeloraMain {
     fn layer(&self) -> iced_layershell::reexport::NewLayerShellSettings {
+        let output_name = self.output_name.clone();
         NewLayerShellSettings {
             layer: Layer::Top,
             size: Some((0, self.theme.spacing().xl() as u32)),
             anchor: Anchor::Left | Anchor::Bottom | Anchor::Right,
             keyboard_interactivity: KeyboardInteractivity::None,
             exclusive_zone: Some(self.theme.spacing().xl() as i32),
-            output_option: OutputOption::OutputName("HDMI-A-1".into()),
+            output_option: OutputOption::OutputName(output_name),
             events_transparent: false,
             namespace: Some("DeloraMainBar".into()),
             margin: None,

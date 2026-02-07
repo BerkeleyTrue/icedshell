@@ -11,7 +11,7 @@ use iced_layershell::{
     to_layer_message,
 };
 use itertools::Itertools;
-use tracing::info;
+use tracing::debug;
 
 use crate::{
     Cli,
@@ -62,7 +62,6 @@ impl From<Cli> for Init {
 }
 
 struct Daemon {
-    monitors: Vec<MonitorId>,
     delora_main: Option<Window<DeloraMain>>,
     quit_keybinds: bool,
 }
@@ -70,7 +69,6 @@ struct Daemon {
 impl Daemon {
     fn new(init: Init) -> Self {
         Self {
-            monitors: vec![],
             delora_main: None,
             quit_keybinds: init.quit_keybinds,
         }
@@ -122,24 +120,14 @@ impl Daemon {
                 .unwrap_or(Task::none()),
 
             Message::UpdateMonitors(monitors) => {
-                self.monitors = monitors;
-                info!("monitors {0:?}", self.monitors);
-                let tasks: Vec<Task<Message>> = self
-                    .monitors
+                let num_mon = monitors.len();
+                debug!("monitors {0:?}", monitors);
+                let tasks: Vec<Task<Message>> = monitors
                     .iter()
-                    .map(|mon| match mon.0.as_str() {
-                        "HDMI-A-1" => {
-                            let (main_bar, main_layer_settings) = DeloraMain::new(()).open();
-                            let main_id = main_bar.id;
-
-                            self.delora_main.replace(main_bar);
-
-                            Task::done(Message::NewLayerShell {
-                                settings: main_layer_settings,
-                                id: main_id,
-                            })
-                        }
-                        _ => Task::none(),
+                    .map(move |mon| match (num_mon, mon.0.as_str()) {
+                        (2, "HDMI-A-1") => self.open_delora_main("HDMI-A-1".into()),
+                        (1, "DP-3") => self.open_delora_main("DP-3".into()),
+                        (_, _) => Task::none(),
                     })
                     .collect();
 
@@ -157,6 +145,20 @@ impl Daemon {
         } else {
             container(space()).into()
         }
+    }
+}
+
+impl Daemon {
+    fn open_delora_main(&mut self, output_name: String) -> Task<Message> {
+        let (main_bar, main_layer_settings) = DeloraMain::new(delora::Init { output_name }).open();
+        let main_id = main_bar.id;
+
+        self.delora_main.replace(main_bar);
+
+        Task::done(Message::NewLayerShell {
+            settings: main_layer_settings,
+            id: main_id,
+        })
     }
 }
 
