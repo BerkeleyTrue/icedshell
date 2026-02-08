@@ -1,14 +1,16 @@
+use std::f32::consts::{FRAC_PI_2, PI};
+
 use iced::{
-    Color, Element, Length, Point, Size, Theme,
+    Color, Element, Length, Point, Radians, Size, Theme,
     mouse::Cursor,
     widget::{
         Canvas,
-        canvas::{Frame, Geometry, Path, Program},
+        canvas::{Frame, Geometry, Path, Program, path::Arc},
     },
 };
 
 // The state for your triangle
-pub struct Divider {
+pub struct Angled {
     color: Color,
     direction: Direction,
     heading: Heading,
@@ -27,7 +29,7 @@ pub enum Heading {
     South,
 }
 
-impl Divider {
+impl Angled {
     pub fn new(color: Color, direction: Direction, heading: Heading, height: f32) -> Self {
         Self {
             color,
@@ -38,7 +40,7 @@ impl Divider {
     }
 }
 
-impl<Message> Program<Message> for Divider {
+impl<Message> Program<Message> for Angled {
     type State = ();
 
     // TODO: add caching
@@ -86,13 +88,73 @@ impl<Message> Program<Message> for Divider {
     }
 }
 
-impl<'a, Message: 'a> From<Divider> for Element<'a, Message> {
-    fn from(divider: Divider) -> Self {
+impl<'a, Message: 'a> From<Angled> for Element<'a, Message> {
+    fn from(divider: Angled) -> Self {
         let height = divider.height;
         let width = (height / 1.75).round_ties_even();
         Canvas::new(divider)
             .height(Length::Fixed(height))
             .width(Length::Fixed(width))
             .into()
+    }
+}
+
+pub struct Semi {
+    color: Color,
+    direction: Direction,
+}
+
+impl Semi {
+    pub fn new(color: Color, direction: Direction) -> Self {
+        Self { color, direction }
+    }
+}
+
+impl<Message> Program<Message> for Semi {
+    type State = ();
+
+    // TODO: add caching
+    fn draw(
+        &self,
+        _state: &Self::State,
+        renderer: &iced::Renderer,
+        _theme: &Theme,
+        bounds: iced::Rectangle,
+        _cursor: Cursor,
+    ) -> Vec<Geometry> {
+        let mut frame = Frame::new(renderer, bounds.size());
+        let radius = frame.height() / 2.0;
+
+        let (center, start, end) = match self.direction {
+            Direction::Right => (
+                Point::new(0.0, radius),
+                Radians(-FRAC_PI_2),
+                Radians(FRAC_PI_2),
+            ),
+            Direction::Left => (
+                Point::new(frame.width(), radius),
+                Radians(FRAC_PI_2),
+                Radians(FRAC_PI_2 + PI),
+            ),
+        };
+
+        let semi = Path::new(|b| {
+            b.arc(Arc {
+                center,
+                radius,
+                start_angle: start,
+                end_angle: end,
+            });
+            b.close();
+        });
+
+        frame.fill(&semi, self.color);
+        vec![frame.into_geometry()]
+    }
+}
+
+impl<'a, Message: 'a> From<Semi> for Element<'a, Message> {
+    fn from(semi: Semi) -> Self {
+        Canvas::new(semi).into()
     }
 }

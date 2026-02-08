@@ -9,7 +9,7 @@ use iced_layershell::reexport::{
 use crate::{
     clock,
     config::MonitorId,
-    divider::{Direction, Divider, Heading},
+    divider::{Angled, Direction, Heading, Semi},
     feature::{
         Comp, CompWithProps, Feature, bar_widgets, center_widgets, left_widgets, right_widgets,
         wrap_comp,
@@ -87,26 +87,33 @@ impl Comp for DeloraMain {
                 ..Default::default()
             });
 
-        let div = Divider::new(
+        let div = Angled::new(
             theme.background(),
             Direction::Right,
             Heading::North,
             theme.spacing().xl(),
         );
 
+        let win_div = Semi::new(ROSEWATER, Direction::Left);
         let win =
             wrap_comp(self.win.view(theme.neutral(Shade::S800)).map(Message::Win)).style(|_| {
                 container::Style {
                     background: Some(ROSEWATER.into()),
-                    border: border::rounded(border::left(theme.radius().xl())),
                     ..Default::default()
                 }
             });
 
+        let win_div_2 = Angled::new(
+            ROSEWATER,
+            Direction::Right,
+            Heading::South,
+            theme.spacing().xl(),
+        );
+
         // main bar
         bar_widgets!(
             left: clock_view, niri_ws_view, div;
-            center: win;
+            center: win_div, win, win_div_2;
             right:
         )
         .style(|_| container::Style {
