@@ -3,7 +3,10 @@ mod color;
 mod radius;
 mod spacing;
 
-use iced::{Color, color};
+use iced::{
+    Color, color,
+    theme::palette::{darken, lighten},
+};
 
 use crate::theme::app_theme::Tokens;
 pub use crate::theme::{
@@ -39,6 +42,20 @@ pub const SURFACE0: Color = color!(0x414559); // #414559
 pub const BASE: Color = color!(0x303446); // #303446
 pub const MANTLE: Color = color!(0x292c3c); // #292c3c
 pub const CRUST: Color = color!(0x232634); // #232634
+
+pub trait ColorExt {
+    fn darken(self, amount: f32) -> Self;
+    fn lighten(self, amount: f32) -> Self;
+}
+
+impl ColorExt for Color {
+    fn darken(self, amount: f32) -> Self {
+        darken(self, amount)
+    }
+    fn lighten(self, amount: f32) -> Self {
+        lighten(self, amount)
+    }
+}
 
 pub fn app_theme() -> AppTheme {
     AppTheme::new(catppuccin_tokens())
