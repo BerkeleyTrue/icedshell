@@ -1,5 +1,5 @@
 use iced::{
-    Color, Length, Subscription, padding,
+    Color, Element, Length, Subscription, border, padding,
     widget::{container, row},
 };
 use iced_layershell::reexport::{
@@ -10,9 +10,12 @@ use crate::{
     clock,
     config::MonitorId,
     divider::{Direction, Heading, divider},
-    feature::{Comp, CompWithProps, Feature},
+    feature::{
+        Comp, CompWithProps, Feature, bar_widgets, center_widgets, left_widgets, right_widgets,
+        wrap_comp,
+    },
     niri::{window, ws},
-    theme::{self, AppTheme},
+    theme::{AppTheme, Shade, app_theme},
 };
 
 #[derive(Debug)]
@@ -32,6 +35,7 @@ pub struct DeloraMain {
     clock: clock::Clock,
     theme: AppTheme,
     output_name: String,
+    height: f32,
 }
 
 impl Comp for DeloraMain {
@@ -39,14 +43,17 @@ impl Comp for DeloraMain {
     type Init = Init;
 
     fn new(input: Self::Init) -> Self {
+        let theme = app_theme();
+        let height = theme.spacing().xl() + theme.spacing().xs();
         Self {
             ws: ws::NiriWS::new(ws::Init {
                 main_mon: MonitorId(input.output_name.clone()),
             }),
             win: window::NiriWin::new(window::Init {}),
             clock: clock::Clock::new(()),
-            theme: theme::app_theme(),
             output_name: input.output_name,
+            theme,
+            height,
         }
     }
 
@@ -65,10 +72,11 @@ impl Comp for DeloraMain {
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let theme = &self.theme;
-        let clock_view = container(self.clock.view(theme.background()).map(Message::Clock))
+
+        let clock_view = wrap_comp(self.clock.view(theme.background()).map(Message::Clock))
             .padding(padding::right(theme.spacing().sm()));
 
-        let niri_ws_view = self.ws.view().map(self::Message::Ws);
+        let niri_ws_view = wrap_comp(self.ws.view().map(self::Message::Ws));
 
         let div = divider::<Self::Message>(
             theme.background(),
@@ -76,24 +84,22 @@ impl Comp for DeloraMain {
             Heading::North,
             theme.spacing().xl(),
         );
-        let left_widgets = row![clock_view, niri_ws_view, div];
 
-        let win = self.win.view().map(Message::Win);
+        let win = wrap_comp(self.win.view().map(Message::Win));
 
-        let center_widgets = row![win];
-
-        let right_widgets = row![];
-
-        container(row![
-            container(left_widgets).align_left(Length::Fill),
-            container(center_widgets).center_x(Length::Fill),
-            container(right_widgets).align_right(Length::Fill),
-        ])
+        // main bar
+        bar_widgets!(
+            left: clock_view, niri_ws_view, div;
+            center: win;
+            right:
+        )
         .style(|_| container::Style {
             background: Some(Color::TRANSPARENT.into()),
+            // debug
+            // border: border::color(theme.destructive(Shade::S500)).width(1),
             ..Default::default()
         })
-        .padding(padding::left(theme.spacing().md()))
+        .padding(padding::left(theme.spacing().md()).bottom(theme.spacing().xs()))
         .center_y(Length::Fill)
         .into()
     }
@@ -104,10 +110,10 @@ impl Feature for DeloraMain {
         let output_name = self.output_name.clone();
         NewLayerShellSettings {
             layer: Layer::Top,
-            size: Some((0, self.theme.spacing().xl() as u32)),
+            size: Some((0, self.height as u32)),
             anchor: Anchor::Left | Anchor::Bottom | Anchor::Right,
             keyboard_interactivity: KeyboardInteractivity::None,
-            exclusive_zone: Some(self.theme.spacing().xl() as i32),
+            exclusive_zone: Some(self.height as i32),
             output_option: OutputOption::OutputName(output_name),
             events_transparent: false,
             namespace: Some("DeloraMainBar".into()),
