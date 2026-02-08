@@ -1,5 +1,5 @@
 use iced::{
-    Color, Element, Length, Subscription, border, padding,
+    Color, Length, Subscription, border, padding,
     widget::{container, row},
 };
 use iced_layershell::reexport::{
@@ -9,7 +9,7 @@ use iced_layershell::reexport::{
 use crate::{
     clock,
     config::MonitorId,
-    divider::{Direction, Heading, divider},
+    divider::{Direction, Divider, Heading},
     feature::{
         Comp, CompWithProps, Feature, bar_widgets, center_widgets, left_widgets, right_widgets,
         wrap_comp,
@@ -87,7 +87,7 @@ impl Comp for DeloraMain {
                 ..Default::default()
             });
 
-        let div = divider::<Self::Message>(
+        let div = Divider::new(
             theme.background(),
             Direction::Right,
             Heading::North,

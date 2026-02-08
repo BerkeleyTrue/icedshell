@@ -1,10 +1,9 @@
 use iced::{
-    Color, Element, Point, Size, Theme, alignment,
+    Color, Element, Length, Point, Size, Theme,
     mouse::Cursor,
     widget::{
         Canvas,
         canvas::{Frame, Geometry, Path, Program},
-        container,
     },
 };
 
@@ -13,6 +12,7 @@ pub struct Divider {
     color: Color,
     direction: Direction,
     heading: Heading,
+    height: f32,
 }
 
 #[derive(Clone, Copy)]
@@ -28,11 +28,12 @@ pub enum Heading {
 }
 
 impl Divider {
-    pub fn new(color: Color, direction: Direction, heading: Heading) -> Self {
+    pub fn new(color: Color, direction: Direction, heading: Heading, height: f32) -> Self {
         Self {
             color,
             direction,
             heading,
+            height,
         }
     }
 }
@@ -40,6 +41,7 @@ impl Divider {
 impl<Message> Program<Message> for Divider {
     type State = ();
 
+    // TODO: add caching
     fn draw(
         &self,
         _state: &Self::State,
@@ -84,17 +86,13 @@ impl<Message> Program<Message> for Divider {
     }
 }
 
-pub fn divider<'a, Message: 'a>(
-    color: Color,
-    direction: Direction,
-    heading: Heading,
-    height: f32,
-) -> Element<'a, Message> {
-    container(
-        Canvas::new(Divider::new(color, direction, heading))
-            .height(height)
-            .width((height / 1.75).round_ties_even()),
-    )
-    .align_y(alignment::Alignment::End)
-    .into()
+impl<'a, Message: 'a> From<Divider> for Element<'a, Message> {
+    fn from(divider: Divider) -> Self {
+        let height = divider.height;
+        let width = (height / 1.75).round_ties_even();
+        Canvas::new(divider)
+            .height(Length::Fixed(height))
+            .width(Length::Fixed(width))
+            .into()
+    }
 }
