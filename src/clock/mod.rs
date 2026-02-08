@@ -27,7 +27,7 @@ pub struct Clock {
 }
 
 impl CompWithProps for Clock {
-    type InnerMessage = Message;
+    type Message = Message;
     type Init = ();
     type Props = Color;
 

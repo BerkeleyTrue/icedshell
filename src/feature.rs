@@ -51,18 +51,18 @@ pub trait Comp {
 }
 
 pub trait CompWithProps {
-    type InnerMessage;
+    type Message;
     type Init;
     type Props;
 
     fn new(input: Self::Init) -> Self;
 
-    fn subscription(&self) -> Subscription<Self::InnerMessage> {
+    fn subscription(&self) -> Subscription<Self::Message> {
         Subscription::none()
     }
 
-    fn update(&mut self, message: Self::InnerMessage) -> Task<Self::InnerMessage>;
-    fn view(&self, props: Self::Props) -> Element<'_, Self::InnerMessage>;
+    fn update(&mut self, message: Self::Message) -> Task<Self::Message>;
+    fn view(&self, props: Self::Props) -> Element<'_, Self::Message>;
 }
 
 pub trait Feature: Sized + Comp {

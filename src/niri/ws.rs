@@ -8,7 +8,7 @@ use crate::{
     theme::{self, AppTheme, Shade},
 };
 use iced::{
-    Element, Padding, Subscription, Task, border, padding,
+    Element, Length, Subscription, Task, border, padding,
     widget::{container, row},
 };
 use lucide_icons::Icon;
@@ -121,24 +121,13 @@ impl Comp for NiriWS {
                 .into()
         });
         let niri_row = if niri_content.len() > 0 {
-            row(niri_content)
+            row(niri_content).spacing(theme.spacing().xs())
         } else {
-            row([container(lucide_icons::Icon::CircleSlash2.widget())
-                .padding(padding::right(theme.spacing().sm()))
-                .into()])
+            row([container(lucide_icons::Icon::CircleSlash2.widget()).into()])
         };
 
-        container(
-            niri_row
-                .padding(padding::vertical(theme.spacing().xxs()))
-                .spacing(theme.spacing().xs()),
-        )
-        .style(|_| container::Style {
-            background: Some(theme.background().into()),
-            border: border::rounded(border::left(theme.radius().xl())),
-            ..Default::default()
-        })
-        .padding(Padding::default().left(theme.spacing().lg()))
-        .into()
+        container(niri_row)
+            .padding(padding::horizontal(theme.spacing().sm()))
+            .into()
     }
 }

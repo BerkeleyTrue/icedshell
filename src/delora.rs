@@ -15,7 +15,7 @@ use crate::{
         wrap_comp,
     },
     niri::{window, ws},
-    theme::{AppTheme, Shade, app_theme},
+    theme::{AppTheme, ROSEWATER, Shade, app_theme},
 };
 
 #[derive(Debug)]
@@ -36,6 +36,7 @@ pub struct DeloraMain {
     theme: AppTheme,
     output_name: String,
     height: f32,
+    padding: f32,
 }
 
 impl Comp for DeloraMain {
@@ -44,7 +45,8 @@ impl Comp for DeloraMain {
 
     fn new(input: Self::Init) -> Self {
         let theme = app_theme();
-        let height = theme.spacing().xl() + theme.spacing().xs();
+        let height = theme.spacing().xl();
+        let padding = theme.spacing().xs();
         Self {
             ws: ws::NiriWS::new(ws::Init {
                 main_mon: MonitorId(input.output_name.clone()),
@@ -54,6 +56,7 @@ impl Comp for DeloraMain {
             output_name: input.output_name,
             theme,
             height,
+            padding,
         }
     }
 
@@ -76,7 +79,13 @@ impl Comp for DeloraMain {
         let clock_view = wrap_comp(self.clock.view(theme.background()).map(Message::Clock))
             .padding(padding::right(theme.spacing().sm()));
 
-        let niri_ws_view = wrap_comp(self.ws.view().map(self::Message::Ws));
+        let niri_ws_view = wrap_comp(self.ws.view().map(self::Message::Ws))
+            .padding(padding::left(theme.spacing().xs()))
+            .style(|_| container::Style {
+                background: Some(theme.background().into()),
+                border: border::rounded(border::left(theme.radius().xl())),
+                ..Default::default()
+            });
 
         let div = divider::<Self::Message>(
             theme.background(),
@@ -85,7 +94,14 @@ impl Comp for DeloraMain {
             theme.spacing().xl(),
         );
 
-        let win = wrap_comp(self.win.view().map(Message::Win));
+        let win =
+            wrap_comp(self.win.view(theme.neutral(Shade::S800)).map(Message::Win)).style(|_| {
+                container::Style {
+                    background: Some(ROSEWATER.into()),
+                    border: border::rounded(border::left(theme.radius().xl())),
+                    ..Default::default()
+                }
+            });
 
         // main bar
         bar_widgets!(
@@ -99,7 +115,7 @@ impl Comp for DeloraMain {
             // border: border::color(theme.destructive(Shade::S500)).width(1),
             ..Default::default()
         })
-        .padding(padding::left(theme.spacing().md()).bottom(theme.spacing().xs()))
+        .padding(padding::left(theme.spacing().md()).bottom(self.padding))
         .center_y(Length::Fill)
         .into()
     }
@@ -110,10 +126,10 @@ impl Feature for DeloraMain {
         let output_name = self.output_name.clone();
         NewLayerShellSettings {
             layer: Layer::Top,
-            size: Some((0, self.height as u32)),
+            size: Some((0, (self.height + self.padding) as u32)),
             anchor: Anchor::Left | Anchor::Bottom | Anchor::Right,
             keyboard_interactivity: KeyboardInteractivity::None,
-            exclusive_zone: Some(self.height as i32),
+            exclusive_zone: Some((self.height + self.padding) as i32),
             output_option: OutputOption::OutputName(output_name),
             events_transparent: false,
             namespace: Some("DeloraMainBar".into()),
