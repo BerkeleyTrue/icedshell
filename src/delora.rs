@@ -1,8 +1,6 @@
 use iced::{
-    Color, Length, Subscription,
-    border::left,
-    padding,
-    widget::{container, row, space},
+    Color, Length, Subscription, padding,
+    widget::{container, row},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
@@ -87,11 +85,9 @@ impl Comp for DeloraMain {
         let right_widgets = row![];
 
         container(row![
-            left_widgets,
-            space::horizontal(),
-            center_widgets,
-            space::horizontal(),
-            right_widgets
+            container(left_widgets).align_left(Length::Fill),
+            container(center_widgets).center_x(Length::Fill),
+            container(right_widgets).align_right(Length::Fill),
         ])
         .style(|_| container::Style {
             background: Some(Color::TRANSPARENT.into()),
