@@ -5,13 +5,14 @@ use iced::{
     mouse::Cursor,
     widget::{
         Canvas,
-        canvas::{Frame, Geometry, Path, Program, path::Arc},
+        canvas::{Cache, Geometry, Path, Program, path::Arc},
     },
 };
 
 // The state for your triangle
 pub struct Angled {
     color: Color,
+    cache: Cache,
     direction: Direction,
     heading: Heading,
     height: f32,
@@ -33,6 +34,7 @@ impl Angled {
     pub fn new(color: Color, direction: Direction, heading: Heading, height: f32) -> Self {
         Self {
             color,
+            cache: Cache::new(),
             direction,
             heading,
             height,
@@ -43,7 +45,6 @@ impl Angled {
 impl<Message> Program<Message> for Angled {
     type State = ();
 
-    // TODO: add caching
     fn draw(
         &self,
         _state: &Self::State,
@@ -52,39 +53,39 @@ impl<Message> Program<Message> for Angled {
         bounds: iced::Rectangle,
         _cursor: Cursor,
     ) -> Vec<Geometry> {
-        let mut frame = Frame::new(renderer, bounds.size());
+        let geo = self.cache.draw(renderer, bounds.size(), move |frame| {
+            let Size { width, height } = bounds.size();
 
-        let Size { width, height } = bounds.size();
+            let path = Path::new(|builder| {
+                match (self.heading, self.direction) {
+                    (Heading::North, Direction::Left) => {
+                        builder.move_to(Point::new(width, 0.0));
+                        builder.line_to(Point::new(width, height));
+                        builder.line_to(Point::new(0.0, height));
+                    }
+                    (Heading::North, Direction::Right) => {
+                        builder.move_to(Point::new(0.0, 0.0));
+                        builder.line_to(Point::new(width, height));
+                        builder.line_to(Point::new(0.0, height));
+                    }
+                    (Heading::South, Direction::Left) => {
+                        builder.move_to(Point::new(width, height));
+                        builder.line_to(Point::new(0.0, 0.0));
+                        builder.line_to(Point::new(width, 0.0));
+                    }
+                    (Heading::South, Direction::Right) => {
+                        builder.move_to(Point::new(0.0, height));
+                        builder.line_to(Point::new(width, 0.0));
+                        builder.line_to(Point::new(0.0, 0.0));
+                    }
+                }
+                builder.close();
+            });
 
-        let path = Path::new(|builder| {
-            match (self.heading, self.direction) {
-                (Heading::North, Direction::Left) => {
-                    builder.move_to(Point::new(width, 0.0));
-                    builder.line_to(Point::new(width, height));
-                    builder.line_to(Point::new(0.0, height));
-                }
-                (Heading::North, Direction::Right) => {
-                    builder.move_to(Point::new(0.0, 0.0));
-                    builder.line_to(Point::new(width, height));
-                    builder.line_to(Point::new(0.0, height));
-                }
-                (Heading::South, Direction::Left) => {
-                    builder.move_to(Point::new(width, height));
-                    builder.line_to(Point::new(0.0, 0.0));
-                    builder.line_to(Point::new(width, 0.0));
-                }
-                (Heading::South, Direction::Right) => {
-                    builder.move_to(Point::new(0.0, height));
-                    builder.line_to(Point::new(width, 0.0));
-                    builder.line_to(Point::new(0.0, 0.0));
-                }
-            }
-            builder.close();
+            frame.fill(&path, self.color);
         });
 
-        frame.fill(&path, self.color);
-
-        vec![frame.into_geometry()]
+        vec![geo]
     }
 }
 
@@ -101,19 +102,23 @@ impl<'a, Message: 'a> From<Angled> for Element<'a, Message> {
 
 pub struct Semi {
     color: Color,
+    cache: Cache,
     direction: Direction,
 }
 
 impl Semi {
     pub fn new(color: Color, direction: Direction) -> Self {
-        Self { color, direction }
+        Self {
+            color,
+            cache: Cache::new(),
+            direction,
+        }
     }
 }
 
 impl<Message> Program<Message> for Semi {
     type State = ();
 
-    // TODO: add caching
     fn draw(
         &self,
         _state: &Self::State,
@@ -122,34 +127,36 @@ impl<Message> Program<Message> for Semi {
         bounds: iced::Rectangle,
         _cursor: Cursor,
     ) -> Vec<Geometry> {
-        let mut frame = Frame::new(renderer, bounds.size());
-        let radius = frame.height() / 2.0;
+        let geo = self.cache.draw(renderer, bounds.size(), move |frame| {
+            let radius = frame.height() / 2.0;
 
-        let (center, start, end) = match self.direction {
-            Direction::Right => (
-                Point::new(0.0, radius),
-                Radians(-FRAC_PI_2),
-                Radians(FRAC_PI_2),
-            ),
-            Direction::Left => (
-                Point::new(frame.width(), radius),
-                Radians(FRAC_PI_2),
-                Radians(FRAC_PI_2 + PI),
-            ),
-        };
+            let (center, start, end) = match self.direction {
+                Direction::Right => (
+                    Point::new(0.0, radius),
+                    Radians(-FRAC_PI_2),
+                    Radians(FRAC_PI_2),
+                ),
+                Direction::Left => (
+                    Point::new(frame.width(), radius),
+                    Radians(FRAC_PI_2),
+                    Radians(FRAC_PI_2 + PI),
+                ),
+            };
 
-        let semi = Path::new(|b| {
-            b.arc(Arc {
-                center,
-                radius,
-                start_angle: start,
-                end_angle: end,
+            let semi = Path::new(|b| {
+                b.arc(Arc {
+                    center,
+                    radius,
+                    start_angle: start,
+                    end_angle: end,
+                });
+                b.close();
             });
-            b.close();
+
+            frame.fill(&semi, self.color);
         });
 
-        frame.fill(&semi, self.color);
-        vec![frame.into_geometry()]
+        vec![geo]
     }
 }
 
