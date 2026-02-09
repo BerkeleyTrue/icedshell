@@ -46,7 +46,10 @@ pub trait Comp {
         Subscription::none()
     }
 
-    fn update(&mut self, message: Self::Message) -> Task<Self::Message>;
+    fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
+        Task::none()
+    }
+
     fn view(&self) -> Element<'_, Self::Message>;
 }
 
@@ -61,7 +64,10 @@ pub trait CompWithProps {
         Subscription::none()
     }
 
-    fn update(&mut self, message: Self::Message) -> Task<Self::Message>;
+    fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
+        Task::none()
+    }
+
     fn view<'a>(&self, props: Self::Props<'a>) -> Element<'_, Self::Message>;
 }
 

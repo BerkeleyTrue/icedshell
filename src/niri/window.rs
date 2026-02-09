@@ -1,9 +1,16 @@
 use iced::{
-    Color, Task, padding,
-    widget::{container, text},
+    Color, padding,
+    widget::{container, row, text},
 };
 
-use crate::{config::MonitorId, feature::CompWithProps, niri::state, theme::app_theme};
+use crate::{
+    config::MonitorId,
+    divider::{Angled, Direction, Heading},
+    feature::{CompWithProps, wrap_comp},
+    fira_fonts::TextExt,
+    niri::state,
+    theme::{AppTheme, Shade, app_theme},
+};
 
 #[derive(Debug, Clone)]
 pub enum Message {}
@@ -14,6 +21,7 @@ pub struct Init {
 
 pub struct NiriWin {
     mon: MonitorId,
+    theme: AppTheme,
 }
 
 pub struct Props<'a> {
@@ -27,22 +35,26 @@ impl CompWithProps for NiriWin {
     type Message = Message;
     fn new(input: Self::Init) -> Self {
         Self {
+            theme: app_theme(),
             mon: input.monitor_id,
         }
     }
-    fn update(&mut self, _message: Self::Message) -> iced::Task<Self::Message> {
-        Task::none()
-    }
+
     fn view<'a>(
         &self,
         Props { state, color }: Self::Props<'a>,
     ) -> iced::Element<'_, Self::Message> {
-        let theme = app_theme();
-        let mut title = state
+        let theme = &self.theme;
+        let second_color = theme.info(Shade::S500);
+        let maybe_ws = state
             .iter_ws()
-            .find(move |ws| ws.monitor_id == Some(self.mon.clone()) && ws.is_active)
+            .find(move |ws| ws.monitor_id == Some(self.mon.clone()) && ws.is_active);
+
+        let maybe_win = maybe_ws
             .and_then(|ws| ws.active_win_id.as_ref())
-            .and_then(move |win_id| state.get_win(win_id))
+            .and_then(move |win_id| state.get_win(win_id));
+
+        let mut title = maybe_win
             .and_then(|win| win.title.clone())
             .unwrap_or("()".to_string());
 
@@ -50,8 +62,69 @@ impl CompWithProps for NiriWin {
             title = format!("{}...", title.chars().take(9).collect::<String>());
         }
 
-        container(text!("{title}").color(color))
-            .padding(padding::horizontal(theme.spacing().sm()))
-            .into()
+        let num_of_win = maybe_ws
+            .map(|ws| ws.id.clone())
+            .map(move |workspace_id| {
+                state
+                    .iter_win()
+                    .filter(|win| {
+                        let workspace_id = &workspace_id.clone();
+                        win.ws_id
+                            .as_ref()
+                            .is_some_and(move |win_ws_id| win_ws_id == workspace_id)
+                    })
+                    .count()
+            })
+            .unwrap_or_default();
+
+        let current_win_idx = maybe_win
+            .and_then(|win| win.col_idx.clone())
+            .unwrap_or_default();
+
+        let title_cont = wrap_comp(
+            text!("{title}")
+                .color(theme.neutral(Shade::S700))
+                .bold()
+                .into(),
+        )
+        .style(move |_| container::Style {
+            background: Some(color.into()),
+            ..Default::default()
+        })
+        .padding(padding::horizontal(theme.spacing().sm()));
+
+        let mid_div = wrap_comp(
+            Angled::new(
+                color,
+                Direction::Right,
+                Heading::South,
+                theme.spacing().xl(),
+            )
+            .into(),
+        )
+        .style(move |_| container::Style {
+            background: Some(second_color.into()),
+            ..Default::default()
+        });
+
+        let count_cont = wrap_comp(text!("{current_win_idx}/{num_of_win}").into())
+            .style(move |_| container::Style {
+                background: Some(second_color.into()),
+                ..Default::default()
+            })
+            .padding(padding::horizontal(theme.spacing().sm()));
+
+        // TODO: add end color
+        let end_div = wrap_comp(
+            Angled::new(
+                second_color,
+                Direction::Right,
+                Heading::North,
+                theme.spacing().xl(),
+            )
+            .into(),
+        );
+
+        row![title_cont, mid_div, count_cont, end_div].into()
     }
 }

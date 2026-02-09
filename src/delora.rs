@@ -126,27 +126,16 @@ impl Comp for DeloraMain {
         let win = wrap_comp(
             self.win
                 .view(window::Props {
-                    color: theme.neutral(Shade::S800),
+                    color: ROSEWATER,
                     state: &self.niri_state,
                 })
                 .map(Message::Win),
-        )
-        .style(|_| container::Style {
-            background: Some(ROSEWATER.into()),
-            ..Default::default()
-        });
-
-        let win_div_2 = Angled::new(
-            ROSEWATER,
-            Direction::Right,
-            Heading::South,
-            theme.spacing().xl(),
         );
 
         // main bar
         bar_widgets!(
             left: clock_view, niri_ws_view, div;
-            center: win_div, win, win_div_2;
+            center: win_div, win;
             right:
         )
         .style(|_| container::Style {

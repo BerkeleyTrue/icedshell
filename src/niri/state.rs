@@ -1,4 +1,4 @@
-use derive_more::From;
+use derive_more::{Display, From};
 use niri_ipc::Event;
 use std::{
     collections::{BTreeMap, HashMap},
@@ -55,7 +55,7 @@ pub struct WsMap(BTreeMap<WorkspaceId, Workspace>);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, From)]
 pub struct WinId(u64);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, From, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, From, PartialOrd, Ord, Default, Display)]
 pub struct WinIdx(usize);
 
 #[derive(Debug, Clone, PartialEq)]
