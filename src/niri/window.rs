@@ -6,7 +6,7 @@ use iced::{
 use crate::{
     config::MonitorId,
     divider::{Angled, Direction, Heading},
-    feature::{CompWithProps, wrap_comp},
+    feature::{CompWithProps, align_center},
     fira_fonts::TextExt,
     niri::state,
     theme::{AppTheme, Shade, app_theme},
@@ -81,33 +81,25 @@ impl CompWithProps for NiriWin {
             .and_then(|win| win.col_idx.clone())
             .unwrap_or_default();
 
-        let title_cont = wrap_comp(
-            text!("{title}")
-                .color(theme.neutral(Shade::S700))
-                .bold()
-                .into(),
-        )
-        .style(move |_| container::Style {
-            background: Some(color.into()),
-            ..Default::default()
-        })
-        .padding(padding::horizontal(theme.spacing().sm()));
+        let title_cont = align_center!(text!("{title}").color(theme.neutral(Shade::S700)).bold())
+            .style(move |_| container::Style {
+                background: Some(color.into()),
+                ..Default::default()
+            })
+            .padding(padding::horizontal(theme.spacing().sm()));
 
-        let mid_div = wrap_comp(
-            Angled::new(
-                color,
-                Direction::Right,
-                Heading::South,
-                theme.spacing().xl(),
-            )
-            .into(),
-        )
+        let mid_div = align_center!(Angled::new(
+            color,
+            Direction::Right,
+            Heading::South,
+            theme.spacing().xl(),
+        ))
         .style(move |_| container::Style {
             background: Some(second_color.into()),
             ..Default::default()
         });
 
-        let count_cont = wrap_comp(text!("{current_win_idx}/{num_of_win}").into())
+        let count_cont = align_center!(text!("{current_win_idx}/{num_of_win}"))
             .style(move |_| container::Style {
                 background: Some(second_color.into()),
                 ..Default::default()
@@ -115,15 +107,12 @@ impl CompWithProps for NiriWin {
             .padding(padding::horizontal(theme.spacing().sm()));
 
         // TODO: add end color
-        let end_div = wrap_comp(
-            Angled::new(
-                second_color,
-                Direction::Right,
-                Heading::North,
-                theme.spacing().xl(),
-            )
-            .into(),
-        );
+        let end_div = align_center!(Angled::new(
+            second_color,
+            Direction::Right,
+            Heading::North,
+            theme.spacing().xl(),
+        ));
 
         row![title_cont, mid_div, count_cont, end_div].into()
     }

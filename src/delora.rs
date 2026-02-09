@@ -12,11 +12,11 @@ use crate::{
     config::MonitorId,
     divider::{Angled, Direction, Heading, Semi},
     feature::{
-        Comp, CompWithProps, Feature, bar_widgets, center_widgets, left_widgets, right_widgets,
-        wrap_comp,
+        Comp, CompWithProps, Feature, align_center, bar_widgets, center_widgets, left_widgets,
+        right_widgets,
     },
     niri::{state, stream, window, ws},
-    theme::{AppTheme, ROSEWATER, Shade, app_theme},
+    theme::{AppTheme, ROSEWATER, app_theme},
 };
 
 #[derive(Debug)]
@@ -98,10 +98,10 @@ impl Comp for DeloraMain {
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let theme = &self.theme;
 
-        let clock_view = wrap_comp(self.clock.view(theme.background()).map(Message::Clock))
+        let clock_view = align_center!(self.clock.view(theme.background()).map(Message::Clock))
             .padding(padding::right(theme.spacing().sm()));
 
-        let niri_ws_view = wrap_comp(
+        let niri_ws_view = align_center!(
             self.ws
                 .view(ws::Props {
                     state: &self.niri_state,
@@ -123,7 +123,7 @@ impl Comp for DeloraMain {
         );
 
         let win_div = Semi::new(ROSEWATER, Direction::Left);
-        let win = wrap_comp(
+        let win = align_center!(
             self.win
                 .view(window::Props {
                     color: ROSEWATER,

@@ -46,7 +46,7 @@ pub trait Comp {
         Subscription::none()
     }
 
-    fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
+    fn update(&mut self, _message: Self::Message) -> Task<Self::Message> {
         Task::none()
     }
 
@@ -64,7 +64,7 @@ pub trait CompWithProps {
         Subscription::none()
     }
 
-    fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
+    fn update(&mut self, _message: Self::Message) -> Task<Self::Message> {
         Task::none()
     }
 
@@ -88,9 +88,13 @@ pub trait Feature: Sized + Comp {
     }
 }
 
-pub fn wrap_comp<Message>(element: Element<'_, Message>) -> Container<'_, Message> {
-    container(element).center_y(Length::Fill)
+macro_rules! align_center {
+    ($el:expr$(,)?) => {
+        iced::widget::container(iced::Element::from($el)).center_y(iced::Length::Fill)
+    };
 }
+
+pub(crate) use align_center;
 
 pub enum Alignment {
     Left,
