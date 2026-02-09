@@ -111,6 +111,10 @@ impl State {
     pub fn iter_win(&self) -> impl Iterator<Item = &Window> {
         self.win_map.0.values()
     }
+
+    pub fn get_win(&self, win_id: &WinId) -> Option<&Window> {
+        self.win_map.0.get(win_id)
+    }
     pub fn apply(&mut self, ev: Event) {
         match ev {
             Event::WorkspacesChanged { workspaces } => {

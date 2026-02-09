@@ -8,7 +8,7 @@ use crate::{
     theme::{self, AppTheme, Shade},
 };
 use iced::{
-    Element, Length, Subscription, Task, border, padding,
+    Element, Subscription, Task, border, padding,
     widget::{container, row},
 };
 use lucide_icons::Icon;

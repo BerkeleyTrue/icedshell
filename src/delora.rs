@@ -47,11 +47,12 @@ impl Comp for DeloraMain {
         let theme = app_theme();
         let height = theme.spacing().xl();
         let padding = theme.spacing().xs();
+        let monitor_id = MonitorId(input.output_name.clone());
         Self {
             ws: ws::NiriWS::new(ws::Init {
-                main_mon: MonitorId(input.output_name.clone()),
+                main_mon: monitor_id.clone(),
             }),
-            win: window::NiriWin::new(window::Init {}),
+            win: window::NiriWin::new(window::Init { monitor_id }),
             clock: clock::Clock::new(()),
             output_name: input.output_name,
             theme,
@@ -64,13 +65,15 @@ impl Comp for DeloraMain {
         match message {
             Message::Ws(message) => self.ws.update(message).map(Message::Ws),
             Message::Clock(message) => self.clock.update(message).map(Message::Clock),
+            Message::Win(message) => self.win.update(message).map(Message::Win),
         }
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
         let clock = self.clock.subscription().map(Message::Clock);
         let niri_ws = self.ws.subscription().map(Message::Ws);
-        Subscription::batch(vec![clock, niri_ws])
+        let niri_win = self.win.subscription().map(Message::Win);
+        Subscription::batch(vec![clock, niri_ws, niri_win])
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
