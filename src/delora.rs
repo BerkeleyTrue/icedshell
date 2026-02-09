@@ -1,10 +1,11 @@
 use iced::{
-    Color, Length, Subscription, border, padding,
+    Color, Length, Subscription, Task, border, padding,
     widget::{container, row},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
+use tracing::info;
 
 use crate::{
     clock,
@@ -14,15 +15,19 @@ use crate::{
         Comp, CompWithProps, Feature, bar_widgets, center_widgets, left_widgets, right_widgets,
         wrap_comp,
     },
-    niri::{window, ws},
+    niri::{state, stream, window, ws},
     theme::{AppTheme, ROSEWATER, Shade, app_theme},
 };
 
 #[derive(Debug)]
 pub enum Message {
     Clock(clock::Message),
+
     Ws(ws::Message),
     Win(window::Message),
+
+    NiriEvent(stream::NiriEvent),
+    NiriError(stream::NiriStreamError),
 }
 
 pub struct Init {
@@ -37,6 +42,7 @@ pub struct DeloraMain {
     output_name: String,
     height: f32,
     padding: f32,
+    niri_state: state::State,
 }
 
 impl Comp for DeloraMain {
@@ -58,6 +64,7 @@ impl Comp for DeloraMain {
             theme,
             height,
             padding,
+            niri_state: state::State::new(),
         }
     }
 
@@ -66,14 +73,26 @@ impl Comp for DeloraMain {
             Message::Ws(message) => self.ws.update(message).map(Message::Ws),
             Message::Clock(message) => self.clock.update(message).map(Message::Clock),
             Message::Win(message) => self.win.update(message).map(Message::Win),
+            Message::NiriEvent(event) => {
+                self.niri_state.apply(event);
+                Task::none()
+            }
+            Message::NiriError(err) => {
+                info!("Stream err: {err:}");
+                Task::none()
+            }
         }
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
+        let niri_state = Subscription::run(stream::listen).map(|event| match event {
+            Ok(ev) => Message::NiriEvent(ev),
+            Err(err) => Message::NiriError(err),
+        });
         let clock = self.clock.subscription().map(Message::Clock);
         let niri_ws = self.ws.subscription().map(Message::Ws);
         let niri_win = self.win.subscription().map(Message::Win);
-        Subscription::batch(vec![clock, niri_ws, niri_win])
+        Subscription::batch(vec![clock, niri_ws, niri_win, niri_state])
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
@@ -82,13 +101,19 @@ impl Comp for DeloraMain {
         let clock_view = wrap_comp(self.clock.view(theme.background()).map(Message::Clock))
             .padding(padding::right(theme.spacing().sm()));
 
-        let niri_ws_view = wrap_comp(self.ws.view().map(self::Message::Ws))
-            .padding(padding::left(theme.spacing().xs()))
-            .style(|_| container::Style {
-                background: Some(theme.background().into()),
-                border: border::rounded(border::left(theme.radius().xl())),
-                ..Default::default()
-            });
+        let niri_ws_view = wrap_comp(
+            self.ws
+                .view(ws::Props {
+                    state: &self.niri_state,
+                })
+                .map(self::Message::Ws),
+        )
+        .padding(padding::left(theme.spacing().xs()))
+        .style(|_| container::Style {
+            background: Some(theme.background().into()),
+            border: border::rounded(border::left(theme.radius().xl())),
+            ..Default::default()
+        });
 
         let div = Angled::new(
             theme.background(),
@@ -98,13 +123,18 @@ impl Comp for DeloraMain {
         );
 
         let win_div = Semi::new(ROSEWATER, Direction::Left);
-        let win =
-            wrap_comp(self.win.view(theme.neutral(Shade::S800)).map(Message::Win)).style(|_| {
-                container::Style {
-                    background: Some(ROSEWATER.into()),
-                    ..Default::default()
-                }
-            });
+        let win = wrap_comp(
+            self.win
+                .view(window::Props {
+                    color: theme.neutral(Shade::S800),
+                    state: &self.niri_state,
+                })
+                .map(Message::Win),
+        )
+        .style(|_| container::Style {
+            background: Some(ROSEWATER.into()),
+            ..Default::default()
+        });
 
         let win_div_2 = Angled::new(
             ROSEWATER,

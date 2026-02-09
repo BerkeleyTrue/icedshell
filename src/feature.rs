@@ -53,7 +53,7 @@ pub trait Comp {
 pub trait CompWithProps {
     type Message;
     type Init;
-    type Props;
+    type Props<'a>;
 
     fn new(input: Self::Init) -> Self;
 
@@ -62,7 +62,7 @@ pub trait CompWithProps {
     }
 
     fn update(&mut self, message: Self::Message) -> Task<Self::Message>;
-    fn view(&self, props: Self::Props) -> Element<'_, Self::Message>;
+    fn view<'a>(&self, props: Self::Props<'a>) -> Element<'_, Self::Message>;
 }
 
 pub trait Feature: Sized + Comp {

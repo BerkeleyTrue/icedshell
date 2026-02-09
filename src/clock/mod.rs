@@ -29,7 +29,7 @@ pub struct Clock {
 impl CompWithProps for Clock {
     type Message = Message;
     type Init = ();
-    type Props = Color;
+    type Props<'a> = Color;
 
     fn new(_init: Self::Init) -> Self {
         Self { time: gen_time() }
