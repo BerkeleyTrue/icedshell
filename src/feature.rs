@@ -71,6 +71,17 @@ pub trait CompWithProps {
     fn view<'a>(&self, props: Self::Props<'a>) -> Element<'_, Self::Message>;
 }
 
+pub trait Service {
+    type Message;
+    type Init;
+
+    fn new(input: Self::Init) -> Self;
+
+    fn subscription(&self) -> Subscription<Self::Message>;
+
+    fn update(&mut self, _message: Self::Message) -> Task<Self::Message>;
+}
+
 pub trait Feature: Sized + Comp {
     fn layer(&self) -> NewLayerShellSettings;
 

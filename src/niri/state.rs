@@ -1,12 +1,18 @@
 use derive_more::{Display, From};
+use iced::{Subscription, Task};
 use niri_ipc::Event;
 use std::{
     collections::{BTreeMap, HashMap},
     hash::Hash,
     iter::Iterator,
 };
+use tracing::info;
 
-use crate::config::MonitorId;
+use crate::{
+    config::MonitorId,
+    feature::Service,
+    niri::stream::{self, NiriStreamError},
+};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq, From, PartialOrd, Ord)]
 pub struct WorkspaceId(u64);
@@ -101,10 +107,6 @@ pub struct State {
 }
 
 impl State {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn iter_ws(&self) -> impl Iterator<Item = &Workspace> {
         self.ws_map.0.values()
     }
@@ -222,5 +224,40 @@ impl State {
             | Event::ScreenshotCaptured { path: _ } => (),
             // _ => self,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    Event(Event),
+    Error(NiriStreamError),
+}
+
+impl Service for State {
+    type Message = Message;
+    type Init = ();
+
+    fn new(_input: Self::Init) -> Self {
+        Self::default()
+    }
+
+    fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
+        match message {
+            Message::Event(event) => {
+                self.apply(event);
+                Task::none()
+            }
+            Message::Error(err) => {
+                info!("Stream err: {err:}");
+                Task::none()
+            }
+        }
+    }
+
+    fn subscription(&self) -> Subscription<Self::Message> {
+        Subscription::run(stream::listen).map(|event| match event {
+            Ok(ev) => Message::Event(ev),
+            Err(err) => Message::Error(err),
+        })
     }
 }

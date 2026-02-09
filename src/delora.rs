@@ -1,21 +1,20 @@
 use iced::{
-    Color, Length, Subscription, Task, border, padding,
+    Color, Length, Subscription, border, padding,
     widget::{container, row},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
-use tracing::info;
 
 use crate::{
     clock,
     config::MonitorId,
     divider::{Angled, Direction, Heading, Semi},
     feature::{
-        Comp, CompWithProps, Feature, align_center, bar_widgets, center_widgets, left_widgets,
-        right_widgets,
+        Comp, CompWithProps, Feature, Service, align_center, bar_widgets, center_widgets,
+        left_widgets, right_widgets,
     },
-    niri::{state, stream, window, ws},
+    niri::{state, window, ws},
     theme::{AppTheme, ROSEWATER, app_theme},
 };
 
@@ -26,8 +25,7 @@ pub enum Message {
     Ws(ws::Message),
     Win(window::Message),
 
-    NiriEvent(stream::NiriEvent),
-    NiriError(stream::NiriStreamError),
+    NiriService(state::Message),
 }
 
 pub struct Init {
@@ -42,7 +40,7 @@ pub struct DeloraMain {
     output_name: String,
     height: f32,
     padding: f32,
-    niri_state: state::State,
+    niri_serv: state::State,
 }
 
 impl Comp for DeloraMain {
@@ -64,7 +62,7 @@ impl Comp for DeloraMain {
             theme,
             height,
             padding,
-            niri_state: state::State::new(),
+            niri_serv: state::State::new(()),
         }
     }
 
@@ -73,26 +71,18 @@ impl Comp for DeloraMain {
             Message::Ws(message) => self.ws.update(message).map(Message::Ws),
             Message::Clock(message) => self.clock.update(message).map(Message::Clock),
             Message::Win(message) => self.win.update(message).map(Message::Win),
-            Message::NiriEvent(event) => {
-                self.niri_state.apply(event);
-                Task::none()
-            }
-            Message::NiriError(err) => {
-                info!("Stream err: {err:}");
-                Task::none()
+            Message::NiriService(message) => {
+                self.niri_serv.update(message).map(Message::NiriService)
             }
         }
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
-        let niri_state = Subscription::run(stream::listen).map(|event| match event {
-            Ok(ev) => Message::NiriEvent(ev),
-            Err(err) => Message::NiriError(err),
-        });
         let clock = self.clock.subscription().map(Message::Clock);
+        let niri_serv = self.niri_serv.subscription().map(Message::NiriService);
         let niri_ws = self.ws.subscription().map(Message::Ws);
         let niri_win = self.win.subscription().map(Message::Win);
-        Subscription::batch(vec![clock, niri_ws, niri_win, niri_state])
+        Subscription::batch(vec![clock, niri_ws, niri_win, niri_serv])
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
@@ -104,7 +94,7 @@ impl Comp for DeloraMain {
         let niri_ws_view = align_center!(
             self.ws
                 .view(ws::Props {
-                    state: &self.niri_state,
+                    state: &self.niri_serv,
                 })
                 .map(self::Message::Ws),
         )
@@ -127,7 +117,7 @@ impl Comp for DeloraMain {
             self.win
                 .view(window::Props {
                     color: ROSEWATER,
-                    state: &self.niri_state,
+                    state: &self.niri_serv,
                 })
                 .map(Message::Win),
         );
