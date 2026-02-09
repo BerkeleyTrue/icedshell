@@ -36,7 +36,7 @@ pub struct Workspace {
     pub is_focused: bool,
 
     pub monitor_id: Option<MonitorId>,
-    pub active_win_id: Option<WinId>,
+    pub(super) active_win_id: Option<WinId>,
 }
 
 impl<'a> From<&'a niri_ipc::Workspace> for Workspace {
@@ -56,7 +56,7 @@ impl<'a> From<&'a niri_ipc::Workspace> for Workspace {
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct WsMap(BTreeMap<WorkspaceId, Workspace>);
+struct WsMap(BTreeMap<WorkspaceId, Workspace>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, From)]
 pub struct WinId(u64);
@@ -98,12 +98,12 @@ impl<'a> From<&'a niri_ipc::Window> for Window {
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct WinMap(HashMap<WinId, Window>);
+struct WinMap(HashMap<WinId, Window>);
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct State {
-    pub ws_map: WsMap,
-    pub win_map: WinMap,
+    ws_map: WsMap,
+    win_map: WinMap,
 }
 
 impl State {

@@ -10,15 +10,12 @@ use iced_layershell::{
     settings::{LayerShellSettings, StartMode},
     to_layer_message,
 };
-use itertools::Itertools;
-use tracing::debug;
 
 use crate::{
     Cli,
-    config::MonitorId,
     delora::{self, DeloraMain},
-    feature::{Comp, Feature, Window},
-    niri,
+    feature::{Comp, Feature, Service, Window},
+    niri::{self, monitors::MonitorsServ},
     theme::{self as mytheme},
 };
 
@@ -32,7 +29,7 @@ enum Hosts {
 #[derive(Debug)]
 pub enum Message {
     Delora(delora::Message),
-    UpdateMonitors(Vec<MonitorId>),
+    NiriMon(niri::monitors::Message),
     Quit,
 }
 
@@ -62,6 +59,7 @@ impl From<Cli> for Init {
 }
 
 struct Daemon {
+    mon_serv: niri::monitors::MonitorsServ,
     delora_main: Option<Window<DeloraMain>>,
     quit_keybinds: bool,
 }
@@ -69,6 +67,7 @@ struct Daemon {
 impl Daemon {
     fn new(init: Init) -> Self {
         Self {
+            mon_serv: MonitorsServ::new(()),
             delora_main: None,
             quit_keybinds: init.quit_keybinds,
         }
@@ -92,23 +91,9 @@ impl Daemon {
             .map(|delora| delora.subscription().map(Message::Delora))
             .unwrap_or(Subscription::none());
 
-        let niri_sub = Subscription::run(niri::stream::listen)
-            .filter_map(|res| res.ok())
-            .filter_map(|event| match event {
-                niri::stream::NiriEvent::WorkspacesChanged { workspaces } => {
-                    let outputs: Vec<MonitorId> = workspaces
-                        .iter()
-                        .filter_map(|ws| ws.output.clone())
-                        .map(MonitorId::from)
-                        .unique()
-                        .collect();
+        let niri_mon = self.mon_serv.subscription().map(Message::NiriMon);
 
-                    Some(Message::UpdateMonitors(outputs))
-                }
-                _ => None,
-            });
-
-        Subscription::batch(vec![quit_binds, delora_subs, niri_sub])
+        Subscription::batch(vec![quit_binds, delora_subs, niri_mon])
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
@@ -119,17 +104,22 @@ impl Daemon {
                 .map(|delora| delora.update(message).map(Message::Delora))
                 .unwrap_or(Task::none()),
 
-            Message::UpdateMonitors(monitors) => {
-                let num_mon = monitors.len();
-                debug!("monitors {0:?}", monitors);
-                let tasks: Vec<Task<Message>> = monitors
+            Message::NiriMon(message) => {
+                let inner_task = self.mon_serv.update(message).map(Message::NiriMon);
+                let num_mon = self.mon_serv.len();
+                let mon_names: Vec<String> =
+                    self.mon_serv.iter().map(|mon| mon.0.clone()).collect();
+
+                let mut tasks: Vec<Task<Message>> = mon_names
                     .iter()
-                    .map(move |mon| match (num_mon, mon.0.as_str()) {
+                    .map(move |mon| match (num_mon, mon.as_ref()) {
                         (2, "HDMI-A-1") => self.open_delora_main("HDMI-A-1".into()),
                         (1, "DP-3") => self.open_delora_main("DP-3".into()),
                         (_, _) => Task::none(),
                     })
                     .collect();
+
+                tasks.push(inner_task);
 
                 Task::batch(tasks)
             }

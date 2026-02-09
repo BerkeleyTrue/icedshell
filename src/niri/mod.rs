@@ -1,4 +1,5 @@
+pub mod monitors;
 pub mod state;
-pub mod stream;
+mod stream;
 pub mod window;
 pub mod ws;
