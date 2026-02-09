@@ -66,13 +66,15 @@ impl CompWithProps for NiriWS {
             let pri = *priority;
             let mon_content = mon.iter().map(|(idx, ws)| {
                 let mut icon = if ws.is_active {
-                    Icon::CircleDot.widget()
+                    Icon::Circle.widget()
                 } else {
                     Icon::CircleDashed.widget()
                 };
 
                 if ws.is_focused {
-                    icon = icon.color(theme.destructive(Shade::S500))
+                    icon = Icon::CircleDot
+                        .widget()
+                        .color(theme.destructive(Shade::S500))
                 }
 
                 // ws
