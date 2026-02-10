@@ -7,8 +7,9 @@ edition = "2024"
 clap = { version = "4.5.54", features = ["derive"]}
 derive_more = {version = "2.1.1", features = ["from", "display"]}
 dirs = "6.0.0"
+freedesktop-icons = "0.4.0"
 hostname = "0.4.2"
-iced = {version = "0.14.0", features = ["image", "wayland", "tokio", "canvas"]}
+iced = {version = "0.14.0", features = ["image", "svg", "wayland", "tokio", "canvas"]}
 iced_font_awesome = "0.4.1"
 iced_layershell = "0.15.0-rc1"
 itertools = "0.14.0"

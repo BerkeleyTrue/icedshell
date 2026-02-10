@@ -1,6 +1,9 @@
+use freedesktop_icons::lookup;
 use iced::{
-    Color, padding,
-    widget::{container, row, text},
+    Color, Element, Length,
+    advanced::{image, svg},
+    padding,
+    widget::{Image, Svg, container, row, space, text},
 };
 
 use crate::{
@@ -58,6 +61,30 @@ impl CompWithProps for NiriWin {
             .and_then(|win| win.title.clone())
             .unwrap_or("()".to_string());
 
+        let app_icon = maybe_win
+            .and_then(|win| win.app_id.clone())
+            .and_then(|app_id| lookup(&app_id).find())
+            .map(|path| {
+                if path.extension().is_some_and(|ext| ext == "svg") {
+                    Element::from(
+                        Svg::new(svg::Handle::from_path(path))
+                            .height(theme.spacing().lg())
+                            .width(theme.spacing().lg()),
+                    )
+                } else {
+                    Element::from(
+                        Image::new(image::Handle::from_path(path)).height(theme.spacing().lg()),
+                    )
+                }
+            })
+            .map(|icon| {
+                container(icon)
+                    .padding(padding::right(theme.spacing().xs()))
+                    .center_y(Length::Fill)
+                    .into()
+            })
+            .unwrap_or(Element::from(space()));
+
         if title.len() >= 9 {
             title = format!("{}...", title.chars().take(9).collect::<String>());
         }
@@ -81,12 +108,15 @@ impl CompWithProps for NiriWin {
             .and_then(|win| win.col_idx.clone())
             .unwrap_or_default();
 
-        let title_cont = align_center!(text!("{title}").color(theme.neutral(Shade::S700)).bold())
-            .style(move |_| container::Style {
-                background: Some(color.into()),
-                ..Default::default()
-            })
-            .padding(padding::horizontal(theme.spacing().sm()));
+        let title_cont = align_center!(row![
+            app_icon,
+            align_center!(text!("{title}").color(theme.neutral(Shade::S700)).bold())
+        ])
+        .style(move |_| container::Style {
+            background: Some(color.into()),
+            ..Default::default()
+        })
+        .padding(padding::horizontal(theme.spacing().sm()));
 
         let mid_div = align_center!(Angled::new(
             color,
