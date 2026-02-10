@@ -9,13 +9,3 @@ impl MonitorId {
         self.0.clone()
     }
 }
-
-#[derive(Debug, Clone)]
-pub struct Bar {
-    pub output: MonitorId,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct Config {
-    pub bars: Vec<Bar>,
-}

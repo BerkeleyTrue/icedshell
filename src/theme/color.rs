@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use iced::{Color, theme::Palette};
 
 #[derive(Debug, Clone)]

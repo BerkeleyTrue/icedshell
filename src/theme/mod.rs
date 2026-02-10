@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 mod app_theme;
 mod color;
 mod radius;

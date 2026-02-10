@@ -1,3 +1,4 @@
+#![allow(unused_variables, dead_code)]
 use iced::theme::Palette;
 
 pub use crate::theme::{
@@ -30,7 +31,7 @@ pub struct AppTheme {
 
 impl AppTheme {
     pub fn new(tokens: Tokens) -> Self {
-        Self { tokens: tokens }
+        Self { tokens }
     }
 
     #[must_use]
