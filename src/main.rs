@@ -1,6 +1,6 @@
-mod clock;
 mod config;
 mod daemon;
+mod datetime;
 mod delora;
 mod divider;
 mod feature;

@@ -7,8 +7,8 @@ use iced_layershell::reexport::{
 };
 
 use crate::{
-    clock,
     config::MonitorId,
+    datetime,
     divider::{Angled, Direction, Heading, Semi},
     feature::{
         Comp, CompWithProps, Feature, Service, align_center, bar_widgets, center_widgets,
@@ -20,7 +20,7 @@ use crate::{
 
 #[derive(Debug)]
 pub enum Message {
-    Clock(clock::Message),
+    Clock(datetime::Message),
 
     Ws(ws::Message),
     Win(window::Message),
@@ -35,7 +35,7 @@ pub struct Init {
 pub struct DeloraMain {
     ws: ws::NiriWS,
     win: window::NiriWin,
-    clock: clock::Clock,
+    clock: datetime::Clock,
     theme: AppTheme,
     output_name: String,
     height: f32,
@@ -63,7 +63,7 @@ impl Comp for DeloraMain {
                 main_mon: monitor_id.clone(),
             }),
             win: window::NiriWin::new(window::Init { monitor_id }),
-            clock: clock::Clock::new(()),
+            clock: datetime::Clock::new(()),
             output_name: input.output_name,
             theme,
             height,
@@ -130,7 +130,7 @@ impl Comp for DeloraMain {
 
         // main bar
         bar_widgets!(
-            left: clock_view, niri_ws_view, div;
+            left:  clock_view, niri_ws_view, div;
             center: win_div, win;
             right:
         )
