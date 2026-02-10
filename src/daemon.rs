@@ -143,12 +143,18 @@ impl Daemon {
         let (main_bar, main_layer_settings) = DeloraMain::new(delora::Init { output_name }).open();
         let main_id = main_bar.id;
 
-        self.delora_main.replace(main_bar);
+        let mut remove = Task::none();
+        if let Some(old) = self.delora_main.replace(main_bar) {
+            remove = Task::done(Message::RemoveWindow(old.id));
+        };
 
-        Task::done(Message::NewLayerShell {
-            settings: main_layer_settings,
-            id: main_id,
-        })
+        Task::batch([
+            remove,
+            Task::done(Message::NewLayerShell {
+                settings: main_layer_settings,
+                id: main_id,
+            }),
+        ])
     }
 }
 
