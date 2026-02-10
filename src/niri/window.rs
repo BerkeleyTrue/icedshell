@@ -63,7 +63,7 @@ impl CompWithProps for NiriWin {
 
         let app_icon = maybe_win
             .and_then(|win| win.app_id.clone())
-            .and_then(|app_id| lookup(&app_id).find())
+            .and_then(|app_id| lookup(&app_id).with_cache().find())
             .map(|path| {
                 if path.extension().is_some_and(|ext| ext == "svg") {
                     Element::from(
