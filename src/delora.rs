@@ -43,6 +43,12 @@ pub struct DeloraMain {
     niri_serv: state::State,
 }
 
+impl DeloraMain {
+    pub fn clone_niri_serv(&mut self, old_bar: &DeloraMain) {
+        self.niri_serv = old_bar.niri_serv.clone()
+    }
+}
+
 impl Comp for DeloraMain {
     type Message = Message;
     type Init = Init;

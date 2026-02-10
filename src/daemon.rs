@@ -140,13 +140,17 @@ impl Daemon {
 
 impl Daemon {
     fn open_delora_main(&mut self, output_name: String) -> Task<Message> {
-        let (main_bar, main_layer_settings) = DeloraMain::new(delora::Init { output_name }).open();
+        let (mut main_bar, main_layer_settings) =
+            DeloraMain::new(delora::Init { output_name }).open();
         let main_id = main_bar.id;
 
         let mut remove = Task::none();
-        if let Some(old) = self.delora_main.replace(main_bar) {
-            remove = Task::done(Message::RemoveWindow(old.id));
+        if let Some(old_win) = &self.delora_main {
+            main_bar.view.clone_niri_serv(&old_win.view);
+            remove = Task::done(Message::RemoveWindow(old_win.id));
         };
+
+        self.delora_main.replace(main_bar);
 
         Task::batch([
             remove,
