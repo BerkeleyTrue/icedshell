@@ -8,19 +8,21 @@ use iced_layershell::reexport::{
 
 use crate::{
     config::MonitorId,
-    datetime,
+    datetime::{clock, date},
     divider::{Angled, Direction, Heading, Semi},
     feature::{
         Comp, CompWithProps, Feature, Service, align_center, bar_widgets, center_widgets,
         left_widgets, right_widgets,
     },
     niri::{state, window, ws},
-    theme::{AppTheme, ROSEWATER, app_theme},
+    theme::{AppTheme, LAVENDER, ROSEWATER, app_theme},
+    widget_ext::ContainExt,
 };
 
 #[derive(Debug)]
 pub enum Message {
-    Clock(datetime::Message),
+    Clock(clock::Message),
+    Date(date::Message),
 
     Ws(ws::Message),
     Win(window::Message),
@@ -35,7 +37,8 @@ pub struct Init {
 pub struct DeloraMain {
     ws: ws::NiriWS,
     win: window::NiriWin,
-    clock: datetime::Clock,
+    clock: clock::Clock,
+    date: date::Date,
     theme: AppTheme,
     output_name: String,
     height: f32,
@@ -63,7 +66,8 @@ impl Comp for DeloraMain {
                 main_mon: monitor_id.clone(),
             }),
             win: window::NiriWin::new(window::Init { monitor_id }),
-            clock: datetime::Clock::new(()),
+            clock: clock::Clock::new(()),
+            date: date::Date::new(()),
             output_name: input.output_name,
             theme,
             height,
@@ -76,6 +80,7 @@ impl Comp for DeloraMain {
         match message {
             Message::Ws(message) => self.ws.update(message).map(Message::Ws),
             Message::Clock(message) => self.clock.update(message).map(Message::Clock),
+            Message::Date(message) => self.date.update(message).map(Message::Date),
             Message::Win(message) => self.win.update(message).map(Message::Win),
             Message::NiriService(message) => {
                 self.niri_serv.update(message).map(Message::NiriService)
@@ -85,17 +90,17 @@ impl Comp for DeloraMain {
 
     fn subscription(&self) -> Subscription<Self::Message> {
         let clock = self.clock.subscription().map(Message::Clock);
+        let date = self.date.subscription().map(Message::Date);
         let niri_serv = self.niri_serv.subscription().map(Message::NiriService);
         let niri_ws = self.ws.subscription().map(Message::Ws);
         let niri_win = self.win.subscription().map(Message::Win);
-        Subscription::batch(vec![clock, niri_ws, niri_win, niri_serv])
+        Subscription::batch([clock, date, niri_ws, niri_win, niri_serv])
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let theme = &self.theme;
 
-        let clock_view = align_center!(self.clock.view(theme.background()).map(Message::Clock))
-            .padding(padding::right(theme.spacing().sm()));
+        let date_view = align_center!(self.date.view(theme.background()).map(Message::Date));
 
         let niri_ws_view = align_center!(
             self.ws
@@ -103,22 +108,21 @@ impl Comp for DeloraMain {
                     state: &self.niri_serv,
                 })
                 .map(self::Message::Ws),
-        )
-        .padding(padding::left(theme.spacing().xs()))
-        .style(|_| container::Style {
-            background: Some(theme.background().into()),
-            border: border::rounded(border::left(theme.radius().xl())),
-            ..Default::default()
-        });
-
-        let div = Angled::new(
-            theme.background(),
-            Direction::Right,
-            Heading::North,
-            theme.spacing().xl(),
         );
 
-        let win_div = Semi::new(ROSEWATER, Direction::Left);
+        let div = align_center!(Angled::new(
+            LAVENDER,
+            Direction::Right,
+            Heading::South,
+            theme.spacing().xl(),
+        ))
+        .background(theme.background());
+
+        let clock_view = align_center!(self.clock.view(theme.background()).map(Message::Clock))
+            .padding(padding::right(theme.spacing().sm()));
+
+        let win_div = Semi::new(ROSEWATER, Direction::Left, theme.spacing().xl());
+
         let win = align_center!(
             self.win
                 .view(window::Props {
@@ -130,16 +134,11 @@ impl Comp for DeloraMain {
 
         // main bar
         bar_widgets!(
-            left:  clock_view, niri_ws_view, div;
-            center: win_div, win;
+            left:  date_view, div, niri_ws_view;
+            center: clock_view, win_div, win;
             right:
         )
-        .style(|_| container::Style {
-            background: Some(Color::TRANSPARENT.into()),
-            // debug
-            // border: border::color(theme.destructive(Shade::S500)).width(1),
-            ..Default::default()
-        })
+        .background(Color::TRANSPARENT)
         .padding(padding::left(theme.spacing().md()).bottom(self.padding))
         .center_y(Length::Fill)
         .into()

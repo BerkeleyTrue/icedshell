@@ -2,9 +2,11 @@ use std::collections::BTreeMap;
 
 use crate::{
     config::MonitorId,
-    feature::CompWithProps,
+    divider::{Angled, Direction, Heading},
+    feature::{CompWithProps, align_center},
     niri::state,
     theme::{AppTheme, Shade, app_theme},
+    widget_ext::ContainExt,
 };
 use iced::{
     Element, Task, border, padding,
@@ -62,52 +64,67 @@ impl CompWithProps for NiriWS {
             mon_map
         });
 
-        let niri_content = monitor_map.iter().map(|((priority, mon_id), mon)| {
-            let pri = *priority;
-            let mon_content = mon.iter().map(|(idx, ws)| {
-                let mut icon = if ws.is_active {
-                    Icon::Circle.widget()
-                } else {
-                    Icon::CircleDashed.widget()
-                };
+        let niri_content: Vec<Element<'_, Self::Message>> = monitor_map
+            .iter()
+            .map(|((priority, mon_id), mon)| {
+                let pri = *priority;
+                let mon_content = mon.iter().map(|(idx, ws)| {
+                    let mut icon = if ws.is_active {
+                        Icon::Circle.widget()
+                    } else {
+                        Icon::CircleDashed.widget()
+                    };
 
-                if ws.is_focused {
-                    icon = Icon::CircleDot
-                        .widget()
-                        .color(theme.destructive(Shade::S500))
-                }
+                    if ws.is_focused {
+                        icon = Icon::CircleDot
+                            .widget()
+                            .color(theme.destructive(Shade::S500))
+                    }
 
-                // ws
-                container(icon)
-                    .id(format!("ws-{idx}"))
-                    .padding(padding::horizontal(theme.spacing().xs()))
+                    // ws
+                    container(icon)
+                        .id(format!("ws-{idx}"))
+                        .padding(padding::horizontal(theme.spacing().xs()))
+                        .into()
+                });
+
+                // monitor
+                container(row(mon_content))
+                    .id(format!("mon-{mon_id}"))
+                    .padding(padding::horizontal(theme.spacing().sm()))
+                    .style(move |_| container::Style {
+                        background: Some(
+                            theme
+                                .clone()
+                                .neutral(if pri == 0 { Shade::S700 } else { Shade::S800 })
+                                .into(),
+                        ),
+                        border: border::rounded(theme.radius().xs()),
+                        ..Default::default()
+                    })
                     .into()
-            });
+            })
+            .collect();
 
-            // monitor
-            container(row(mon_content))
-                .id(format!("mon-{mon_id}"))
-                .padding(padding::horizontal(theme.spacing().sm()))
-                .style(move |_| container::Style {
-                    background: Some(
-                        theme
-                            .clone()
-                            .neutral(if pri == 0 { Shade::S700 } else { Shade::S800 })
-                            .into(),
-                    ),
-                    border: border::rounded(theme.radius().xs()),
-                    ..Default::default()
-                })
-                .into()
-        });
-        let niri_row = if niri_content.len() > 0 {
-            row(niri_content).spacing(theme.spacing().xs())
+        let div = Angled::new(
+            theme.background(),
+            Direction::Right,
+            Heading::South,
+            theme.spacing().xl(),
+        );
+
+        let niri_row = if niri_content.is_empty() {
+            row![lucide_icons::Icon::CircleSlash2.widget()]
         } else {
-            row([container(lucide_icons::Icon::CircleSlash2.widget()).into()])
+            row(niri_content).spacing(theme.spacing().xs())
         };
 
-        container(niri_row)
-            .padding(padding::horizontal(theme.spacing().sm()))
-            .into()
+        row![
+            align_center!(niri_row)
+                .background(theme.background())
+                .padding(padding::horizontal(theme.spacing().xs())),
+            div
+        ]
+        .into()
     }
 }

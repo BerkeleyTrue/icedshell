@@ -104,14 +104,16 @@ pub struct Semi {
     color: Color,
     cache: Cache,
     direction: Direction,
+    height: f32,
 }
 
 impl Semi {
-    pub fn new(color: Color, direction: Direction) -> Self {
+    pub fn new(color: Color, direction: Direction, height: f32) -> Self {
         Self {
             color,
             cache: Cache::new(),
             direction,
+            height,
         }
     }
 }
@@ -162,6 +164,8 @@ impl<Message> Program<Message> for Semi {
 
 impl<'a, Message: 'a> From<Semi> for Element<'a, Message> {
     fn from(semi: Semi) -> Self {
-        Canvas::new(semi).into()
+        let height = semi.height;
+        let width = height / 2.0;
+        Canvas::new(semi).height(height).width(width).into()
     }
 }

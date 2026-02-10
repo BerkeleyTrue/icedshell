@@ -7,6 +7,7 @@ mod feature;
 mod fira_fonts;
 mod niri;
 mod theme;
+mod widget_ext;
 
 use crate::daemon::{Init, start};
 use clap::Parser;
