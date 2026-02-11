@@ -1,3 +1,4 @@
+#![allow(unused_variables, dead_code)]
 use iced::{
     Color, Theme, border,
     widget::{Container, container},
@@ -23,7 +24,7 @@ impl<'a, Message: 'a> ContainExt<'a, Message> for Container<'a, Message> {
     }
     fn background(self, color: Color) -> Self {
         self.style(move |_| container::Style {
-            background: Some(color.clone().into()),
+            background: Some(color.into()),
             ..Default::default()
         })
     }
