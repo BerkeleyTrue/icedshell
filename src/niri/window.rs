@@ -1,14 +1,12 @@
-use freedesktop_icons::lookup;
 use iced::{
-    Color, Element, Length,
-    advanced::{image, svg},
-    padding,
-    widget::{Image, Svg, container, row, space, text},
+    Color, Element, Length, padding,
+    widget::{container, row, space, text},
 };
 
 use crate::{
     config::MonitorId,
     divider::{Angled, Direction, Heading},
+    fdo_icons,
     feature::{CompWithProps, align_center},
     fira_fonts::TextExt,
     niri::state,
@@ -63,20 +61,8 @@ impl CompWithProps for NiriWin {
 
         let app_icon = maybe_win
             .and_then(|win| win.app_id.clone())
-            .and_then(|app_id| lookup(&app_id).with_cache().find())
-            .map(|path| {
-                if path.extension().is_some_and(|ext| ext == "svg") {
-                    Element::from(
-                        Svg::new(svg::Handle::from_path(path))
-                            .height(theme.spacing().lg())
-                            .width(theme.spacing().lg()),
-                    )
-                } else {
-                    Element::from(
-                        Image::new(image::Handle::from_path(path)).height(theme.spacing().lg()),
-                    )
-                }
-            })
+            .and_then(|app_id| fdo_icons::find(&app_id))
+            .map(|fdo_icon| fdo_icon.into_elem(theme.spacing().lg()))
             .map(|icon| {
                 container(icon)
                     .padding(padding::right(theme.spacing().xs()))

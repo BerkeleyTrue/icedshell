@@ -3,6 +3,7 @@ mod daemon;
 mod datetime;
 mod delora;
 mod divider;
+mod fdo_icons;
 mod feature;
 mod fira_fonts;
 mod niri;

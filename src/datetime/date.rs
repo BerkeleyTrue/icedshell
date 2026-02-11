@@ -1,7 +1,7 @@
 use iced::{
     Color, Element, Subscription, Task, padding,
     time::{every, hours},
-    widget::{container, row, text},
+    widget::{row, text},
 };
 use time::{OffsetDateTime, format_description::BorrowedFormatItem};
 use time_macros::format_description;

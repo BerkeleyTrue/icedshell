@@ -1,7 +1,4 @@
-use iced::{
-    Color, Length, Subscription, border, padding,
-    widget::{container, row},
-};
+use iced::{Color, Length, Subscription, padding, widget::row};
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
