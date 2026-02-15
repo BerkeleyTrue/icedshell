@@ -49,6 +49,7 @@ pub struct ColorScale {
 }
 
 impl ColorScale {
+    #[allow(clippy::too_many_arguments)]
     pub const fn new(
         s50: Color,
         s100: Color,

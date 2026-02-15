@@ -46,7 +46,8 @@ pub trait Comp {
         Subscription::none()
     }
 
-    fn update(&mut self, _message: Self::Message) -> Task<Self::Message> {
+    #[allow(unused_variables)]
+    fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
         Task::none()
     }
 
@@ -64,7 +65,8 @@ pub trait CompWithProps {
         Subscription::none()
     }
 
-    fn update(&mut self, _message: Self::Message) -> Task<Self::Message> {
+    #[allow(unused_variables)]
+    fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
         Task::none()
     }
 
@@ -79,15 +81,16 @@ pub trait Service {
 
     fn subscription(&self) -> Subscription<Self::Message>;
 
-    fn update(&mut self, _message: Self::Message) -> Task<Self::Message>;
+    #[allow(unused_variables)]
+    fn update(&mut self, message: Self::Message) -> Task<Self::Message>;
 }
 
 pub trait Feature: Sized + Comp {
     fn layer(&self) -> NewLayerShellSettings;
 
-    fn is_animating(&self) -> bool {
-        false
-    }
+    // fn is_animating(&self) -> bool {
+    //     false
+    // }
 
     /// open window, consuming self
     fn open(self) -> (Window<Self>, NewLayerShellSettings) {
