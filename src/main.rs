@@ -8,6 +8,7 @@ mod feature;
 mod fira_fonts;
 mod niri;
 mod theme;
+mod tray;
 mod widget_ext;
 
 use crate::daemon::{Init, start};
