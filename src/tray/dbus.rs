@@ -1,6 +1,6 @@
-use iced::futures::StreamExt;
+use iced::{advanced::image, futures::StreamExt};
 use std::time::Duration;
-use tracing::{info, warn};
+use tracing::{info, trace, warn};
 use zbus::{
     Connection, Result,
     fdo::{DBusProxy, RequestNameFlags, RequestNameReply},
@@ -11,6 +11,8 @@ use zbus::{
     proxy,
     zvariant::{self, OwnedObjectPath, OwnedValue, Type},
 };
+
+use crate::fdo_icons::FdIcon;
 
 const NAME: WellKnownName =
     WellKnownName::from_static_str_unchecked("org.kde.StatusNotifierWatcher");
@@ -219,6 +221,28 @@ pub struct Icon {
     pub width: i32,
     pub height: i32,
     pub bytes: Vec<u8>,
+}
+
+pub fn icons_to_fd_icon(icons: Vec<Icon>) -> Option<FdIcon> {
+    icons
+        .into_iter()
+        // get the largest icon
+        // returns Option<Icon>
+        .max_by_key(|i| {
+            trace!("tray icon w {}, h {}", i.width, i.height);
+            (i.width, i.height)
+        })
+        .map(|mut i| {
+            // Convert ARGB to RGBA
+            for pixel in i.bytes.chunks_exact_mut(4) {
+                pixel.rotate_left(1);
+            }
+            FdIcon::Image(image::Handle::from_rgba(
+                i.width as u32,
+                i.height as u32,
+                i.bytes,
+            ))
+        })
 }
 
 #[proxy(interface = "org.kde.StatusNotifierItem")]

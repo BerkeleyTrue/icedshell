@@ -14,7 +14,7 @@ use crate::{
         TrayItems,
         dbus::{
             DBusMenuProxy, Layout, StatusNotifierItemProxy, StatusNotifierWatcher,
-            StatusNotifierWatcherProxy,
+            StatusNotifierWatcherProxy, icons_to_fd_icon,
         },
     },
 };
@@ -47,25 +47,7 @@ impl SNItem {
         let icon_pixmap = item_proxy.icon_pixmap().await;
 
         let icon = match icon_pixmap {
-            Ok(icons) => {
-                icons
-                    .into_iter()
-                    .max_by_key(|i| {
-                        trace!("tray icon w {}, h {}", i.width, i.height);
-                        (i.width, i.height)
-                    })
-                    .map(|mut i| {
-                        // Convert ARGB to RGBA
-                        for pixel in i.bytes.chunks_exact_mut(4) {
-                            pixel.rotate_left(1);
-                        }
-                        FdIcon::Image(image::Handle::from_rgba(
-                            i.width as u32,
-                            i.height as u32,
-                            i.bytes,
-                        ))
-                    })
-            }
+            Ok(icons) => icons_to_fd_icon(icons),
             Err(_) => item_proxy
                 .icon_name()
                 .await
@@ -172,30 +154,15 @@ impl SNItemEvent {
                     .await
                     .filter_map({
                         let name = name.clone();
-                        move |icon| {
+                        move |icon_changed| {
                             let name = name.clone();
                             async move {
-                                icon.get().await.ok().and_then(|icon| {
-                                    icon.into_iter()
-                                        .max_by_key(|i| {
-                                            trace!("tray icon w {}, h {}", i.width, i.height);
-                                            (i.width, i.height)
-                                        })
-                                        .map(|mut i| {
-                                            // Convert ARGB to RGBA
-                                            for pixel in i.bytes.chunks_exact_mut(4) {
-                                                pixel.rotate_left(1);
-                                            }
-                                            SNItemEvent::IconChanged(
-                                                name.to_owned(),
-                                                FdIcon::Image(image::Handle::from_rgba(
-                                                    i.width as u32,
-                                                    i.height as u32,
-                                                    i.bytes,
-                                                )),
-                                            )
-                                        })
-                                })
+                                icon_changed
+                                    .get()
+                                    .await
+                                    .ok()
+                                    .and_then(icons_to_fd_icon)
+                                    .map(|icon| SNItemEvent::IconChanged(name, icon))
                             }
                         }
                     })
