@@ -1,7 +1,7 @@
 use iced::{
     futures::{
         Stream, StreamExt,
-        stream::{self, BoxStream, select_all},
+        stream::{self, BoxStream, select, select_all},
         stream_select,
     },
     widget::image,
@@ -296,4 +296,52 @@ impl TrayStream {
             }
         })
     }
+}
+
+enum RegistrationEvent {
+    Registered(SNItem),
+    Unregistered(String),
+}
+
+async fn get_registration_stream(
+    conn: &zbus::Connection,
+) -> anyhow::Result<BoxStream<'static, RegistrationEvent>> {
+    let watcher_proxy = StatusNotifierWatcherProxy::new(conn).await?;
+
+    let registered_stream = watcher_proxy
+        .receive_status_notifier_item_registered()
+        .await?
+        .filter_map({
+            let conn = conn.clone();
+            move |e| {
+                let conn = conn.clone();
+                async move {
+                    debug!("registered {e:?}");
+                    match e.args() {
+                        Ok(args) => {
+                            let item = SNItem::new(&conn, args.service.to_string()).await;
+
+                            item.map(RegistrationEvent::Registered).ok()
+                        }
+                        _ => None,
+                    }
+                }
+            }
+        })
+        .boxed();
+
+    let unregistered_stream = watcher_proxy
+        .receive_status_notifier_item_unregistered()
+        .await?
+        .filter_map(|e| async move {
+            debug!("unregistered {e:?}");
+
+            match e.args() {
+                Ok(args) => Some(RegistrationEvent::Unregistered(args.service.to_string())),
+                _ => None,
+            }
+        })
+        .boxed();
+
+    Ok(select(registered_stream, unregistered_stream).boxed())
 }
