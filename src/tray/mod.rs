@@ -18,7 +18,7 @@ mod tray_stream;
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Registered(SNItem),
+    Registered(Box<SNItem>),
     IconChanged(String, FdIcon),
     MenuLayoutChanged(String, Layout),
     Unregistered(String),
@@ -28,8 +28,6 @@ pub enum Message {
 impl From<SNItemEvent> for Message {
     fn from(sni_event: SNItemEvent) -> Self {
         match sni_event {
-            SNItemEvent::Registered(item) => Message::Registered(item),
-            SNItemEvent::Unregistered(name) => Message::Unregistered(name),
             SNItemEvent::IconChanged(id, handle) => Message::IconChanged(id, handle),
             SNItemEvent::MenuLayoutChanged(id, layout) => Message::MenuLayoutChanged(id, layout),
         }
@@ -39,6 +37,8 @@ impl From<SNItemEvent> for Message {
 impl From<TrayEvent> for Message {
     fn from(tray_event: TrayEvent) -> Self {
         match tray_event {
+            TrayEvent::ItemRegistered(item) => Message::Registered(item),
+            TrayEvent::ItemUnregistered(name) => Message::Unregistered(name),
             TrayEvent::SNItem(sni_event) => (*sni_event).into(),
             TrayEvent::RegisteredItems(items) => Message::UpdateItems(TrayItems(items)),
         }
@@ -110,10 +110,10 @@ impl Service for TrayService {
                     .find(|item| item.name == new_item.name)
                 {
                     Some(existing_item) => {
-                        *existing_item = new_item;
+                        *existing_item = *new_item;
                     }
                     None => {
-                        self.items.0.push(new_item);
+                        self.items.0.push(*new_item);
                     }
                 }
                 Task::none()
