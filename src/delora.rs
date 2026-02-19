@@ -13,7 +13,7 @@ use crate::{
     },
     niri::{state, window, ws},
     theme::{AppTheme, LAVENDER, ROSEWATER, app_theme},
-    tray,
+    tray::{self, module::TrayMod},
     widget_ext::ContainExt,
 };
 
@@ -27,6 +27,7 @@ pub enum Message {
 
     NiriService(state::Message),
     TrayService(tray::service::Message),
+    Tray(tray::module::Message),
 }
 
 pub struct Init {
@@ -34,16 +35,18 @@ pub struct Init {
 }
 
 pub struct DeloraMain {
+    height: f32,
+    padding: f32,
+
     ws: ws::NiriWS,
     win: window::NiriWin,
     clock: clock::Clock,
     date: date::Date,
     theme: AppTheme,
     output_name: String,
-    height: f32,
-    padding: f32,
     niri_serv: state::State,
     tray_serv: tray::service::TrayService,
+    tray: tray::module::TrayMod,
 }
 
 impl DeloraMain {
@@ -63,6 +66,9 @@ impl Comp for DeloraMain {
         let padding = theme.spacing().xs();
         let monitor_id = MonitorId(input.output_name.clone());
         Self {
+            height,
+            padding,
+
             ws: ws::NiriWS::new(ws::Init {
                 main_mon: monitor_id.clone(),
             }),
@@ -71,10 +77,9 @@ impl Comp for DeloraMain {
             date: date::Date::new(()),
             output_name: input.output_name,
             theme,
-            height,
-            padding,
             niri_serv: state::State::new(()),
             tray_serv: tray::service::TrayService::new(()),
+            tray: tray::module::TrayMod::new(()),
         }
     }
 
@@ -90,6 +95,7 @@ impl Comp for DeloraMain {
             Message::TrayService(message) => {
                 self.tray_serv.update(message).map(Message::TrayService)
             }
+            Message::Tray(message) => self.tray.update(message).map(Message::Tray),
         }
     }
 
@@ -138,10 +144,17 @@ impl Comp for DeloraMain {
                 .map(Message::Win),
         );
 
+        let tray = self
+            .tray
+            .view(tray::module::Props {
+                serv: &self.tray_serv,
+            })
+            .map(Message::Tray);
+
         // main bar
         bar_widgets!(
             left:  date_view, div, niri_ws_view;
-            center: clock_view, win_div, win;
+            center: clock_view, win_div, win, tray;
             right:
         )
         .background(Color::TRANSPARENT)
