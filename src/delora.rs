@@ -13,6 +13,7 @@ use crate::{
     },
     niri::{state, window, ws},
     theme::{AppTheme, LAVENDER, ROSEWATER, app_theme},
+    tray,
     widget_ext::ContainExt,
 };
 
@@ -25,6 +26,7 @@ pub enum Message {
     Win(window::Message),
 
     NiriService(state::Message),
+    TrayService(tray::Message),
 }
 
 pub struct Init {
@@ -41,11 +43,13 @@ pub struct DeloraMain {
     height: f32,
     padding: f32,
     niri_serv: state::State,
+    tray_serv: tray::TrayService,
 }
 
 impl DeloraMain {
-    pub fn clone_niri_serv(&mut self, old_bar: &DeloraMain) {
-        self.niri_serv = old_bar.niri_serv.clone()
+    pub fn clone_servs(&mut self, old_bar: &DeloraMain) {
+        self.niri_serv = old_bar.niri_serv.clone();
+        self.tray_serv = old_bar.tray_serv.clone();
     }
 }
 
@@ -70,6 +74,7 @@ impl Comp for DeloraMain {
             height,
             padding,
             niri_serv: state::State::new(()),
+            tray_serv: tray::TrayService::new(()),
         }
     }
 
@@ -82,6 +87,9 @@ impl Comp for DeloraMain {
             Message::NiriService(message) => {
                 self.niri_serv.update(message).map(Message::NiriService)
             }
+            Message::TrayService(message) => {
+                self.tray_serv.update(message).map(Message::TrayService)
+            }
         }
     }
 
@@ -91,7 +99,8 @@ impl Comp for DeloraMain {
         let niri_serv = self.niri_serv.subscription().map(Message::NiriService);
         let niri_ws = self.ws.subscription().map(Message::Ws);
         let niri_win = self.win.subscription().map(Message::Win);
-        Subscription::batch([clock, date, niri_ws, niri_win, niri_serv])
+        let tray_serv = self.tray_serv.subscription().map(Message::TrayService);
+        Subscription::batch([clock, date, niri_ws, niri_win, niri_serv, tray_serv])
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {

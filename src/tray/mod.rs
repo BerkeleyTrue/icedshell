@@ -87,17 +87,14 @@ impl TrayService {
     }
 }
 
-pub struct Init {
-    pub items: TrayItems,
-    pub conn: zbus::Connection,
-}
-
 impl Service for TrayService {
     type Message = Message;
-    type Init = Init;
+    type Init = ();
 
-    fn new(input: Self::Init) -> Self {
-        Self { items: input.items }
+    fn new(_input: Self::Init) -> Self {
+        Self {
+            items: TrayItems(Vec::new()),
+        }
     }
 
     fn update(&mut self, message: Self::Message) -> Task<Message> {

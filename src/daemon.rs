@@ -146,7 +146,7 @@ impl Daemon {
 
         let mut remove = Task::none();
         if let Some(old_win) = &self.delora_main {
-            main_bar.view.clone_niri_serv(&old_win.view);
+            main_bar.view.clone_servs(&old_win.view);
             remove = Task::done(Message::RemoveWindow(old_win.id));
         };
 
