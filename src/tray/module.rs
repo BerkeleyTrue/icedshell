@@ -34,11 +34,10 @@ impl CompWithProps for TrayMod {
 
     fn view<'a>(&self, props: Self::Props<'a>) -> iced::Element<'_, Self::Message> {
         let theme = app_theme();
-        // let count = props.serv.items.len();
         let items: Vec<Element<'_, Self::Message>> = props
             .serv
             .items
-            .iter()
+            .values()
             .map(|sn_item| {
                 sn_item
                     .icon

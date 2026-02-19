@@ -7,7 +7,10 @@ use crate::{
     },
 };
 use iced::{Subscription, Task};
-use std::ops::Deref;
+use std::{
+    collections::BTreeMap,
+    ops::{Deref, DerefMut},
+};
 use tracing::{debug, error};
 
 #[derive(Debug, Clone)]
@@ -20,7 +23,7 @@ pub enum Message {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct TrayItems(Vec<SNItem>);
+pub struct TrayItems(BTreeMap<String, SNItem>);
 
 #[derive(Debug, Clone)]
 pub struct TrayService {
@@ -31,15 +34,14 @@ impl TrayService {
     pub fn menu_item_clicked(&mut self, id: i32, name: String) -> Task<Message> {
         debug!("Click on {name:} menu: {id}");
         self.items
-            .iter()
-            .find(|item| item.name == name)
+            .get(&name)
             .map(|item| {
-                let name_cb = name.clone();
+                let name = item.name.clone();
                 let item = item.clone();
                 Task::future(async move { item.menu_item_clicked(id).await })
                     .map(|res| res.ok())
                     .and_then(move |layout| {
-                        Task::done(Message::MenuLayoutChanged(name_cb.clone(), layout))
+                        Task::done(Message::MenuLayoutChanged(name.clone(), layout))
                     })
             })
             .unwrap_or_default()
@@ -52,41 +54,29 @@ impl Service for TrayService {
 
     fn new(_input: Self::Init) -> Self {
         Self {
-            items: TrayItems(Vec::new()),
+            items: TrayItems(BTreeMap::new()),
         }
     }
 
     fn update(&mut self, message: Self::Message) -> Task<Message> {
         match message {
-            Message::Registered(new_item) => {
-                match self
-                    .items
-                    .0
-                    .iter_mut()
-                    .find(|item| item.name == new_item.name)
-                {
-                    Some(existing_item) => {
-                        *existing_item = *new_item;
-                    }
-                    None => {
-                        self.items.0.push(*new_item);
-                    }
-                }
+            Message::Registered(item) => {
+                self.items.insert(item.name.clone(), *item);
                 Task::none()
             }
             Message::Unregistered(name) => {
-                self.items.0.retain(|item| item.name != name);
+                self.items.remove(&name);
                 Task::none()
             }
             Message::IconChanged(name, handle) => {
-                if let Some(item) = self.items.0.iter_mut().find(|item| item.name == name) {
+                if let Some(item) = self.items.get_mut(&name) {
                     item.icon = Some(handle);
                 }
                 Task::none()
             }
             Message::MenuLayoutChanged(name, layout) => {
-                if let Some(item) = self.items.0.iter_mut().find(|item| item.name == name) {
-                    debug!("menu layout updated, {layout:?}");
+                debug!("{name} menu layout updated, {layout:?}");
+                if let Some(item) = self.items.get_mut(&name) {
                     item.menu = layout;
                 }
                 Task::none()
@@ -110,9 +100,15 @@ impl Service for TrayService {
 }
 
 impl Deref for TrayItems {
-    type Target = Vec<SNItem>;
+    type Target = BTreeMap<String, SNItem>;
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl DerefMut for TrayItems {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -139,7 +135,13 @@ impl From<TrayEvent> for Message {
             TrayEvent::ItemRegistered(item) => Message::Registered(item),
             TrayEvent::ItemUnregistered(name) => Message::Unregistered(name),
             TrayEvent::SNItem(sni_event) => (*sni_event).into(),
-            TrayEvent::RegisteredItems(items) => Message::UpdateItems(TrayItems(items)),
+            TrayEvent::RegisteredItems(items) => Message::UpdateItems(items.iter().fold(
+                TrayItems(BTreeMap::new()),
+                |mut acc, item| {
+                    acc.insert(item.name.clone(), item.clone());
+                    acc
+                },
+            )),
         }
     }
 }

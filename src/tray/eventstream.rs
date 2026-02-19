@@ -299,3 +299,23 @@ pub fn listen() -> impl Stream<Item = anyhow::Result<TrayEvent>> {
     })
     .filter_map(async |x| x)
 }
+
+impl Ord for SNItem {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
+impl PartialOrd for SNItem {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for SNItem {
+    fn eq(&self, other: &Self) -> bool {
+        self.name.eq(&other.name)
+    }
+}
+
+impl Eq for SNItem {}
