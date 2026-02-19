@@ -26,7 +26,7 @@ pub enum Message {
     Win(window::Message),
 
     NiriService(state::Message),
-    TrayService(tray::Message),
+    TrayService(tray::service::Message),
 }
 
 pub struct Init {
@@ -43,7 +43,7 @@ pub struct DeloraMain {
     height: f32,
     padding: f32,
     niri_serv: state::State,
-    tray_serv: tray::TrayService,
+    tray_serv: tray::service::TrayService,
 }
 
 impl DeloraMain {
@@ -74,7 +74,7 @@ impl Comp for DeloraMain {
             height,
             padding,
             niri_serv: state::State::new(()),
-            tray_serv: tray::TrayService::new(()),
+            tray_serv: tray::service::TrayService::new(()),
         }
     }
 

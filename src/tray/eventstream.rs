@@ -1,21 +1,14 @@
-use iced::{
-    futures::{
-        Stream, StreamExt,
-        stream::{self, BoxStream, select, select_all},
-        stream_select,
-    },
-    widget::image,
+use iced::futures::{
+    Stream, StreamExt,
+    stream::{self, BoxStream, select, select_all},
 };
-use tracing::{debug, info, trace};
+use tracing::debug;
 
 use crate::{
     fdo_icons::{self, FdIcon},
-    tray::{
-        TrayItems,
-        dbus::{
-            DBusMenuProxy, Layout, StatusNotifierItemProxy, StatusNotifierWatcher,
-            StatusNotifierWatcherProxy, icons_to_fd_icon,
-        },
+    tray::dbus::{
+        DBusMenuProxy, Layout, StatusNotifierItemProxy, StatusNotifierWatcher,
+        StatusNotifierWatcherProxy, icons_to_fd_icon,
     },
 };
 
