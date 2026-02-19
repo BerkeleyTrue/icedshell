@@ -2,7 +2,7 @@ use iced::futures::{
     Stream, StreamExt,
     stream::{self, BoxStream, select, select_all},
 };
-use tracing::debug;
+use tracing::{debug, info};
 
 use crate::{
     fdo_icons::{self, FdIcon},
@@ -15,6 +15,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct SNItem {
     pub name: String,
+    pub title: String,
     pub icon: Option<FdIcon>,
     pub menu: Layout,
     item_proxy: StatusNotifierItemProxy<'static>,
@@ -58,7 +59,10 @@ impl SNItem {
 
         let (_, menu) = menu_proxy.get_layout(0, -1, &[]).await?;
 
+        let title = item_proxy.title().await.ok().unwrap_or_default();
+
         Ok(Self {
+            title,
             name,
             icon,
             menu,

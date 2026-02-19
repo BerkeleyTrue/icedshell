@@ -248,6 +248,9 @@ pub fn icons_to_fd_icon(icons: Vec<Icon>) -> Option<FdIcon> {
 #[proxy(interface = "org.kde.StatusNotifierItem")]
 pub trait StatusNotifierItem {
     #[zbus(property)]
+    fn title(&self) -> zbus::Result<String>;
+
+    #[zbus(property)]
     fn icon_name(&self) -> zbus::Result<String>;
 
     #[zbus(property)]
