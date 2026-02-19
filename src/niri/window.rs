@@ -62,7 +62,7 @@ impl CompWithProps for NiriWin {
         let app_icon = maybe_win
             .and_then(|win| win.app_id.clone())
             .and_then(|app_id| fdo_icons::find(&app_id))
-            .map(|fdo_icon| fdo_icon.into_elem(theme.spacing().lg()))
+            .map(|fdo_icon| fdo_icon.elem(theme.spacing().lg()))
             .map(|icon| {
                 container(icon)
                     .padding(padding::right(theme.spacing().xs()))

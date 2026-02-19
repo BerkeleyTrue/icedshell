@@ -1,10 +1,12 @@
 use iced::{
-    Task,
-    widget::{container, text},
+    Element, Task,
+    widget::{container, row},
 };
+use lucide_icons::Icon;
 
 use crate::{
     feature::{CompWithProps, align_center},
+    theme::app_theme,
     tray::service::TrayService,
 };
 
@@ -31,7 +33,20 @@ impl CompWithProps for TrayMod {
     }
 
     fn view<'a>(&self, props: Self::Props<'a>) -> iced::Element<'_, Self::Message> {
-        let count = props.serv.items.len();
-        container(align_center!(text!("tray: {count}"))).into()
+        let theme = app_theme();
+        // let count = props.serv.items.len();
+        let items: Vec<Element<'_, Self::Message>> = props
+            .serv
+            .items
+            .iter()
+            .map(|sn_item| {
+                sn_item
+                    .icon
+                    .as_ref()
+                    .map(|icon| icon.elem(theme.spacing().xl()))
+                    .unwrap_or(Icon::Dot.widget().into())
+            })
+            .collect();
+        container(align_center!(row(items))).into()
     }
 }

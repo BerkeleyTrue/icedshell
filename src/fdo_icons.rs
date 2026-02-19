@@ -18,6 +18,12 @@ static SYSTEM_ICON_ENTRIES: LazyLock<Vec<(String, String)>> = LazyLock::new(|| {
         .collect()
 });
 
+#[derive(Debug, Clone)]
+pub enum FdIcon {
+    Image(image::Handle),
+    Svg(svg::Handle),
+}
+
 pub fn find(icon_name: &str) -> Option<FdIcon> {
     find_icon_path(icon_name)
         .or_else(|| find_similar_icon_path(icon_name))
@@ -175,18 +181,12 @@ fn list_icon_directories() -> Vec<PathBuf> {
     dirs
 }
 
-#[derive(Debug, Clone)]
-pub enum FdIcon {
-    Image(image::Handle),
-    Svg(svg::Handle),
-}
-
 impl FdIcon {
-    pub fn into_elem<'a, Message: 'a>(self, size: impl Into<Length>) -> Element<'a, Message> {
+    pub fn elem<'a, Message: 'a>(&self, size: impl Into<Length>) -> Element<'a, Message> {
         let size: Length = size.into();
         match self {
             FdIcon::Image(handle) => Element::from(Image::new(handle).height(size)),
-            FdIcon::Svg(handle) => Element::from(Svg::new(handle).height(size).width(size)),
+            FdIcon::Svg(handle) => Element::from(Svg::new(handle.clone()).height(size).width(size)),
         }
     }
 }
