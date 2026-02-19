@@ -202,63 +202,6 @@ pub enum TrayEvent {
     RegisteredItems(Vec<SNItem>),
 }
 
-pub enum TrayStream {
-    Init,
-    Active(zbus::Connection, BoxStream<'static, TrayEvent>),
-    Error,
-}
-
-impl TrayStream {
-    pub fn listen() -> impl Stream<Item = anyhow::Result<TrayEvent>> {
-        let es = TrayStream::Init;
-        stream::unfold(es, |es| async move {
-            match es {
-                TrayStream::Init => {
-                    let conn = match StatusNotifierWatcher::start_server().await {
-                        Ok(conn) => conn,
-                        Err(err) => return Some((Some(Err(err)), TrayStream::Error)),
-                    };
-
-                    let items = match get_registered_items(&conn).await {
-                        Ok(items) => items,
-                        Err(err) => return Some((Some(Err(err)), TrayStream::Error)),
-                    };
-
-                    let reg_es = match get_registration_stream(&conn).await {
-                        Ok(es) => es,
-                        Err(err) => return Some((Some(Err(err)), TrayStream::Error)),
-                    };
-
-                    let item_es = SNItemEvent::eventstream(items.clone()).await;
-                    let es = select(reg_es, item_es.map(Box::new).map(TrayEvent::SNItem)).boxed();
-
-                    Some((
-                        Some(Ok(TrayEvent::RegisteredItems(items))),
-                        TrayStream::Active(conn, es),
-                    ))
-                }
-                TrayStream::Active(conn, mut es) => match es.next().await {
-                    Some(event) => {
-                        if let TrayEvent::ItemRegistered(item) = event.clone() {
-                            let item_es = item
-                                .get_eventstream()
-                                .await
-                                .map(Box::new)
-                                .map(TrayEvent::SNItem)
-                                .boxed();
-                            es = select(es, item_es).boxed();
-                        };
-                        Some((Some(Ok(event)), TrayStream::Active(conn, es)))
-                    }
-                    None => Some((None, TrayStream::Active(conn, es))),
-                },
-                TrayStream::Error => None,
-            }
-        })
-        .filter_map(async |x| x)
-    }
-}
-
 async fn get_registration_stream(
     conn: &zbus::Connection,
 ) -> anyhow::Result<BoxStream<'static, TrayEvent>> {
@@ -300,4 +243,59 @@ async fn get_registration_stream(
         .boxed();
 
     Ok(select(registered_stream, unregistered_stream).boxed())
+}
+
+enum StreamState {
+    Init,
+    Active(zbus::Connection, BoxStream<'static, TrayEvent>),
+    Error,
+}
+
+pub fn listen() -> impl Stream<Item = anyhow::Result<TrayEvent>> {
+    let es = StreamState::Init;
+    stream::unfold(es, |es| async move {
+        match es {
+            StreamState::Init => {
+                let conn = match StatusNotifierWatcher::start_server().await {
+                    Ok(conn) => conn,
+                    Err(err) => return Some((Some(Err(err)), StreamState::Error)),
+                };
+
+                let items = match get_registered_items(&conn).await {
+                    Ok(items) => items,
+                    Err(err) => return Some((Some(Err(err)), StreamState::Error)),
+                };
+
+                let reg_es = match get_registration_stream(&conn).await {
+                    Ok(es) => es,
+                    Err(err) => return Some((Some(Err(err)), StreamState::Error)),
+                };
+
+                let item_es = SNItemEvent::eventstream(items.clone()).await;
+                let es = select(reg_es, item_es.map(Box::new).map(TrayEvent::SNItem)).boxed();
+
+                Some((
+                    Some(Ok(TrayEvent::RegisteredItems(items))),
+                    StreamState::Active(conn, es),
+                ))
+            }
+            StreamState::Active(conn, mut es) => match es.next().await {
+                Some(event) => {
+                    if let TrayEvent::ItemRegistered(item) = event.clone() {
+                        let item_es = item
+                            .get_eventstream()
+                            .await
+                            .map(Box::new)
+                            .map(TrayEvent::SNItem)
+                            .boxed();
+                        es = select(es, item_es).boxed();
+                    };
+                    Some((Some(Ok(event)), StreamState::Active(conn, es)))
+                }
+                None => Some((None, StreamState::Active(conn, es))),
+            },
+            StreamState::Error => None,
+        }
+    })
+    .filter_map(async |x| x)
 }

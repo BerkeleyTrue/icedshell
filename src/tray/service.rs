@@ -3,7 +3,7 @@ use crate::{
     feature::Service,
     tray::{
         dbus::Layout,
-        eventstream::{SNItem, SNItemEvent, TrayEvent, TrayStream},
+        eventstream::{SNItem, SNItemEvent, TrayEvent, listen},
     },
 };
 use iced::{Subscription, Task};
@@ -19,47 +19,12 @@ pub enum Message {
     UpdateItems(TrayItems),
 }
 
-impl From<SNItemEvent> for Message {
-    fn from(sni_event: SNItemEvent) -> Self {
-        match sni_event {
-            SNItemEvent::IconChanged(id, handle) => Message::IconChanged(id, handle),
-            SNItemEvent::MenuLayoutChanged(id, layout) => Message::MenuLayoutChanged(id, layout),
-        }
-    }
-}
-
-impl From<TrayEvent> for Message {
-    fn from(tray_event: TrayEvent) -> Self {
-        match tray_event {
-            TrayEvent::ItemRegistered(item) => Message::Registered(item),
-            TrayEvent::ItemUnregistered(name) => Message::Unregistered(name),
-            TrayEvent::SNItem(sni_event) => (*sni_event).into(),
-            TrayEvent::RegisteredItems(items) => Message::UpdateItems(TrayItems(items)),
-        }
-    }
-}
-
 #[derive(Debug, Default, Clone)]
 pub struct TrayItems(Vec<SNItem>);
-
-impl Deref for TrayItems {
-    type Target = Vec<SNItem>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct TrayService {
     pub items: TrayItems,
-}
-
-impl Deref for TrayService {
-    type Target = TrayItems;
-
-    fn deref(&self) -> &Self::Target {
-        &self.items
-    }
 }
 
 impl TrayService {
@@ -134,12 +99,47 @@ impl Service for TrayService {
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
-        Subscription::run(TrayStream::listen).filter_map(|res| match res {
+        Subscription::run(listen).filter_map(|res| match res {
             Ok(tray_event) => Some(Message::from(tray_event)),
             Err(err) => {
                 error!("Error from tray stream: {err:}");
                 None
             }
         })
+    }
+}
+
+impl Deref for TrayItems {
+    type Target = Vec<SNItem>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Deref for TrayService {
+    type Target = TrayItems;
+
+    fn deref(&self) -> &Self::Target {
+        &self.items
+    }
+}
+
+impl From<SNItemEvent> for Message {
+    fn from(sni_event: SNItemEvent) -> Self {
+        match sni_event {
+            SNItemEvent::IconChanged(id, handle) => Message::IconChanged(id, handle),
+            SNItemEvent::MenuLayoutChanged(id, layout) => Message::MenuLayoutChanged(id, layout),
+        }
+    }
+}
+
+impl From<TrayEvent> for Message {
+    fn from(tray_event: TrayEvent) -> Self {
+        match tray_event {
+            TrayEvent::ItemRegistered(item) => Message::Registered(item),
+            TrayEvent::ItemUnregistered(name) => Message::Unregistered(name),
+            TrayEvent::SNItem(sni_event) => (*sni_event).into(),
+            TrayEvent::RegisteredItems(items) => Message::UpdateItems(TrayItems(items)),
+        }
     }
 }
