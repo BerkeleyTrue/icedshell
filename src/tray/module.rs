@@ -1,12 +1,13 @@
 use iced::{
-    Element, Task,
-    widget::{container, row, text, tooltip},
+    Color, Element, Task, padding,
+    widget::{row, text, tooltip},
 };
 use lucide_icons::Icon;
 
 use crate::{
+    divider::{Angled, Direction, Heading},
     feature::{CompWithProps, align_center},
-    theme::app_theme,
+    theme::{SURFACE2, app_theme},
     tray::service::TrayService,
     widget_ext::ContainExt,
 };
@@ -17,6 +18,7 @@ pub struct TrayMod {}
 pub enum Message {}
 
 pub struct Props<'a> {
+    pub next_color: Color,
     pub serv: &'a TrayService,
 }
 
@@ -35,7 +37,7 @@ impl CompWithProps for TrayMod {
 
     fn view<'a>(&self, props: Self::Props<'a>) -> iced::Element<'_, Self::Message> {
         let theme = app_theme();
-        let items: Vec<Element<'_, Self::Message>> = props
+        let mut items: Vec<Element<'_, Self::Message>> = props
             .serv
             .items
             .values()
@@ -49,7 +51,7 @@ impl CompWithProps for TrayMod {
                 if let Some((icon, title, description)) = item.tool_tip.as_ref() {
                     let icon = icon
                         .as_ref()
-                        .map(|icon| icon.elem(theme.spacing().xl() - theme.spacing().xs()))
+                        .map(|icon| icon.elem(theme.spacing().xl() - theme.spacing().sm()))
                         .unwrap_or(Icon::Dot.widget().into());
                     let tooltip_content =
                         align_center!(row![icon, text!("{title}: {description}"),])
@@ -63,6 +65,20 @@ impl CompWithProps for TrayMod {
                 }
             })
             .collect();
-        container(align_center!(row(items))).into()
+
+        let end_div = align_center!(Angled::new(
+            SURFACE2,
+            Direction::Right,
+            Heading::South,
+            theme.spacing().xl(),
+        ));
+        // .background(props.next_color);
+
+        // items.push(end_div.into());
+        let content = align_center!(row(items))
+            .background(SURFACE2)
+            .padding(padding::horizontal(theme.spacing().sm()));
+
+        row![content, end_div].into()
     }
 }

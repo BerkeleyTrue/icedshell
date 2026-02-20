@@ -11,6 +11,7 @@ use crate::{
     fira_fonts::TextExt,
     niri::state,
     theme::{AppTheme, Shade, app_theme},
+    widget_ext::ContainExt,
 };
 
 #[derive(Debug, Clone)]
@@ -27,6 +28,7 @@ pub struct NiriWin {
 
 pub struct Props<'a> {
     pub color: Color,
+    pub next_color: Color,
     pub state: &'a state::State,
 }
 
@@ -43,7 +45,11 @@ impl CompWithProps for NiriWin {
 
     fn view<'a>(
         &self,
-        Props { state, color }: Self::Props<'a>,
+        Props {
+            state,
+            color,
+            next_color,
+        }: Self::Props<'a>,
     ) -> iced::Element<'_, Self::Message> {
         let theme = &self.theme;
         let second_color = theme.info(Shade::S500);
@@ -98,10 +104,7 @@ impl CompWithProps for NiriWin {
             app_icon,
             align_center!(text!("{title}").color(theme.neutral(Shade::S700)).bold())
         ])
-        .style(move |_| container::Style {
-            background: Some(color.into()),
-            ..Default::default()
-        })
+        .background(color)
         .padding(padding::horizontal(theme.spacing().sm()));
 
         let mid_div = align_center!(Angled::new(
@@ -110,25 +113,19 @@ impl CompWithProps for NiriWin {
             Heading::South,
             theme.spacing().xl(),
         ))
-        .style(move |_| container::Style {
-            background: Some(second_color.into()),
-            ..Default::default()
-        });
+        .background(second_color);
 
         let count_cont = align_center!(text!("{current_win_idx}/{num_of_win}"))
-            .style(move |_| container::Style {
-                background: Some(second_color.into()),
-                ..Default::default()
-            })
+            .background(second_color)
             .padding(padding::horizontal(theme.spacing().sm()));
 
-        // TODO: add end color
         let end_div = align_center!(Angled::new(
             second_color,
             Direction::Right,
             Heading::North,
             theme.spacing().xl(),
-        ));
+        ))
+        .background(next_color);
 
         row![title_cont, mid_div, count_cont, end_div].into()
     }

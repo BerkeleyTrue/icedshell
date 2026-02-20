@@ -12,8 +12,8 @@ use crate::{
         left_widgets, right_widgets,
     },
     niri::{state, window, ws},
-    theme::{AppTheme, LAVENDER, ROSEWATER, app_theme},
-    tray::{self, module::TrayMod},
+    theme::{AppTheme, LAVENDER, ROSEWATER, SURFACE2, app_theme},
+    tray::{module as tray_mod, service as tray_serv},
     widget_ext::ContainExt,
 };
 
@@ -26,8 +26,8 @@ pub enum Message {
     Win(window::Message),
 
     NiriService(state::Message),
-    TrayService(tray::service::Message),
-    Tray(tray::module::Message),
+    TrayService(tray_serv::Message),
+    Tray(tray_mod::Message),
 }
 
 pub struct Init {
@@ -45,8 +45,8 @@ pub struct DeloraMain {
     theme: AppTheme,
     output_name: String,
     niri_serv: state::State,
-    tray_serv: tray::service::TrayService,
-    tray: tray::module::TrayMod,
+    tray_serv: tray_serv::TrayService,
+    tray: tray_mod::TrayMod,
 }
 
 impl DeloraMain {
@@ -78,8 +78,8 @@ impl Comp for DeloraMain {
             output_name: input.output_name,
             theme,
             niri_serv: state::State::new(()),
-            tray_serv: tray::service::TrayService::new(()),
-            tray: tray::module::TrayMod::new(()),
+            tray_serv: tray_serv::TrayService::new(()),
+            tray: tray_mod::TrayMod::new(()),
         }
     }
 
@@ -139,6 +139,7 @@ impl Comp for DeloraMain {
             self.win
                 .view(window::Props {
                     color: ROSEWATER,
+                    next_color: SURFACE2,
                     state: &self.niri_serv,
                 })
                 .map(Message::Win),
@@ -146,8 +147,9 @@ impl Comp for DeloraMain {
 
         let tray = self
             .tray
-            .view(tray::module::Props {
+            .view(tray_mod::Props {
                 serv: &self.tray_serv,
+                next_color: Color::TRANSPARENT,
             })
             .map(Message::Tray);
 
