@@ -7,7 +7,7 @@ use iced::{
     advanced::{image, svg},
     widget::{Image, Svg},
 };
-use tracing::{debug, info};
+use tracing::debug;
 
 static THEME: &str = "Papirus-Dark";
 static SYSTEM_ICON_NAMES: LazyLock<BTreeSet<String>> = LazyLock::new(load_system_icon_names);
@@ -27,10 +27,11 @@ pub enum FdIcon {
 pub fn find(icon_name: &str) -> Option<FdIcon> {
     // tailtray returns a path to a temp file
     if icon_name.starts_with("/") {
-        let path = std::fs::read(icon_name).unwrap();
-        let icon = Some(FdIcon::Image(image::Handle::from_bytes(path)));
-        info!("icon: {icon:?}");
-        return icon;
+        return std::fs::read(icon_name)
+            .inspect_err(|err| debug!("icon read error: {err}"))
+            .ok()
+            .map(image::Handle::from_bytes)
+            .map(FdIcon::Image);
     }
     find_icon_path(icon_name)
         .or_else(|| find_similar_icon_path(icon_name))
