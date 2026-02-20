@@ -37,25 +37,33 @@ impl CompWithProps for TrayMod {
 
     fn view<'a>(&self, props: Self::Props<'a>) -> iced::Element<'_, Self::Message> {
         let theme = app_theme();
-        let mut items: Vec<Element<'_, Self::Message>> = props
+        let items: Vec<Element<'_, Self::Message>> = props
             .serv
             .items
             .values()
             .map(|item| {
-                let content = item
-                    .icon
-                    .as_ref()
-                    .map(|icon| icon.elem(theme.spacing().xl() - theme.spacing().xs()))
-                    .unwrap_or(Icon::Dot.widget().into());
+                let height = if item.title == "tailscale-systray" {
+                    theme.spacing().xl() - theme.spacing().sm()
+                } else {
+                    theme.spacing().xl() - theme.spacing().xs()
+                };
+                let content = align_center!(
+                    item.icon
+                        .as_ref()
+                        .map(|icon| icon.elem(height))
+                        .unwrap_or(Icon::Dot.widget().into())
+                );
 
                 if let Some((icon, title, description)) = item.tool_tip.as_ref() {
                     let icon = icon
                         .as_ref()
                         .map(|icon| icon.elem(theme.spacing().xl() - theme.spacing().sm()))
                         .unwrap_or(Icon::Dot.widget().into());
+
                     let tooltip_content =
                         align_center!(row![icon, text!("{title}: {description}"),])
                             .background(theme.background());
+
                     tooltip(content, tooltip_content, tooltip::Position::Top).into()
                 } else {
                     let title = &item.title;
@@ -69,13 +77,12 @@ impl CompWithProps for TrayMod {
         let end_div = align_center!(Angled::new(
             SURFACE2,
             Direction::Right,
-            Heading::South,
+            Heading::North,
             theme.spacing().xl(),
-        ));
-        // .background(props.next_color);
+        ))
+        .background(props.next_color);
 
-        // items.push(end_div.into());
-        let content = align_center!(row(items))
+        let content = align_center!(row(items).spacing(theme.spacing().xxs()))
             .background(SURFACE2)
             .padding(padding::horizontal(theme.spacing().sm()));
 
