@@ -1,5 +1,5 @@
 use iced::{
-    Color, Element, Task, padding,
+    Color, Task, padding,
     widget::{row, text, tooltip},
 };
 use lucide_icons::Icon;
@@ -37,42 +37,36 @@ impl CompWithProps for TrayMod {
 
     fn view<'a>(&self, props: Self::Props<'a>) -> iced::Element<'_, Self::Message> {
         let theme = app_theme();
-        let items: Vec<Element<'_, Self::Message>> = props
-            .serv
-            .items
-            .values()
-            .map(|item| {
-                let height = if item.title == "tailscale-systray" {
-                    theme.spacing().xl() - theme.spacing().sm()
-                } else {
-                    theme.spacing().xl() - theme.spacing().xs()
-                };
-                let content = align_center!(
-                    item.icon
-                        .as_ref()
-                        .map(|icon| icon.elem(height))
-                        .unwrap_or(Icon::Dot.widget().into())
-                );
+        let items = props.serv.items.values().map(|item| {
+            let height = if item.title == "tailscale-systray" {
+                theme.spacing().xl() - theme.spacing().sm()
+            } else {
+                theme.spacing().xl() - theme.spacing().xs()
+            };
+            let content = align_center!(
+                item.icon
+                    .as_ref()
+                    .map(|icon| icon.elem(height))
+                    .unwrap_or(Icon::Dot.widget().into())
+            );
 
-                if let Some((icon, title, description)) = item.tool_tip.as_ref() {
-                    let icon = icon
-                        .as_ref()
-                        .map(|icon| icon.elem(theme.spacing().xl() - theme.spacing().sm()))
-                        .unwrap_or(Icon::Dot.widget().into());
+            if let Some((icon, title, description)) = item.tool_tip.as_ref() {
+                let icon = icon
+                    .as_ref()
+                    .map(|icon| icon.elem(theme.spacing().xl() - theme.spacing().sm()))
+                    .unwrap_or(Icon::Dot.widget().into());
 
-                    let tooltip_content =
-                        align_center!(row![icon, text!("{title}: {description}"),])
-                            .background(theme.background());
+                let tooltip_content = align_center!(row![icon, text!("{title}: {description}"),])
+                    .background(theme.background());
 
-                    tooltip(content, tooltip_content, tooltip::Position::Top).into()
-                } else {
-                    let title = &item.title;
-                    let tooltip_content =
-                        align_center!(text!("{title}")).background(theme.background());
-                    tooltip(content, tooltip_content, tooltip::Position::Top).into()
-                }
-            })
-            .collect();
+                tooltip(content, tooltip_content, tooltip::Position::Top).into()
+            } else {
+                let title = &item.title;
+                let tooltip_content =
+                    align_center!(text!("{title}")).background(theme.background());
+                tooltip(content, tooltip_content, tooltip::Position::Top).into()
+            }
+        });
 
         let end_div = align_center!(Angled::new(
             SURFACE2,
