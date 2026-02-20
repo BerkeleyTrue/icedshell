@@ -258,6 +258,9 @@ pub trait StatusNotifierItem {
 
     #[zbus(property)]
     fn menu(&self) -> zbus::Result<OwnedObjectPath>;
+
+    #[zbus(property)]
+    fn tool_tip(&self) -> zbus::Result<(String, Vec<Icon>, String, String)>;
 }
 
 #[derive(Clone, Debug, Type)]

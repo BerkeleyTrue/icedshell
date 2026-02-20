@@ -16,6 +16,7 @@ use crate::{
 pub struct SNItem {
     pub name: String,
     pub title: String,
+    pub tool_tip: Option<(Option<FdIcon>, String, String)>,
     pub icon: Option<FdIcon>,
     pub menu: Layout,
     item_proxy: StatusNotifierItemProxy<'static>,
@@ -60,9 +61,19 @@ impl SNItem {
         let (_, menu) = menu_proxy.get_layout(0, -1, &[]).await?;
 
         let title = item_proxy.title().await.ok().unwrap_or_default();
+        let tool_tip =
+            item_proxy
+                .tool_tip()
+                .await
+                .ok()
+                .map(|(icon_name, icons, title, description)| {
+                    let icon = icons_to_fd_icon(icons).or_else(|| fdo_icons::find(&icon_name));
+                    (icon, title, description)
+                });
 
         Ok(Self {
             title,
+            tool_tip,
             name,
             icon,
             menu,

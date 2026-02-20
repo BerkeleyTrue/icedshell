@@ -1,6 +1,6 @@
 use iced::{
     Element, Task,
-    widget::{container, row},
+    widget::{container, row, text, tooltip},
 };
 use lucide_icons::Icon;
 
@@ -8,6 +8,7 @@ use crate::{
     feature::{CompWithProps, align_center},
     theme::app_theme,
     tray::service::TrayService,
+    widget_ext::ContainExt,
 };
 
 pub struct TrayMod {}
@@ -38,12 +39,28 @@ impl CompWithProps for TrayMod {
             .serv
             .items
             .values()
-            .map(|sn_item| {
-                sn_item
+            .map(|item| {
+                let content = item
                     .icon
                     .as_ref()
-                    .map(|icon| icon.elem(theme.spacing().xl()))
-                    .unwrap_or(Icon::Dot.widget().into())
+                    .map(|icon| icon.elem(theme.spacing().xl() - theme.spacing().xs()))
+                    .unwrap_or(Icon::Dot.widget().into());
+
+                if let Some((icon, title, description)) = item.tool_tip.as_ref() {
+                    let icon = icon
+                        .as_ref()
+                        .map(|icon| icon.elem(theme.spacing().xl() - theme.spacing().xs()))
+                        .unwrap_or(Icon::Dot.widget().into());
+                    let tooltip_content =
+                        align_center!(row![icon, text!("{title}: {description}"),])
+                            .background(theme.background());
+                    tooltip(content, tooltip_content, tooltip::Position::Top).into()
+                } else {
+                    let title = &item.title;
+                    let tooltip_content =
+                        align_center!(text!("{title}")).background(theme.background());
+                    tooltip(content, tooltip_content, tooltip::Position::Top).into()
+                }
             })
             .collect();
         container(align_center!(row(items))).into()
