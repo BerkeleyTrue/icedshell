@@ -10,7 +10,7 @@ use tracing::info;
 use crate::{
     divider::{Angled, Direction, Heading},
     feature::{CompWithProps, align_center},
-    theme::{SURFACE2, app_theme},
+    theme::{SURFACE1, SURFACE2, app_theme},
     tray::service::TrayService,
     widget_ext::ContainExt,
 };
@@ -70,11 +70,7 @@ impl CompWithProps for TrayComp {
     fn view<'a>(&self, props: Self::Props<'a>) -> iced::Element<'_, Self::Message> {
         let theme = app_theme();
         let items = props.serv.items.values().map(|item| {
-            let height = if item.title == "tailscale-systray" {
-                theme.spacing().xl() - theme.spacing().sm()
-            } else {
-                theme.spacing().xl() - theme.spacing().xs()
-            };
+            let height = theme.spacing().xl() - theme.spacing().sm();
             let content = align_center!(
                 button(
                     item.icon
@@ -82,7 +78,17 @@ impl CompWithProps for TrayComp {
                         .map(|icon| icon.elem(height))
                         .unwrap_or(Icon::Dot.widget().into())
                 )
-                .style(button::background)
+                .padding(padding::vertical(theme.spacing().xs()))
+                .style(|_, status| match status {
+                    button::Status::Hovered => button::Style {
+                        background: Some(SURFACE1.into()),
+                        ..Default::default()
+                    },
+                    _ => button::Style {
+                        background: Some(SURFACE2.into()),
+                        ..Default::default()
+                    },
+                })
                 .on_press(Message::IconClicked(self.mouse.unwrap_or_default()))
             );
 
@@ -118,7 +124,7 @@ impl CompWithProps for TrayComp {
         ))
         .background(props.next_color);
 
-        let content = align_center!(row(items).spacing(theme.spacing().xxs()))
+        let content = align_center!(row(items).spacing(theme.spacing().xs()))
             .background(SURFACE2)
             .padding(padding::horizontal(theme.spacing().sm()));
 
