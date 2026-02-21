@@ -106,7 +106,8 @@ impl Comp for DeloraMain {
         let niri_ws = self.ws.subscription().map(Message::Ws);
         let niri_win = self.win.subscription().map(Message::Win);
         let tray_serv = self.tray_serv.subscription().map(Message::TrayService);
-        Subscription::batch([clock, date, niri_ws, niri_win, niri_serv, tray_serv])
+        let tray = self.tray.subscription().map(Message::Tray);
+        Subscription::batch([clock, date, niri_ws, niri_win, niri_serv, tray_serv, tray])
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {

@@ -1,8 +1,11 @@
 use iced::{
-    Color, Task, padding,
-    widget::{row, text, tooltip},
+    Color, Event, Point, Task,
+    event::listen,
+    mouse, padding,
+    widget::{button, row, text, tooltip},
 };
 use lucide_icons::Icon;
+use tracing::info;
 
 use crate::{
     divider::{Angled, Direction, Heading},
@@ -12,10 +15,16 @@ use crate::{
     widget_ext::ContainExt,
 };
 
-pub struct TrayComp {}
+pub struct TrayComp {
+    mouse: Option<Point>,
+}
 
 #[derive(Debug, Clone)]
-pub enum Message {}
+pub enum Message {
+    MouseMoved(Point),
+    MouseLeft,
+    IconClicked(Point),
+}
 
 pub struct Props<'a> {
     pub next_color: Color,
@@ -28,11 +37,34 @@ impl CompWithProps for TrayComp {
     type Props<'a> = Props<'a>;
 
     fn new(_input: Self::Init) -> Self {
-        Self {}
+        Self { mouse: None }
     }
 
-    fn update(&mut self, _message: Self::Message) -> iced::Task<Self::Message> {
-        Task::none()
+    fn subscription(&self) -> iced::Subscription<Self::Message> {
+        listen().filter_map(|event| match event {
+            Event::Mouse(mouse::Event::CursorMoved { position: mouse }) => {
+                Some(Message::MouseMoved(mouse))
+            }
+            Event::Mouse(mouse::Event::CursorLeft) => Some(Message::MouseLeft),
+            _ => None,
+        })
+    }
+
+    fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
+        match message {
+            Message::MouseMoved(point) => {
+                self.mouse = Some(point);
+                Task::none()
+            }
+            Message::MouseLeft => {
+                self.mouse = None;
+                Task::none()
+            }
+            Message::IconClicked(point) => {
+                info!("Icon Clicked point {point:?}");
+                Task::none()
+            }
+        }
     }
 
     fn view<'a>(&self, props: Self::Props<'a>) -> iced::Element<'_, Self::Message> {
@@ -44,10 +76,14 @@ impl CompWithProps for TrayComp {
                 theme.spacing().xl() - theme.spacing().xs()
             };
             let content = align_center!(
-                item.icon
-                    .as_ref()
-                    .map(|icon| icon.elem(height))
-                    .unwrap_or(Icon::Dot.widget().into())
+                button(
+                    item.icon
+                        .as_ref()
+                        .map(|icon| icon.elem(height))
+                        .unwrap_or(Icon::Dot.widget().into())
+                )
+                .style(button::background)
+                .on_press(Message::IconClicked(self.mouse.unwrap_or_default()))
             );
 
             if let Some((icon, title, description)) = item.tool_tip.as_ref() {
@@ -56,15 +92,21 @@ impl CompWithProps for TrayComp {
                     .map(|icon| icon.elem(theme.spacing().xl() - theme.spacing().sm()))
                     .unwrap_or(Icon::Dot.widget().into());
 
-                let tooltip_content = align_center!(row![icon, text!("{title}: {description}"),])
-                    .background(theme.background());
+                let tooltip_text = if !description.is_empty() {
+                    text!("{title}: {description}")
+                } else {
+                    text!("{title}")
+                };
 
-                tooltip(content, tooltip_content, tooltip::Position::Top).into()
+                let tooltip_content =
+                    align_center!(row![icon, tooltip_text]).background(theme.background());
+
+                tooltip(content, tooltip_content, tooltip::Position::FollowCursor).into()
             } else {
                 let title = &item.title;
                 let tooltip_content =
                     align_center!(text!("{title}")).background(theme.background());
-                tooltip(content, tooltip_content, tooltip::Position::Top).into()
+                tooltip(content, tooltip_content, tooltip::Position::FollowCursor).into()
             }
         });
 
