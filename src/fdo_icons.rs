@@ -25,6 +25,9 @@ pub enum FdIcon {
 }
 
 pub fn find(icon_name: &str) -> Option<FdIcon> {
+    if icon_name.is_empty() {
+        return None;
+    }
     // tailtray returns a path to a temp file
     if icon_name.starts_with("/") {
         return std::fs::read(icon_name)
@@ -93,6 +96,9 @@ fn similar_icon_names(icon_name: &str) -> Option<Vec<String>> {
 }
 
 fn find_similar_icon_path(icon_name: &str) -> Option<PathBuf> {
+    if icon_name.len() < 3 {
+        return None;
+    }
     similar_icon_names(icon_name).and_then(|candidates| {
         candidates
             .iter()
@@ -132,6 +138,9 @@ fn prefix_match_icon(icon_name: &str) -> Option<String> {
 }
 
 fn find_prefix_icon_path(icon_name: &str) -> Option<PathBuf> {
+    if icon_name.len() < 3 {
+        return None;
+    }
     prefix_match_icon(icon_name).and_then(|icon_name| find_icon_path(&icon_name))
 }
 
