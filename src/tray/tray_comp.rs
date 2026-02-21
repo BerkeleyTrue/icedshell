@@ -12,7 +12,7 @@ use crate::{
     widget_ext::ContainExt,
 };
 
-pub struct TrayMod {}
+pub struct TrayComp {}
 
 #[derive(Debug, Clone)]
 pub enum Message {}
@@ -22,7 +22,7 @@ pub struct Props<'a> {
     pub serv: &'a TrayService,
 }
 
-impl CompWithProps for TrayMod {
+impl CompWithProps for TrayComp {
     type Message = Message;
     type Init = ();
     type Props<'a> = Props<'a>;

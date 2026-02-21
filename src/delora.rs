@@ -11,9 +11,9 @@ use crate::{
         Comp, CompWithProps, Feature, Service, align_center, bar_widgets, center_widgets,
         left_widgets, right_widgets,
     },
-    niri::{state, window, ws},
+    niri::{state_serv, win_comp, ws_comp},
     theme::{AppTheme, LAVENDER, ROSEWATER, SURFACE2, app_theme},
-    tray::{module as tray_mod, service as tray_serv},
+    tray::{service as tray_serv, tray_comp},
     widget_ext::ContainExt,
 };
 
@@ -22,12 +22,12 @@ pub enum Message {
     Clock(clock::Message),
     Date(date::Message),
 
-    Ws(ws::Message),
-    Win(window::Message),
+    Ws(ws_comp::Message),
+    Win(win_comp::Message),
 
-    NiriService(state::Message),
+    NiriService(state_serv::Message),
     TrayService(tray_serv::Message),
-    Tray(tray_mod::Message),
+    Tray(tray_comp::Message),
 }
 
 pub struct Init {
@@ -38,15 +38,15 @@ pub struct DeloraMain {
     height: f32,
     padding: f32,
 
-    ws: ws::NiriWS,
-    win: window::NiriWin,
+    ws: ws_comp::NiriWsComp,
+    win: win_comp::NiriWinComp,
     clock: clock::Clock,
     date: date::Date,
     theme: AppTheme,
     output_name: String,
-    niri_serv: state::State,
+    niri_serv: state_serv::NiriStateServ,
     tray_serv: tray_serv::TrayService,
-    tray: tray_mod::TrayMod,
+    tray: tray_comp::TrayComp,
 }
 
 impl DeloraMain {
@@ -69,17 +69,17 @@ impl Comp for DeloraMain {
             height,
             padding,
 
-            ws: ws::NiriWS::new(ws::Init {
+            ws: ws_comp::NiriWsComp::new(ws_comp::Init {
                 main_mon: monitor_id.clone(),
             }),
-            win: window::NiriWin::new(window::Init { monitor_id }),
+            win: win_comp::NiriWinComp::new(win_comp::Init { monitor_id }),
             clock: clock::Clock::new(()),
             date: date::Date::new(()),
             output_name: input.output_name,
             theme,
-            niri_serv: state::State::new(()),
+            niri_serv: state_serv::NiriStateServ::new(()),
             tray_serv: tray_serv::TrayService::new(()),
-            tray: tray_mod::TrayMod::new(()),
+            tray: tray_comp::TrayComp::new(()),
         }
     }
 
@@ -116,7 +116,7 @@ impl Comp for DeloraMain {
 
         let niri_ws_view = align_center!(
             self.ws
-                .view(ws::Props {
+                .view(ws_comp::Props {
                     state: &self.niri_serv,
                 })
                 .map(self::Message::Ws),
@@ -137,7 +137,7 @@ impl Comp for DeloraMain {
 
         let win = align_center!(
             self.win
-                .view(window::Props {
+                .view(win_comp::Props {
                     color: ROSEWATER,
                     next_color: SURFACE2,
                     state: &self.niri_serv,
@@ -147,7 +147,7 @@ impl Comp for DeloraMain {
 
         let tray = self
             .tray
-            .view(tray_mod::Props {
+            .view(tray_comp::Props {
                 serv: &self.tray_serv,
                 next_color: Color::TRANSPARENT,
             })

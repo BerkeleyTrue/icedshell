@@ -4,7 +4,7 @@ use crate::{
     config::MonitorId,
     divider::{Angled, Direction, Heading},
     feature::{CompWithProps, align_center},
-    niri::state,
+    niri::state_serv,
     theme::{AppTheme, Shade, app_theme},
     widget_ext::ContainExt,
 };
@@ -17,7 +17,7 @@ use lucide_icons::Icon;
 #[derive(Debug, Clone)]
 pub enum Message {}
 
-type WSMap<'a> = BTreeMap<u8, &'a state::Workspace>;
+type WSMap<'a> = BTreeMap<u8, &'a state_serv::Workspace>;
 type MonitorMap<'a> = BTreeMap<(u8, String), WSMap<'a>>;
 
 pub struct Init {
@@ -25,15 +25,15 @@ pub struct Init {
 }
 
 pub struct Props<'a> {
-    pub state: &'a state::State,
+    pub state: &'a state_serv::NiriStateServ,
 }
 
-pub struct NiriWS {
+pub struct NiriWsComp {
     main_mon: MonitorId,
     theme: AppTheme,
 }
 
-impl CompWithProps for NiriWS {
+impl CompWithProps for NiriWsComp {
     type Message = Message;
     type Init = Init;
     type Props<'a> = Props<'a>;

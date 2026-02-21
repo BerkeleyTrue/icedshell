@@ -2,7 +2,7 @@ use iced::futures::{
     Stream, StreamExt,
     stream::{self, BoxStream, select, select_all},
 };
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::{
     fdo_icons::{self, FdIcon},

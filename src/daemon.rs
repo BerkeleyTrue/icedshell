@@ -110,7 +110,7 @@ impl Daemon {
                 let mon_names: Vec<String> =
                     self.mon_serv.iter().map(|mon| mon.0.clone()).collect();
 
-                let mut tasks: Vec<Task<Message>> = mon_names
+                let mut tasks: Vec<_> = mon_names
                     .iter()
                     .map(move |mon| match (num_mon, mon.as_ref()) {
                         (2, "HDMI-A-1") => self.open_delora_main("HDMI-A-1".into()),

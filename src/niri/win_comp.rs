@@ -9,7 +9,7 @@ use crate::{
     fdo_icons,
     feature::{CompWithProps, align_center},
     fira_fonts::TextExt,
-    niri::state,
+    niri::state_serv,
     theme::{AppTheme, Shade, app_theme},
     widget_ext::ContainExt,
 };
@@ -21,7 +21,7 @@ pub struct Init {
     pub monitor_id: MonitorId,
 }
 
-pub struct NiriWin {
+pub struct NiriWinComp {
     mon: MonitorId,
     theme: AppTheme,
 }
@@ -29,10 +29,10 @@ pub struct NiriWin {
 pub struct Props<'a> {
     pub color: Color,
     pub next_color: Color,
-    pub state: &'a state::State,
+    pub state: &'a state_serv::NiriStateServ,
 }
 
-impl CompWithProps for NiriWin {
+impl CompWithProps for NiriWinComp {
     type Props<'a> = Props<'a>;
     type Init = Init;
     type Message = Message;

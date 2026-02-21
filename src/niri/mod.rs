@@ -1,5 +1,5 @@
 pub mod monitors;
-pub mod state;
+pub mod state_serv;
 mod stream;
-pub mod window;
-pub mod ws;
+pub mod win_comp;
+pub mod ws_comp;

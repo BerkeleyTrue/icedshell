@@ -101,12 +101,12 @@ impl<'a> From<&'a niri_ipc::Window> for Window {
 struct WinMap(HashMap<WinId, Window>);
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct State {
+pub struct NiriStateServ {
     ws_map: WsMap,
     win_map: WinMap,
 }
 
-impl State {
+impl NiriStateServ {
     pub fn iter_ws(&self) -> impl Iterator<Item = &Workspace> {
         self.ws_map.0.values()
     }
@@ -233,7 +233,7 @@ pub enum Message {
     Error(NiriStreamError),
 }
 
-impl Service for State {
+impl Service for NiriStateServ {
     type Message = Message;
     type Init = ();
 
