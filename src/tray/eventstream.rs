@@ -39,17 +39,7 @@ impl SNItem {
 
         debug!("item_proxy {item_proxy:?}");
 
-        let icon_pixmap = item_proxy.icon_pixmap().await;
-
-        let icon = match icon_pixmap {
-            Ok(icons) => icons_to_fd_icon(icons),
-            Err(_) => item_proxy
-                .icon_name()
-                .await
-                .ok()
-                .as_deref()
-                .and_then(fdo_icons::find),
-        };
+        let icon = SNItem::get_icon(&item_proxy).await;
 
         let menu_path = item_proxy.menu().await?;
         let menu_proxy = DBusMenuProxy::builder(conn)
@@ -81,6 +71,7 @@ impl SNItem {
             menu_proxy,
         })
     }
+
     pub async fn menu_item_clicked(&self, id: i32) -> anyhow::Result<Layout> {
         let value = zbus::zvariant::Value::I32(32).try_to_owned()?;
 
@@ -99,46 +90,30 @@ impl SNItem {
     }
 
     async fn get_eventstream(&self) -> BoxStream<'static, SNItemEvent> {
-        let pixmap_change_stream = self
-            .item_proxy
-            .receive_icon_pixmap_changed()
-            .await
-            .filter_map({
-                let name = self.name.clone();
-                move |icon_changed| {
-                    let name = name.clone();
-                    async move {
-                        icon_changed
-                            .get()
-                            .await
-                            .ok()
-                            .and_then(icons_to_fd_icon)
-                            .map(|icon| SNItemEvent::IconChanged(name, icon))
-                    }
+        let icon_change_stream = select(
+            self.item_proxy
+                .receive_icon_name_changed()
+                .await
+                .map(|_| ()),
+            self.item_proxy
+                .receive_icon_pixmap_changed()
+                .await
+                .map(|_| ()),
+        )
+        .filter_map({
+            let name = self.name.clone();
+            let proxy = self.item_proxy.clone();
+            move |_| {
+                let name = name.clone();
+                let proxy = proxy.clone();
+                async move {
+                    SNItem::get_icon(&proxy)
+                        .await
+                        .map(|icon| SNItemEvent::IconChanged(name.to_owned(), icon))
                 }
-            })
-            .boxed();
-
-        let icon_name_change_stream = self
-            .item_proxy
-            .receive_icon_name_changed()
-            .await
-            .filter_map({
-                let name = self.name.clone();
-                move |icon_name| {
-                    let name = name.clone();
-                    async move {
-                        icon_name
-                            .get()
-                            .await
-                            .ok()
-                            .as_deref()
-                            .and_then(fdo_icons::find)
-                            .map(|icon| SNItemEvent::IconChanged(name.to_owned(), icon))
-                    }
-                }
-            })
-            .boxed();
+            }
+        })
+        .boxed();
 
         let layout_updated_stream =
             self.menu_proxy
@@ -167,12 +142,23 @@ impl SNItem {
                 })
                 .unwrap_or(stream::empty().boxed());
 
-        select_all([
-            pixmap_change_stream,
-            icon_name_change_stream,
-            layout_updated_stream,
-        ])
-        .boxed()
+        select_all([icon_change_stream, layout_updated_stream]).boxed()
+    }
+
+    async fn get_icon(item_proxy: &StatusNotifierItemProxy<'static>) -> Option<FdIcon> {
+        let icon_pixmap = item_proxy
+            .icon_pixmap()
+            .await
+            .ok()
+            .and_then(icons_to_fd_icon);
+
+        item_proxy
+            .icon_name()
+            .await
+            .ok()
+            .as_deref()
+            .and_then(fdo_icons::find)
+            .or(icon_pixmap)
     }
 }
 
