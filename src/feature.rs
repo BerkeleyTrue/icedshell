@@ -1,5 +1,4 @@
-use std::ops::{Deref, DerefMut};
-
+use derive_more::{Deref, DerefMut};
 use iced::{
     Element, Length, Subscription, Task,
     widget::{Container, container, row},
@@ -8,32 +7,16 @@ use iced::{
 use iced_layershell::reexport::NewLayerShellSettings;
 use tracing::debug;
 
-pub struct Window<T>
+#[derive(Deref, DerefMut)]
+pub struct FeatWindow<T>
 where
     T: Feature,
 {
     pub id: window::Id,
+
+    #[deref]
+    #[deref_mut]
     pub view: T,
-}
-
-impl<T> Deref for Window<T>
-where
-    T: Feature,
-{
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.view
-    }
-}
-
-impl<T> DerefMut for Window<T>
-where
-    T: Feature,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.view
-    }
 }
 
 pub trait Comp {
@@ -93,12 +76,12 @@ pub trait Feature: Sized + Comp {
     // }
 
     /// open window, consuming self
-    fn open(self) -> (Window<Self>, NewLayerShellSettings) {
+    fn open(self) -> (FeatWindow<Self>, NewLayerShellSettings) {
         let id = window::Id::unique();
         debug!("{id:}");
         let settings = self.layer();
 
-        (Window { id, view: self }, settings)
+        (FeatWindow { id, view: self }, settings)
     }
 }
 

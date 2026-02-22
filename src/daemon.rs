@@ -1,9 +1,12 @@
+use std::collections::HashMap;
+
+use derive_more::{Deref, DerefMut};
 use iced::{
-    Color, Element, Subscription, Task,
+    Color, Element, Subscription, Task, exit,
     keyboard::{self, Key, key::Named},
     theme::Style,
     widget::{container, space},
-    window::Id,
+    window::{self, Id},
 };
 use iced_layershell::{
     reexport::KeyboardInteractivity,
@@ -14,9 +17,10 @@ use iced_layershell::{
 use crate::{
     Cli,
     delora::{self, DeloraMain},
-    feature::{Comp, Feature, Service, Window},
+    feature::{Comp, FeatWindow, Feature, Service},
     niri::{self, monitors::MonitorsServ},
     theme::{self as mytheme},
+    tray::menu_comp as tray_menu,
 };
 
 #[derive(Clone)]
@@ -28,8 +32,11 @@ enum Hosts {
 #[to_layer_message(multi)]
 #[derive(Debug)]
 pub enum Message {
-    Delora(delora::Message),
     NiriMon(niri::monitors::Message),
+
+    Delora(window::Id, delora::Message),
+    TrayMenu(window::Id, tray_menu::Message),
+
     Quit,
 }
 
@@ -58,17 +65,27 @@ impl From<Cli> for Init {
     }
 }
 
+// TODO: reconsider when menu is more flush
+#[allow(clippy::large_enum_variant)]
+enum Feat {
+    Delora(FeatWindow<DeloraMain>),
+    TrayMenu(FeatWindow<tray_menu::MenuComp>),
+}
+
+#[derive(Deref, DerefMut)]
+struct Features(HashMap<window::Id, Feat>);
+
 struct Daemon {
+    features: Features,
     mon_serv: niri::monitors::MonitorsServ,
-    delora_main: Option<Window<DeloraMain>>,
     quit_keybinds: bool,
 }
 
 impl Daemon {
     fn new(init: Init) -> Self {
         Self {
+            features: Features(HashMap::new()),
             mon_serv: MonitorsServ::new(()),
-            delora_main: None,
             quit_keybinds: init.quit_keybinds,
         }
     }
@@ -85,25 +102,49 @@ impl Daemon {
                 _ => None,
             });
 
-        let delora_subs = self
-            .delora_main
-            .as_ref()
-            .map(|delora| delora.subscription().map(Message::Delora))
-            .unwrap_or(Subscription::none());
-
         let niri_mon = self.mon_serv.subscription().map(Message::NiriMon);
+        let mut win_subs: Vec<_> = self
+            .features
+            .iter()
+            .map(|(win_id, feat)| {
+                let win_id = *win_id;
+                match feat {
+                    Feat::Delora(delora) => delora
+                        .subscription()
+                        .with(win_id)
+                        .map(|(win_id, m)| Message::Delora(win_id, m)),
+                    Feat::TrayMenu(menu) => menu
+                        .subscription()
+                        .with(win_id)
+                        .map(|(win_id, m)| Message::TrayMenu(win_id, m)),
+                }
+            })
+            .collect();
 
-        Subscription::batch(vec![quit_binds, delora_subs, niri_mon])
+        let mut subs = vec![quit_binds, niri_mon];
+        subs.append(&mut win_subs);
+        Subscription::batch(subs)
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Delora(message) => self
-                .delora_main
-                .as_mut()
-                .map(|delora| delora.update(message).map(Message::Delora))
-                .unwrap_or(Task::none()),
-
+            Message::Delora(win_id, message) => {
+                if let Some(Feat::Delora(delora)) = self.features.get_mut(&win_id) {
+                    delora
+                        .update(message)
+                        .map(move |m| Message::Delora(win_id, m))
+                } else {
+                    Task::none()
+                }
+            }
+            Message::TrayMenu(win_id, message) => {
+                if let Some(Feat::TrayMenu(menu)) = self.features.get_mut(&win_id) {
+                    menu.update(message)
+                        .map(move |m| Message::TrayMenu(win_id, m))
+                } else {
+                    Task::none()
+                }
+            }
             Message::NiriMon(message) => {
                 let inner_task = self.mon_serv.update(message).map(Message::NiriMon);
                 let num_mon = self.mon_serv.len();
@@ -123,15 +164,14 @@ impl Daemon {
 
                 Task::batch(tasks)
             }
+            Message::Quit => exit(),
             _ => Task::none(),
         }
     }
 
     fn view(&self, win_id: Id) -> Element<'_, Message> {
-        if let Some(delora) = self.delora_main.as_ref()
-            && delora.id == win_id
-        {
-            delora.view().map(Message::Delora)
+        if let Some(Feat::Delora(delora)) = self.features.get(&win_id) {
+            delora.view().map(move |m| Message::Delora(win_id, m))
         } else {
             container(space()).into()
         }
@@ -144,13 +184,24 @@ impl Daemon {
             DeloraMain::new(delora::Init { output_name }).open();
         let main_id = main_bar.id;
 
-        let mut remove = Task::none();
-        if let Some(old_win) = &self.delora_main {
-            main_bar.view.clone_servs(&old_win.view);
-            remove = Task::done(Message::RemoveWindow(old_win.id));
-        };
+        let remove = self
+            .features
+            .iter()
+            .find(|(_, feat)| matches!(feat, Feat::Delora(_)))
+            .and_then(|(win_id, old_win)| {
+                if let Feat::Delora(old_win) = old_win {
+                    main_bar.view.clone_servs(old_win);
+                    return Some(*win_id);
+                }
+                None
+            })
+            .map(|win_id| {
+                self.features.remove(&win_id);
+                Task::done(Message::RemoveWindow(win_id))
+            })
+            .unwrap_or(Task::none());
 
-        self.delora_main.replace(main_bar);
+        self.features.insert(main_id, Feat::Delora(main_bar));
 
         Task::batch([
             remove,
