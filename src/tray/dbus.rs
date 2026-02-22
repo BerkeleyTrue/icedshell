@@ -263,9 +263,17 @@ pub trait StatusNotifierItem {
     fn tool_tip(&self) -> zbus::Result<(String, Vec<Icon>, String, String)>;
 }
 
+/// The menu layout
 #[derive(Clone, Debug, Type)]
 #[zvariant(signature = "(ia{sv}av)")]
-pub struct Layout(pub i32, pub LayoutProps, pub Vec<Layout>);
+pub struct Layout(
+    /// id
+    pub i32,
+    /// props
+    pub LayoutProps,
+    /// sub-menus
+    pub Vec<Layout>,
+);
 
 impl<'a> serde::Deserialize<'a> for Layout {
     fn deserialize<D: serde::Deserializer<'a>>(
