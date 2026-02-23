@@ -24,7 +24,6 @@ pub enum Message {
     MouseMoved(Point),
     MouseLeft,
     SnItemClicked(Point),
-    SnItemRightClicked(Point),
 }
 
 pub struct Props<'a> {
@@ -63,10 +62,6 @@ impl CompWithProps for TrayComp {
             }
             Message::SnItemClicked(point) => {
                 info!("Icon clicked: point {point:?}");
-                Task::none()
-            }
-            Message::SnItemRightClicked(point) => {
-                info!("Icon left clicked: point {point:?}");
                 Task::none()
             }
         }

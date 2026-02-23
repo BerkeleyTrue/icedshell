@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use derive_more::{Deref, DerefMut};
 use iced::{
-    Color, Element, Subscription, Task, exit,
+    Color, Element, Point, Subscription, Task, exit,
     keyboard::{self, Key, key::Named},
     theme::Style,
     widget::{container, space},
@@ -136,12 +136,12 @@ impl Daemon {
                         .map(move |m| Message::Delora(win_id, m));
 
                     let open_task = match message {
-                        delora::Message::Tray(tray_comp::Message::SnItemClicked(_point)) => {
-                            self.open_tray_menu()
+                        delora::Message::Tray(tray_comp::Message::SnItemClicked(point)) => {
+                            self.open_tray_menu(point)
                         }
                         _ => Task::none(),
                     };
-                    Task::batch([task, open_task])
+                    task.chain(open_task)
                 } else {
                     Task::none()
                 }
@@ -220,26 +220,33 @@ impl Daemon {
         }))
     }
 
-    fn open_tray_menu(&mut self) -> Task<Message> {
-        if self
+    fn open_tray_menu(&mut self, point: Point) -> Task<Message> {
+        let remove = self
             .features
-            .values()
-            .any(|feat| matches!(feat, Feat::TrayMenu(_)))
-        {
-            info!("tray menu already opened");
-            return Task::none();
-        }
+            .iter()
+            .find(|(_, feat)| matches!(feat, Feat::TrayMenu(_)))
+            .map(|(win_id, _)| *win_id)
+            .map(|win_id| {
+                info!("Removing old tray menu windows");
+                self.features.remove(&win_id);
+                Task::done(Message::RemoveWindow(win_id))
+            })
+            .unwrap_or(Task::none());
 
-        let (new_feat, layer_settings) = tray_menu::MenuComp::new(()).open();
+        let (new_feat, layer_settings) = tray_menu::MenuComp::new(tray_menu::Init {
+            starting_position: point,
+        })
+        .open();
         let main_id = new_feat.id;
 
         self.features.insert(main_id, Feat::TrayMenu(new_feat));
 
         info!("opening tray menu window");
-        Task::done(Message::NewLayerShell {
+
+        remove.chain(Task::done(Message::NewLayerShell {
             settings: layer_settings,
             id: main_id,
-        })
+        }))
     }
 }
 
