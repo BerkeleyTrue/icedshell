@@ -13,6 +13,7 @@ use iced_layershell::{
     settings::{LayerShellSettings, StartMode},
     to_layer_message,
 };
+use tracing::info;
 
 use crate::{
     Cli,
@@ -20,7 +21,7 @@ use crate::{
     feature::{Comp, FeatWindow, Feature, Service},
     niri::{self, monitors::MonitorsServ},
     theme::{self as mytheme},
-    tray::menu_comp as tray_menu,
+    tray::{menu_comp as tray_menu, tray_comp},
 };
 
 #[derive(Clone)]
@@ -30,7 +31,7 @@ enum Hosts {
 }
 
 #[to_layer_message(multi)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Message {
     NiriMon(niri::monitors::Message),
 
@@ -130,9 +131,17 @@ impl Daemon {
         match message {
             Message::Delora(win_id, message) => {
                 if let Some(Feat::Delora(delora)) = self.features.get_mut(&win_id) {
-                    delora
-                        .update(message)
-                        .map(move |m| Message::Delora(win_id, m))
+                    let task = delora
+                        .update(message.clone())
+                        .map(move |m| Message::Delora(win_id, m));
+
+                    let open_task = match message {
+                        delora::Message::Tray(tray_comp::Message::SnItemClicked(_point)) => {
+                            self.open_tray_menu()
+                        }
+                        _ => Task::none(),
+                    };
+                    Task::batch([task, open_task])
                 } else {
                     Task::none()
                 }
@@ -170,10 +179,12 @@ impl Daemon {
     }
 
     fn view(&self, win_id: Id) -> Element<'_, Message> {
-        if let Some(Feat::Delora(delora)) = self.features.get(&win_id) {
-            delora.view().map(move |m| Message::Delora(win_id, m))
-        } else {
-            container(space()).into()
+        match self.features.get(&win_id) {
+            Some(Feat::Delora(delora)) => delora.view().map(move |m| Message::Delora(win_id, m)),
+            Some(Feat::TrayMenu(menu_feat)) => {
+                menu_feat.view().map(move |m| Message::TrayMenu(win_id, m))
+            }
+            None => container(space()).into(),
         }
     }
 }
@@ -203,13 +214,32 @@ impl Daemon {
 
         self.features.insert(main_id, Feat::Delora(main_bar));
 
-        Task::batch([
-            remove,
-            Task::done(Message::NewLayerShell {
-                settings: main_layer_settings,
-                id: main_id,
-            }),
-        ])
+        remove.chain(Task::done(Message::NewLayerShell {
+            settings: main_layer_settings,
+            id: main_id,
+        }))
+    }
+
+    fn open_tray_menu(&mut self) -> Task<Message> {
+        if self
+            .features
+            .values()
+            .any(|feat| matches!(feat, Feat::TrayMenu(_)))
+        {
+            info!("tray menu already opened");
+            return Task::none();
+        }
+
+        let (new_feat, layer_settings) = tray_menu::MenuComp::new(()).open();
+        let main_id = new_feat.id;
+
+        self.features.insert(main_id, Feat::TrayMenu(new_feat));
+
+        info!("opening tray menu window");
+        Task::done(Message::NewLayerShell {
+            settings: layer_settings,
+            id: main_id,
+        })
     }
 }
 

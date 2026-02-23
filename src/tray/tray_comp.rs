@@ -23,7 +23,8 @@ pub struct TrayComp {
 pub enum Message {
     MouseMoved(Point),
     MouseLeft,
-    IconClicked(Point),
+    SnItemClicked(Point),
+    SnItemRightClicked(Point),
 }
 
 pub struct Props<'a> {
@@ -60,8 +61,12 @@ impl CompWithProps for TrayComp {
                 self.mouse = None;
                 Task::none()
             }
-            Message::IconClicked(point) => {
-                info!("Icon Clicked point {point:?}");
+            Message::SnItemClicked(point) => {
+                info!("Icon clicked: point {point:?}");
+                Task::none()
+            }
+            Message::SnItemRightClicked(point) => {
+                info!("Icon left clicked: point {point:?}");
                 Task::none()
             }
         }
@@ -89,7 +94,7 @@ impl CompWithProps for TrayComp {
                         ..Default::default()
                     },
                 })
-                .on_press(Message::IconClicked(self.mouse.unwrap_or_default()))
+                .on_press(Message::SnItemClicked(self.mouse.unwrap_or_default()))
             );
 
             if let Some((icon, title, description)) = item.tool_tip.as_ref() {

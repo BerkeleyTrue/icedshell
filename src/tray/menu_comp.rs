@@ -1,4 +1,4 @@
-use iced::widget::text;
+use iced::widget::{container, text};
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
@@ -19,22 +19,22 @@ impl Comp for MenuComp {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        text!("Menu").into()
+        container(text!("Menu")).style(container::danger).into()
     }
 }
 
 impl Feature for MenuComp {
     fn layer(&self) -> iced_layershell::reexport::NewLayerShellSettings {
         NewLayerShellSettings {
-            layer: Layer::Top,
-            size: Some((0, 20)),
+            layer: Layer::Overlay,
+            size: Some((100, 100)),
             anchor: Anchor::Bottom | Anchor::Left,
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            exclusive_zone: Some(32),
+            exclusive_zone: None,
             output_option: OutputOption::LastOutput,
             events_transparent: false,
-            namespace: Some("DeloraMainBar".into()),
-            margin: Some((0, 0, 1500, 10)),
+            namespace: Some("TrayMenu".into()),
+            margin: Some((0, 0, 10, 10)),
         }
     }
 }

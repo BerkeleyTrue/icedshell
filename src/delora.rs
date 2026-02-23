@@ -17,7 +17,7 @@ use crate::{
     widget_ext::ContainExt,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Message {
     Clock(clock::Message),
     Date(date::Message),
