@@ -1,6 +1,6 @@
 use iced::{
-    Element, Length, Point,
-    widget::{Column, Row, button, column, container, text},
+    Element, Event, Length, Point, Subscription, Task, event, mouse,
+    widget::{Column, Row, button, container, text},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
@@ -8,15 +8,17 @@ use iced_layershell::reexport::{
 use tracing::info;
 
 use crate::{
-    feature::{Comp, Feature, align_center},
-    theme::{AppTheme, app_theme},
+    feature::{Comp, Feature},
+    theme::{AppTheme, BASE, OVERLAY0, OVERLAY1, SURFACE0, Shade, TEXT, app_theme},
     tray::{TrayLayoutProps, dbus::TrayLayout},
 };
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    ItemSelected(String, i32),
+    Focused,
+    Unfocused,
     ToggleMenu(i32),
+    ItemSelected(String, i32),
 }
 
 pub struct Init {
@@ -30,6 +32,7 @@ pub struct MenuComp {
     position: Point,
     layout: TrayLayout,
     theme: AppTheme,
+    focused: bool,
 }
 
 impl MenuComp {
@@ -46,16 +49,25 @@ impl MenuComp {
                 label: Some(label), ..
             } => {
                 let label = label.clone();
-                // info!("reg button {label}");
                 button(text(label.replace("_", "")))
-                    .style(button::danger)
+                    .style(|_, status| {
+                        let base = button::Style {
+                            background: Some(BASE.into()),
+                            text_color: TEXT,
+                            ..Default::default()
+                        };
+                        match status {
+                            button::Status::Hovered => button::Style {
+                                background: Some(SURFACE0.into()),
+                                ..base
+                            },
+                            _ => base,
+                        }
+                    })
                     .height(theme.spacing().xl())
                     .width(Length::Fill)
-                    .on_press_with(move || {
-                        info!("button press {label}");
-                        Message::ToggleMenu(layout.id)
-                    }) // .on_press(Message::ToggleMenu(layout.id))
-                    .padding(theme.spacing().xl())
+                    .on_press(Message::ToggleMenu(layout.id))
+                    .padding(theme.spacing().xs())
                     .into()
             }
             _ => {
@@ -79,17 +91,40 @@ impl Comp for MenuComp {
             position: input.starting_position,
             layout: input.layout,
             theme,
+            focused: true,
+        }
+    }
+
+    fn subscription(&self) -> iced::Subscription<Self::Message> {
+        event::listen().filter_map(|event| match event {
+            Event::Mouse(mouse::Event::CursorEntered) => Some(Message::Focused),
+            Event::Mouse(mouse::Event::CursorLeft) => Some(Message::Unfocused),
+            _ => None,
+        })
+    }
+
+    fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
+        match message {
+            Message::Focused => {
+                self.focused = true;
+                Task::none()
+            }
+            Message::Unfocused => Task::none(),
+            Message::ToggleMenu(_id) => Task::none(),
+            Message::ItemSelected(_name, _id) => Task::none(),
         }
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
+        let theme = &self.theme;
         // top level layout is always submenu
         let top_menu = self
             .layout
             .children
             .iter()
             .map(|menu| self.view_menu(&self.name, menu))
-            .fold(Column::new(), |col, item_elem| col.push(item_elem));
+            .fold(Column::new(), |col, item_elem| col.push(item_elem))
+            .spacing(theme.spacing().xs());
 
         container(top_menu)
             .height(Length::Fill)
@@ -104,13 +139,7 @@ impl Feature for MenuComp {
         let theme = &self.theme;
         let item_height = theme.spacing().lg();
         let Point { x, y } = self.position;
-        let height = self
-            .layout
-            .children
-            .iter()
-            .fold(theme.spacing().lg(), |height, menu| {
-                height + (menu.children.len() as f32 * item_height) + item_height
-            });
+        let height = theme.spacing().md() + self.layout.children.len() as f32 * item_height;
 
         NewLayerShellSettings {
             layer: Layer::Overlay,
