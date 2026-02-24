@@ -1,6 +1,6 @@
 use iced::{
     Element, Length, Point,
-    widget::{Row, button, container, text},
+    widget::{Column, Row, button, column, container, text},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
@@ -36,16 +36,32 @@ impl MenuComp {
     fn view_menu<'a>(&self, name: &'a str, layout: &'a TrayLayout) -> Element<'a, Message> {
         let theme = &self.theme;
         match &layout.props {
+            // Divider
+            TrayLayoutProps { type_: Some(t), .. } if t == "seperator" => {
+                // info!("sep");
+                container(text!("---")).center_x(Length::Fill).into()
+            }
+            // regular button
             TrayLayoutProps {
                 label: Some(label), ..
-            } => align_center!(
+            } => {
+                let label = label.clone();
+                // info!("reg button {label}");
                 button(text(label.replace("_", "")))
+                    .style(button::danger)
+                    .height(theme.spacing().xl())
                     .width(Length::Fill)
-                    .on_press(Message::ToggleMenu(layout.id))
-            )
-            .padding(theme.spacing().xl())
-            .into(),
-            _ => Row::new().into(),
+                    .on_press_with(move || {
+                        info!("button press {label}");
+                        Message::ToggleMenu(layout.id)
+                    }) // .on_press(Message::ToggleMenu(layout.id))
+                    .padding(theme.spacing().xl())
+                    .into()
+            }
+            _ => {
+                // info!("empty");
+                Row::new().into()
+            }
         }
     }
 }
@@ -56,6 +72,8 @@ impl Comp for MenuComp {
 
     fn new(input: Self::Init) -> Self {
         let theme = app_theme();
+        let layout = &input.layout;
+        info!("layout: {layout:?}");
         Self {
             name: input.name,
             position: input.starting_position,
@@ -65,8 +83,15 @@ impl Comp for MenuComp {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        container(text!("foo"))
-            // .align_bottom(20)
+        // top level layout is always submenu
+        let top_menu = self
+            .layout
+            .children
+            .iter()
+            .map(|menu| self.view_menu(&self.name, menu))
+            .fold(Column::new(), |col, item_elem| col.push(item_elem));
+
+        container(top_menu)
             .height(Length::Fill)
             .width(Length::Fill)
             .style(container::rounded_box)
@@ -84,18 +109,20 @@ impl Feature for MenuComp {
             .children
             .iter()
             .fold(theme.spacing().lg(), |height, menu| {
-                height + (menu.children.len() as f32 * item_height)
+                height + (menu.children.len() as f32 * item_height) + item_height
             });
-        info!("height: {height}");
+
         NewLayerShellSettings {
             layer: Layer::Overlay,
-            size: Some((height as u32, 100)),
+            // x, y
+            size: Some((200, height as u32)),
             anchor: Anchor::Bottom | Anchor::Left,
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
             exclusive_zone: Some(-1),
             output_option: OutputOption::LastOutput,
             events_transparent: false,
             namespace: Some("TrayMenu".into()),
+            // top/right/bottom/left
             margin: Some((0, 0, y as i32, x as i32)),
         }
     }
