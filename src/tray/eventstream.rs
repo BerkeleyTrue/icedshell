@@ -7,8 +7,8 @@ use tracing::debug;
 use crate::{
     fdo_icons::{self, FdIcon},
     tray::dbus::{
-        DBusMenuProxy, Layout, StatusNotifierItemProxy, StatusNotifierWatcher,
-        StatusNotifierWatcherProxy, icons_to_fd_icon,
+        DBusMenuProxy, StatusNotifierItemProxy, StatusNotifierWatcher, StatusNotifierWatcherProxy,
+        TrayLayout, icons_to_fd_icon,
     },
 };
 
@@ -18,7 +18,7 @@ pub struct SNItem {
     pub title: String,
     pub tool_tip: Option<(Option<FdIcon>, String, String)>,
     pub icon: Option<FdIcon>,
-    pub menu: Layout,
+    pub menu: TrayLayout,
     item_proxy: StatusNotifierItemProxy<'static>,
     menu_proxy: DBusMenuProxy<'static>,
 }
@@ -72,7 +72,7 @@ impl SNItem {
         })
     }
 
-    pub async fn menu_item_clicked(&self, id: i32) -> anyhow::Result<Layout> {
+    pub async fn menu_item_clicked(&self, id: i32) -> anyhow::Result<TrayLayout> {
         let value = zbus::zvariant::Value::I32(32).try_to_owned()?;
 
         self.menu_proxy
@@ -165,7 +165,7 @@ impl SNItem {
 #[derive(Debug, Clone)]
 pub enum SNItemEvent {
     IconChanged(String, FdIcon),
-    MenuLayoutChanged(String, Layout),
+    MenuLayoutChanged(String, TrayLayout),
 }
 
 impl SNItemEvent {

@@ -3,3 +3,4 @@ mod eventstream;
 pub mod menu_comp;
 pub mod service;
 pub mod tray_comp;
+pub use dbus::{TrayLayout, TrayLayoutProps};

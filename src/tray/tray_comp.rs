@@ -11,7 +11,7 @@ use crate::{
     divider::{Angled, Direction, Heading},
     feature::{CompWithProps, align_center},
     theme::{SURFACE1, SURFACE2, app_theme},
-    tray::service::TrayService,
+    tray::{dbus::TrayLayout, service::TrayService},
     widget_ext::ContainExt,
 };
 
@@ -23,7 +23,7 @@ pub struct TrayComp {
 pub enum Message {
     MouseMoved(Point),
     MouseLeft,
-    SnItemClicked(Point),
+    SnItemClicked(String, Point, TrayLayout),
 }
 
 pub struct Props<'a> {
@@ -60,8 +60,8 @@ impl CompWithProps for TrayComp {
                 self.mouse = None;
                 Task::none()
             }
-            Message::SnItemClicked(point) => {
-                info!("Icon clicked: point {point:?}");
+            Message::SnItemClicked(name, point, _) => {
+                info!("{name} clicked: point {point:?}");
                 Task::none()
             }
         }
@@ -89,7 +89,11 @@ impl CompWithProps for TrayComp {
                         ..Default::default()
                     },
                 })
-                .on_press(Message::SnItemClicked(self.mouse.unwrap_or_default()))
+                .on_press(Message::SnItemClicked(
+                    item.name.clone(),
+                    self.mouse.unwrap_or_default(),
+                    item.menu.clone()
+                ))
             );
 
             if let Some((icon, title, description)) = item.tool_tip.as_ref() {

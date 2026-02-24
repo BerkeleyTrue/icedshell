@@ -21,7 +21,7 @@ use crate::{
     feature::{Comp, FeatWindow, Feature, Service},
     niri::{self, monitors::MonitorsServ},
     theme::{self as mytheme},
-    tray::{menu_comp as tray_menu, tray_comp},
+    tray::{TrayLayout, menu_comp as tray_menu, tray_comp},
 };
 
 #[derive(Clone)]
@@ -136,9 +136,11 @@ impl Daemon {
                         .map(move |m| Message::Delora(win_id, m));
 
                     let open_task = match message {
-                        delora::Message::Tray(tray_comp::Message::SnItemClicked(point)) => {
-                            self.open_tray_menu(point)
-                        }
+                        delora::Message::Tray(tray_comp::Message::SnItemClicked(
+                            name,
+                            point,
+                            layout,
+                        )) => self.open_tray_menu(name, point, layout),
                         _ => Task::none(),
                     };
                     task.chain(open_task)
@@ -220,7 +222,7 @@ impl Daemon {
         }))
     }
 
-    fn open_tray_menu(&mut self, point: Point) -> Task<Message> {
+    fn open_tray_menu(&mut self, name: String, point: Point, layout: TrayLayout) -> Task<Message> {
         let remove = self
             .features
             .iter()
@@ -234,7 +236,9 @@ impl Daemon {
             .unwrap_or(Task::none());
 
         let (new_feat, layer_settings) = tray_menu::MenuComp::new(tray_menu::Init {
+            name,
             starting_position: point,
+            layout,
         })
         .open();
         let main_id = new_feat.id;

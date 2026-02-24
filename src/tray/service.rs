@@ -2,7 +2,7 @@ use crate::{
     fdo_icons::FdIcon,
     feature::Service,
     tray::{
-        dbus::Layout,
+        dbus::TrayLayout,
         eventstream::{SNItem, SNItemEvent, TrayEvent, listen},
     },
 };
@@ -17,7 +17,7 @@ use tracing::{debug, error};
 pub enum Message {
     Registered(Box<SNItem>),
     IconChanged(String, FdIcon),
-    MenuLayoutChanged(String, Layout),
+    MenuLayoutChanged(String, TrayLayout),
     Unregistered(String),
     UpdateItems(TrayItems),
 }
