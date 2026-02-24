@@ -35,49 +35,6 @@ pub struct MenuComp {
     focused: bool,
 }
 
-impl MenuComp {
-    fn view_menu<'a>(&self, name: &'a str, layout: &'a TrayLayout) -> Element<'a, Message> {
-        let theme = &self.theme;
-        match &layout.props {
-            // Divider
-            TrayLayoutProps { type_: Some(t), .. } if t == "seperator" => {
-                // info!("sep");
-                container(text!("---")).center_x(Length::Fill).into()
-            }
-            // regular button
-            TrayLayoutProps {
-                label: Some(label), ..
-            } => {
-                let label = label.clone();
-                button(text(label.replace("_", "")))
-                    .style(|_, status| {
-                        let base = button::Style {
-                            background: Some(BASE.into()),
-                            text_color: TEXT,
-                            ..Default::default()
-                        };
-                        match status {
-                            button::Status::Hovered => button::Style {
-                                background: Some(SURFACE0.into()),
-                                ..base
-                            },
-                            _ => base,
-                        }
-                    })
-                    .height(theme.spacing().xl())
-                    .width(Length::Fill)
-                    .on_press(Message::ToggleMenu(layout.id))
-                    .padding(theme.spacing().xs())
-                    .into()
-            }
-            _ => {
-                // info!("empty");
-                Row::new().into()
-            }
-        }
-    }
-}
-
 impl Comp for MenuComp {
     type Message = Message;
     type Init = Init;
@@ -134,6 +91,49 @@ impl Comp for MenuComp {
     }
 }
 
+impl MenuComp {
+    fn view_menu<'a>(&self, name: &'a str, layout: &'a TrayLayout) -> Element<'a, Message> {
+        let theme = &self.theme;
+        match &layout.props {
+            // Divider
+            TrayLayoutProps { type_: Some(t), .. } if t == "seperator" => {
+                // info!("sep");
+                container(text!("---")).center_x(Length::Fill).into()
+            }
+            // regular button
+            TrayLayoutProps {
+                label: Some(label), ..
+            } => {
+                let label = label.clone();
+                button(text(label.replace("_", "")))
+                    .style(|_, status| {
+                        let base = button::Style {
+                            background: Some(BASE.into()),
+                            text_color: TEXT,
+                            ..Default::default()
+                        };
+                        match status {
+                            button::Status::Hovered => button::Style {
+                                background: Some(SURFACE0.into()),
+                                ..base
+                            },
+                            _ => base,
+                        }
+                    })
+                    .height(theme.spacing().xl())
+                    .width(Length::Fill)
+                    .on_press(Message::ToggleMenu(layout.id))
+                    .padding(theme.spacing().xs())
+                    .into()
+            }
+            _ => {
+                // info!("empty");
+                Row::new().into()
+            }
+        }
+    }
+}
+
 impl Feature for MenuComp {
     fn layer(&self) -> iced_layershell::reexport::NewLayerShellSettings {
         let theme = &self.theme;
@@ -152,7 +152,7 @@ impl Feature for MenuComp {
             events_transparent: false,
             namespace: Some("TrayMenu".into()),
             // top/right/bottom/left
-            margin: Some((0, 0, y as i32, x as i32)),
+            margin: Some((0, 0, y as i32 + 8, x as i32)),
         }
     }
 }
