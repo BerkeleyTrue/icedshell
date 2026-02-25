@@ -240,7 +240,7 @@ impl Daemon {
             })
             .unwrap_or(Task::none());
 
-        let (new_feat, layer_settings) = tray_menu::MenuComp::new(tray_menu::Init {
+        let (new_feat, settings) = tray_menu::MenuComp::new(tray_menu::Init {
             name,
             starting_position: point,
             layout,
@@ -252,8 +252,8 @@ impl Daemon {
 
         info!("opening tray menu window");
 
-        remove.chain(Task::done(Message::NewLayerShell {
-            settings: layer_settings,
+        remove.chain(Task::done(Message::NewMenu {
+            settings,
             id: main_id,
         }))
     }

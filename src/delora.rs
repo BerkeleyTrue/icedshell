@@ -186,6 +186,7 @@ impl Comp for DeloraMain {
 }
 
 impl Feature for DeloraMain {
+    type Settings = iced_layershell::reexport::NewLayerShellSettings;
     fn layer(&self) -> iced_layershell::reexport::NewLayerShellSettings {
         let output_name = self.output_name.clone();
         NewLayerShellSettings {

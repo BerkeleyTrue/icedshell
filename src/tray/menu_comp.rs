@@ -2,8 +2,9 @@ use iced::{
     Element, Event, Length, Point, Subscription, Task, event, mouse,
     widget::{Column, Row, button, container, text},
 };
-use iced_layershell::reexport::{
-    Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
+use iced_layershell::{
+    actions::{IcedNewMenuSettings, MenuDirection},
+    reexport::{Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption},
 };
 use tracing::info;
 
@@ -145,24 +146,26 @@ impl MenuComp {
 }
 
 impl Feature for MenuComp {
-    fn layer(&self) -> iced_layershell::reexport::NewLayerShellSettings {
+    type Settings = IcedNewMenuSettings;
+    fn layer(&self) -> IcedNewMenuSettings {
         let theme = &self.theme;
         let item_height = theme.spacing().lg();
-        let Point { x, y } = self.position;
+        // let Point { x, y } = self.position;
         let height = theme.spacing().md() + self.layout.children.len() as f32 * item_height;
 
-        NewLayerShellSettings {
-            layer: Layer::Overlay,
+        IcedNewMenuSettings {
+            // layer: Layer::Overlay,
             // x, y
-            size: Some((200, height as u32)),
-            anchor: Anchor::Bottom | Anchor::Left,
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            exclusive_zone: Some(-1),
-            output_option: OutputOption::LastOutput,
-            events_transparent: false,
-            namespace: Some("TrayMenu".into()),
-            // top/right/bottom/left
-            margin: Some((0, 0, y as i32 + 8, x as i32)),
+            size: (200, height as u32),
+            direction: MenuDirection::Up,
+            // anchor: Anchor::Bottom | Anchor::Left,
+            // keyboard_interactivity: KeyboardInteractivity::OnDemand,
+            // exclusive_zone: Some(-1),
+            // output_option: OutputOption::LastOutput,
+            // events_transparent: false,
+            // namespace: Some("TrayMenu".into()),
+            // // top/right/bottom/left
+            // margin: Some((0, 0, y as i32 + 8, x as i32)),
         }
     }
 }

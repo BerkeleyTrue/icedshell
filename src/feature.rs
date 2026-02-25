@@ -69,14 +69,16 @@ pub trait Service {
 }
 
 pub trait Feature: Sized + Comp {
-    fn layer(&self) -> NewLayerShellSettings;
+    type Settings;
+
+    fn layer(&self) -> Self::Settings;
 
     // fn is_animating(&self) -> bool {
     //     false
     // }
 
     /// open window, consuming self
-    fn open(self) -> (FeatWindow<Self>, NewLayerShellSettings) {
+    fn open(self) -> (FeatWindow<Self>, Self::Settings) {
         let id = window::Id::unique();
         debug!("{id:}");
         let settings = self.layer();
