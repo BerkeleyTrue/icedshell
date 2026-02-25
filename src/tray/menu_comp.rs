@@ -19,6 +19,7 @@ pub enum Message {
     Unfocused,
     ToggleMenu(i32),
     ItemSelected(String, i32),
+    CloseMenu,
 }
 
 pub struct Init {
@@ -63,12 +64,21 @@ impl Comp for MenuComp {
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
             Message::Focused => {
+                info!("Focus");
                 self.focused = true;
                 Task::none()
             }
-            Message::Unfocused => Task::none(),
+            Message::Unfocused => {
+                info!("unfocus");
+                if self.focused {
+                    self.focused = false;
+                    return Task::done(Message::CloseMenu);
+                }
+                Task::none()
+            }
             Message::ToggleMenu(_id) => Task::none(),
             Message::ItemSelected(_name, _id) => Task::none(),
+            Message::CloseMenu => Task::none(),
         }
     }
 

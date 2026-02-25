@@ -21,7 +21,7 @@ use crate::{
     feature::{Comp, FeatWindow, Feature, Service},
     niri::{self, monitors::MonitorsServ},
     theme::{self as mytheme},
-    tray::{TrayLayout, menu_comp as tray_menu, tray_comp},
+    tray::{TrayLayout, menu_comp as tray_menu},
 };
 
 #[derive(Clone)]
@@ -136,11 +136,9 @@ impl Daemon {
                         .map(move |m| Message::Delora(win_id, m));
 
                     let open_task = match message {
-                        delora::Message::Tray(tray_comp::Message::SnItemClicked(
-                            name,
-                            point,
-                            layout,
-                        )) => self.open_tray_menu(name, point, layout),
+                        delora::Message::OpenTrayMenu(name, point, layout) => {
+                            self.open_tray_menu(name, point, layout)
+                        }
                         _ => Task::none(),
                     };
                     task.chain(open_task)
@@ -150,8 +148,15 @@ impl Daemon {
             }
             Message::TrayMenu(win_id, message) => {
                 if let Some(Feat::TrayMenu(menu)) = self.features.get_mut(&win_id) {
-                    menu.update(message)
-                        .map(move |m| Message::TrayMenu(win_id, m))
+                    let inner_task = menu
+                        .update(message.clone())
+                        .map(move |m| Message::TrayMenu(win_id, m));
+
+                    let out_task = match message {
+                        tray_menu::Message::CloseMenu => Task::done(Message::RemoveWindow(win_id)),
+                        _ => Task::none(),
+                    };
+                    inner_task.chain(out_task)
                 } else {
                     Task::none()
                 }

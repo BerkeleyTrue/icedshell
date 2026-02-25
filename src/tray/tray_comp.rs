@@ -23,7 +23,14 @@ pub struct TrayComp {
 pub enum Message {
     MouseMoved(Point),
     MouseLeft,
-    SnItemClicked(String, Point, TrayLayout),
+    SnItemClicked(
+        /// name
+        String,
+        /// position
+        Point,
+        /// menu layout
+        TrayLayout,
+    ),
 }
 
 pub struct Props<'a> {

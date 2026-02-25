@@ -1,4 +1,4 @@
-use iced::{Color, Length, Subscription, padding, widget::row};
+use iced::{Color, Length, Point, Subscription, Task, padding, widget::row};
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
@@ -13,7 +13,7 @@ use crate::{
     },
     niri::{state_serv, win_comp, ws_comp},
     theme::{AppTheme, LAVENDER, ROSEWATER, SURFACE2, app_theme},
-    tray::{service as tray_serv, tray_comp},
+    tray::{TrayLayout, service as tray_serv, tray_comp},
     widget_ext::ContainExt,
 };
 
@@ -28,6 +28,14 @@ pub enum Message {
     NiriService(state_serv::Message),
     TrayService(tray_serv::Message),
     Tray(tray_comp::Message),
+    OpenTrayMenu(
+        /// sn item name
+        String,
+        /// menu position
+        Point,
+        /// menu layout
+        TrayLayout,
+    ),
 }
 
 pub struct Init {
@@ -95,7 +103,17 @@ impl Comp for DeloraMain {
             Message::TrayService(message) => {
                 self.tray_serv.update(message).map(Message::TrayService)
             }
-            Message::Tray(message) => self.tray.update(message).map(Message::Tray),
+            Message::Tray(message) => {
+                let inner_task = self.tray.update(message.clone()).map(Message::Tray);
+                let out_task = match message {
+                    tray_comp::Message::SnItemClicked(name, position, layout) => {
+                        Task::done(Message::OpenTrayMenu(name, position, layout))
+                    }
+                    _ => Task::none(),
+                };
+                inner_task.chain(out_task)
+            }
+            Message::OpenTrayMenu(_, _, _) => Task::none(),
         }
     }
 
