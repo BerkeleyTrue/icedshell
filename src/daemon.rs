@@ -5,6 +5,7 @@ use iced::{
     Color, Element, Event, Point, Subscription, Task, event, exit,
     keyboard::{self, Key, key::Named},
     mouse,
+    task::Handle,
     theme::Style,
     widget::{container, space},
     window::{self, Id},
@@ -85,6 +86,7 @@ struct Daemon {
     mon_serv: niri::monitors::MonitorsServ,
     quit_keybinds: bool,
     tray_focused: bool,
+    tray_close_handle: Option<Handle>,
 }
 
 impl Daemon {
@@ -94,6 +96,7 @@ impl Daemon {
             mon_serv: MonitorsServ::new(()),
             quit_keybinds: init.quit_keybinds,
             tray_focused: false,
+            tray_close_handle: None,
         }
     }
 
@@ -184,24 +187,14 @@ impl Daemon {
 
                 Task::batch(tasks)
             }
-            Message::FeatFocused(id) => {
-                if let Some(feat) = self.features.get(&id)
-                    && let Feat::TrayMenu(_) = feat
-                {
-                    self.tray_focused = true;
-                }
-                Task::none()
-            }
-            Message::FeatUnfocused(id) => {
-                if let Some(feat) = self.features.get(&id)
-                    && let Feat::TrayMenu(_) = feat
-                    && self.tray_focused
-                {
-                    self.tray_focused = false;
-                    return Task::done(Message::RemoveWindow(id));
-                }
-                Task::none()
-            }
+            Message::FeatFocused(id) => match self.features.get(&id) {
+                Some(Feat::TrayMenu(_)) => self.focus_tray(),
+                _ => Task::none(),
+            },
+            Message::FeatUnfocused(id) => match self.features.get(&id) {
+                Some(Feat::TrayMenu(_)) => self.unfocus_tray(id),
+                _ => Task::none(),
+            },
             Message::Quit => exit(),
             _ => Task::none(),
         }
@@ -218,6 +211,7 @@ impl Daemon {
     }
 }
 
+// delora bar feature logic
 impl Daemon {
     fn open_delora_main(&mut self, output_name: String) -> Task<Message> {
         let (mut main_bar, main_layer_settings) =
@@ -248,7 +242,30 @@ impl Daemon {
             id: main_id,
         }))
     }
+}
 
+// tray menu feature logic
+impl Daemon {
+    fn focus_tray(&mut self) -> Task<Message> {
+        self.tray_focused = true;
+        if let Some(handle) = &self.tray_close_handle {
+            handle.abort();
+            self.tray_close_handle = None;
+        }
+        Task::none()
+    }
+    fn unfocus_tray(&mut self, id: window::Id) -> Task<Message> {
+        self.tray_focused = false;
+        let (task, handle) = Task::perform(
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)),
+            move |_| Message::RemoveWindow(id),
+        )
+        .abortable();
+
+        self.tray_close_handle = Some(handle);
+
+        task
+    }
     fn open_tray_menu(&mut self, name: String, point: Point, layout: TrayLayout) -> Task<Message> {
         let remove = self
             .features
