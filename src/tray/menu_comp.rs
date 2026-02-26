@@ -1,40 +1,31 @@
 use iced::{
-    Element, Event, Length, Point, Subscription, Task, event, mouse,
+    Element, Length, Task,
     widget::{Column, Row, button, container, text},
 };
-use iced_layershell::{
-    actions::{IcedNewMenuSettings, MenuDirection},
-    reexport::{Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption},
-};
+use iced_layershell::actions::{IcedNewMenuSettings, MenuDirection};
 use tracing::info;
 
 use crate::{
     feature::{Comp, Feature},
-    theme::{AppTheme, BASE, OVERLAY0, OVERLAY1, SURFACE0, Shade, TEXT, app_theme},
+    theme::{AppTheme, BASE, SURFACE0, TEXT, app_theme},
     tray::{TrayLayoutProps, dbus::TrayLayout},
 };
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Focused,
-    Unfocused,
     ToggleMenu(i32),
     ItemSelected(String, i32),
-    CloseMenu,
 }
 
 pub struct Init {
     pub name: String,
-    pub starting_position: Point,
     pub layout: TrayLayout,
 }
 
 pub struct MenuComp {
     name: String,
-    position: Point,
     layout: TrayLayout,
     theme: AppTheme,
-    focused: bool,
 }
 
 impl Comp for MenuComp {
@@ -47,39 +38,15 @@ impl Comp for MenuComp {
         info!("layout: {layout:?}");
         Self {
             name: input.name,
-            position: input.starting_position,
             layout: input.layout,
             theme,
-            focused: true,
         }
-    }
-
-    fn subscription(&self) -> iced::Subscription<Self::Message> {
-        event::listen().filter_map(|event| match event {
-            Event::Mouse(mouse::Event::CursorEntered) => Some(Message::Focused),
-            Event::Mouse(mouse::Event::CursorLeft) => Some(Message::Unfocused),
-            _ => None,
-        })
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
-            Message::Focused => {
-                info!("Focus");
-                self.focused = true;
-                Task::none()
-            }
-            Message::Unfocused => {
-                info!("unfocus");
-                if self.focused {
-                    self.focused = false;
-                    return Task::done(Message::CloseMenu);
-                }
-                Task::none()
-            }
             Message::ToggleMenu(_id) => Task::none(),
             Message::ItemSelected(_name, _id) => Task::none(),
-            Message::CloseMenu => Task::none(),
         }
     }
 
@@ -154,18 +121,8 @@ impl Feature for MenuComp {
         let height = theme.spacing().md() + self.layout.children.len() as f32 * item_height;
 
         IcedNewMenuSettings {
-            // layer: Layer::Overlay,
-            // x, y
             size: (200, height as u32),
             direction: MenuDirection::Up,
-            // anchor: Anchor::Bottom | Anchor::Left,
-            // keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            // exclusive_zone: Some(-1),
-            // output_option: OutputOption::LastOutput,
-            // events_transparent: false,
-            // namespace: Some("TrayMenu".into()),
-            // // top/right/bottom/left
-            // margin: Some((0, 0, y as i32 + 8, x as i32)),
         }
     }
 }

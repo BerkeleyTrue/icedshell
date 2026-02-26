@@ -2,8 +2,9 @@ use std::collections::HashMap;
 
 use derive_more::{Deref, DerefMut};
 use iced::{
-    Color, Element, Point, Subscription, Task, exit,
+    Color, Element, Event, Point, Subscription, Task, event, exit,
     keyboard::{self, Key, key::Named},
+    mouse,
     theme::Style,
     widget::{container, space},
     window::{self, Id},
@@ -28,17 +29,6 @@ use crate::{
 enum Hosts {
     Delora,
     Rena,
-}
-
-#[to_layer_message(multi)]
-#[derive(Debug, Clone)]
-pub enum Message {
-    NiriMon(niri::monitors::Message),
-
-    Delora(window::Id, delora::Message),
-    TrayMenu(window::Id, tray_menu::Message),
-
-    Quit,
 }
 
 #[derive(Clone)]
@@ -76,10 +66,25 @@ enum Feat {
 #[derive(Deref, DerefMut)]
 struct Features(HashMap<window::Id, Feat>);
 
+#[to_layer_message(multi)]
+#[derive(Debug, Clone)]
+pub enum Message {
+    NiriMon(niri::monitors::Message),
+
+    Delora(window::Id, delora::Message),
+    TrayMenu(window::Id, tray_menu::Message),
+
+    FeatUnfocused(window::Id),
+    FeatFocused(window::Id),
+
+    Quit,
+}
+
 struct Daemon {
     features: Features,
     mon_serv: niri::monitors::MonitorsServ,
     quit_keybinds: bool,
+    tray_focused: bool,
 }
 
 impl Daemon {
@@ -88,10 +93,16 @@ impl Daemon {
             features: Features(HashMap::new()),
             mon_serv: MonitorsServ::new(()),
             quit_keybinds: init.quit_keybinds,
+            tray_focused: false,
         }
     }
 
     fn subscription(&self) -> Subscription<Message> {
+        let focus_subs = event::listen_with(|event, _status, id| match event {
+            Event::Mouse(mouse::Event::CursorEntered) => Some(Message::FeatFocused(id)),
+            Event::Mouse(mouse::Event::CursorLeft) => Some(Message::FeatUnfocused(id)),
+            _ => None,
+        });
         let quit_binds = keyboard::listen()
             .with(self.quit_keybinds)
             .filter_map(|(quit_keybinds, event)| match (quit_keybinds, event) {
@@ -122,7 +133,7 @@ impl Daemon {
             })
             .collect();
 
-        let mut subs = vec![quit_binds, niri_mon];
+        let mut subs = vec![quit_binds, niri_mon, focus_subs];
         subs.append(&mut win_subs);
         Subscription::batch(subs)
     }
@@ -148,15 +159,8 @@ impl Daemon {
             }
             Message::TrayMenu(win_id, message) => {
                 if let Some(Feat::TrayMenu(menu)) = self.features.get_mut(&win_id) {
-                    let inner_task = menu
-                        .update(message.clone())
-                        .map(move |m| Message::TrayMenu(win_id, m));
-
-                    let out_task = match message {
-                        tray_menu::Message::CloseMenu => Task::done(Message::RemoveWindow(win_id)),
-                        _ => Task::none(),
-                    };
-                    inner_task.chain(out_task)
+                    menu.update(message.clone())
+                        .map(move |m| Message::TrayMenu(win_id, m))
                 } else {
                     Task::none()
                 }
@@ -179,6 +183,24 @@ impl Daemon {
                 tasks.push(inner_task);
 
                 Task::batch(tasks)
+            }
+            Message::FeatFocused(id) => {
+                if let Some(feat) = self.features.get(&id)
+                    && let Feat::TrayMenu(_) = feat
+                {
+                    self.tray_focused = true;
+                }
+                Task::none()
+            }
+            Message::FeatUnfocused(id) => {
+                if let Some(feat) = self.features.get(&id)
+                    && let Feat::TrayMenu(_) = feat
+                    && self.tray_focused
+                {
+                    self.tray_focused = false;
+                    return Task::done(Message::RemoveWindow(id));
+                }
+                Task::none()
             }
             Message::Quit => exit(),
             _ => Task::none(),
@@ -240,12 +262,8 @@ impl Daemon {
             })
             .unwrap_or(Task::none());
 
-        let (new_feat, settings) = tray_menu::MenuComp::new(tray_menu::Init {
-            name,
-            starting_position: point,
-            layout,
-        })
-        .open();
+        let (new_feat, settings) =
+            tray_menu::MenuComp::new(tray_menu::Init { name, layout }).open();
         let main_id = new_feat.id;
 
         self.features.insert(main_id, Feat::TrayMenu(new_feat));
