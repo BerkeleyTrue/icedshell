@@ -1,5 +1,5 @@
 use iced::{
-    Element, Length, Task,
+    Element, Length, Task, border,
     widget::{Column, Row, button, container, text},
 };
 use iced_layershell::actions::{IcedNewMenuSettings, MenuDirection};
@@ -7,7 +7,7 @@ use tracing::info;
 
 use crate::{
     feature::{Comp, Feature},
-    theme::{AppTheme, BASE, SURFACE0, TEXT, app_theme},
+    theme::{AppTheme, BASE, SURFACE0, Shade, TEXT, app_theme},
     tray::{TrayLayoutProps, dbus::TrayLayout},
 };
 
@@ -57,14 +57,23 @@ impl Comp for MenuComp {
             .layout
             .children
             .iter()
-            .map(|menu| self.view_menu(&self.name, menu))
-            .fold(Column::new(), |col, item_elem| col.push(item_elem))
-            .spacing(theme.spacing().xs());
+            .map(|menu| {
+                Element::from(
+                    container(self.view_menu(&self.name, menu))
+                        .center_y(theme.spacing().lg())
+                        .center_x(Length::Fill),
+                )
+            })
+            .fold(Column::new(), |col, item_elem| col.push(item_elem));
 
         container(top_menu)
             .height(Length::Fill)
             .width(Length::Fill)
-            .style(container::rounded_box)
+            .style(|_| container::Style {
+                border: border::rounded(theme.radius().lg()).color(theme.secondary(Shade::S500)),
+                background: Some(theme.neutral(Shade::S900).into()),
+                ..Default::default()
+            })
             .into()
     }
 }
@@ -82,8 +91,8 @@ impl MenuComp {
             TrayLayoutProps {
                 label: Some(label), ..
             } => {
-                let label = label.clone();
-                button(text(label.replace("_", "")))
+                let label = text(label.clone().replace("_", "")).size(theme.spacing().md());
+                button(label)
                     .style(|_, status| {
                         let base = button::Style {
                             background: Some(BASE.into()),
@@ -98,7 +107,6 @@ impl MenuComp {
                             _ => base,
                         }
                     })
-                    .height(theme.spacing().xl())
                     .width(Length::Fill)
                     .on_press(Message::ToggleMenu(layout.id))
                     .padding(theme.spacing().xs())
@@ -117,8 +125,7 @@ impl Feature for MenuComp {
     fn layer(&self) -> IcedNewMenuSettings {
         let theme = &self.theme;
         let item_height = theme.spacing().lg();
-        // let Point { x, y } = self.position;
-        let height = theme.spacing().md() + self.layout.children.len() as f32 * item_height;
+        let height = self.layout.children.len() as f32 * item_height;
 
         IcedNewMenuSettings {
             size: (200, height as u32),
