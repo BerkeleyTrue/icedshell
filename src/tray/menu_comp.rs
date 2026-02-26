@@ -1,5 +1,7 @@
 use iced::{
-    Element, Length, Task, border,
+    Color, Element, Length, Task,
+    alignment::Vertical,
+    border,
     widget::{Column, Row, button, container, text},
 };
 use iced_layershell::actions::{IcedNewMenuSettings, MenuDirection};
@@ -69,8 +71,11 @@ impl Comp for MenuComp {
         container(top_menu)
             .height(Length::Fill)
             .width(Length::Fill)
+            .padding(theme.spacing().xs())
             .style(|_| container::Style {
-                border: border::rounded(theme.radius().lg()).color(theme.secondary(Shade::S500)),
+                border: border::rounded(theme.radius().lg())
+                    .color(theme.secondary(Shade::S500))
+                    .width(theme.spacing().xxs()),
                 background: Some(theme.neutral(Shade::S900).into()),
                 ..Default::default()
             })
@@ -91,11 +96,14 @@ impl MenuComp {
             TrayLayoutProps {
                 label: Some(label), ..
             } => {
-                let label = text(label.clone().replace("_", "")).size(theme.spacing().md());
+                let label = text(label.clone().replace("_", ""))
+                    .align_y(Vertical::Center)
+                    .size(theme.spacing().md());
+
                 button(label)
                     .style(|_, status| {
                         let base = button::Style {
-                            background: Some(BASE.into()),
+                            background: Some(Color::TRANSPARENT.into()),
                             text_color: TEXT,
                             ..Default::default()
                         };
@@ -125,7 +133,7 @@ impl Feature for MenuComp {
     fn layer(&self) -> IcedNewMenuSettings {
         let theme = &self.theme;
         let item_height = theme.spacing().lg();
-        let height = self.layout.children.len() as f32 * item_height;
+        let height = self.layout.children.len() as f32 * item_height + theme.spacing().xs();
 
         IcedNewMenuSettings {
             size: (200, height as u32),
