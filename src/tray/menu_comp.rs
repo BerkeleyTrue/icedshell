@@ -10,13 +10,16 @@ use tracing::info;
 use crate::{
     feature::{Comp, Feature},
     theme::{AppTheme, SURFACE0, Shade, TEXT, app_theme},
-    tray::{TrayLayoutProps, dbus::TrayLayout},
+    tray::{
+        TrayLayoutProps,
+        dbus::{TrayLayout, TrayMenuItemId},
+    },
 };
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    ToggleMenu(i32),
-    ItemSelected(String, i32),
+    ToggleMenu(TrayMenuItemId),
+    ItemSelected(String, TrayMenuItemId),
 }
 
 pub struct Init {

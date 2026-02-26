@@ -1,3 +1,4 @@
+use derive_more::{Deref, DerefMut, From};
 use iced::{advanced::image, futures::StreamExt};
 use std::time::Duration;
 use tracing::{info, trace, warn};
@@ -263,12 +264,15 @@ pub trait StatusNotifierItem {
     fn tool_tip(&self) -> zbus::Result<(String, Vec<Icon>, String, String)>;
 }
 
+#[derive(Clone, Copy, Debug, Type, Deref, DerefMut, From)]
+pub struct TrayMenuItemId(i32);
+
 /// The menu layout
 #[derive(Clone, Debug, Type)]
 #[zvariant(signature = "(ia{sv}av)")]
 pub struct TrayLayout {
     /// id
-    pub id: i32,
+    pub id: TrayMenuItemId,
     /// props
     pub props: TrayLayoutProps,
     /// sub-menus
@@ -282,7 +286,7 @@ impl<'a> serde::Deserialize<'a> for TrayLayout {
         let (id, props, children) =
             <(i32, TrayLayoutProps, Vec<(zvariant::Signature, Self)>)>::deserialize(deserializer)?;
         Ok(Self {
-            id,
+            id: TrayMenuItemId(id),
             props,
             children: children.into_iter().map(|x| x.1).collect(),
         })
