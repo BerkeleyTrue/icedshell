@@ -31,8 +31,6 @@ pub enum Message {
     OpenTrayMenu(
         /// sn item name
         String,
-        /// menu position
-        Point,
         /// menu layout
         TrayLayout,
     ),
@@ -106,14 +104,13 @@ impl Comp for DeloraMain {
             Message::Tray(message) => {
                 let inner_task = self.tray.update(message.clone()).map(Message::Tray);
                 let out_task = match message {
-                    tray_comp::Message::SnItemClicked(name, position, layout) => {
-                        Task::done(Message::OpenTrayMenu(name, position, layout))
-                    }
-                    _ => Task::none(),
+                    tray_comp::Message::SnItemClicked(name, layout) => {
+                        Task::done(Message::OpenTrayMenu(name, layout))
+                    } // _ => Task::none(),
                 };
                 inner_task.chain(out_task)
             }
-            Message::OpenTrayMenu(_, _, _) => Task::none(),
+            Message::OpenTrayMenu(_, _) => Task::none(),
         }
     }
 

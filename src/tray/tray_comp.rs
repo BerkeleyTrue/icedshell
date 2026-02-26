@@ -1,11 +1,9 @@
 use iced::{
-    Color, Event, Point, Task,
-    event::listen,
-    mouse, padding,
+    Color, Task, padding,
     widget::{button, row, text, tooltip},
 };
 use lucide_icons::Icon;
-use tracing::info;
+use tracing::debug;
 
 use crate::{
     divider::{Angled, Direction, Heading},
@@ -15,19 +13,11 @@ use crate::{
     widget_ext::ContainExt,
 };
 
-pub struct TrayComp {
-    mouse: Option<Point>,
-}
-
 #[derive(Debug, Clone)]
 pub enum Message {
-    MouseMoved(Point),
-    MouseLeft,
     SnItemClicked(
         /// name
         String,
-        /// position
-        Point,
         /// menu layout
         TrayLayout,
     ),
@@ -38,37 +28,21 @@ pub struct Props<'a> {
     pub serv: &'a TrayService,
 }
 
+pub struct TrayComp {}
+
 impl CompWithProps for TrayComp {
     type Message = Message;
     type Init = ();
     type Props<'a> = Props<'a>;
 
     fn new(_input: Self::Init) -> Self {
-        Self { mouse: None }
-    }
-
-    fn subscription(&self) -> iced::Subscription<Self::Message> {
-        listen().filter_map(|event| match event {
-            Event::Mouse(mouse::Event::CursorMoved { position: mouse }) => {
-                Some(Message::MouseMoved(mouse))
-            }
-            Event::Mouse(mouse::Event::CursorLeft) => Some(Message::MouseLeft),
-            _ => None,
-        })
+        Self {}
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
-            Message::MouseMoved(point) => {
-                self.mouse = Some(point);
-                Task::none()
-            }
-            Message::MouseLeft => {
-                self.mouse = None;
-                Task::none()
-            }
-            Message::SnItemClicked(name, point, _) => {
-                info!("{name} clicked: point {point:?}");
+            Message::SnItemClicked(name, _) => {
+                debug!("{name} clicked:");
                 Task::none()
             }
         }
@@ -96,11 +70,7 @@ impl CompWithProps for TrayComp {
                         ..Default::default()
                     },
                 })
-                .on_press(Message::SnItemClicked(
-                    item.name.clone(),
-                    self.mouse.unwrap_or_default(),
-                    item.menu.clone()
-                ))
+                .on_press(Message::SnItemClicked(item.name.clone(), item.menu.clone()))
             );
 
             if let Some((icon, title, description)) = item.tool_tip.as_ref() {

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use derive_more::{Deref, DerefMut};
 use iced::{
-    Color, Element, Event, Point, Subscription, Task, event, exit,
+    Color, Element, Event, Subscription, Task, event, exit,
     keyboard::{self, Key, key::Named},
     mouse,
     task::Handle,
@@ -150,8 +150,8 @@ impl Daemon {
                         .map(move |m| Message::Delora(win_id, m));
 
                     let open_task = match message {
-                        delora::Message::OpenTrayMenu(name, point, layout) => {
-                            self.open_tray_menu(name, point, layout)
+                        delora::Message::OpenTrayMenu(name, layout) => {
+                            self.open_tray_menu(name, layout)
                         }
                         _ => Task::none(),
                     };
@@ -266,7 +266,7 @@ impl Daemon {
 
         task
     }
-    fn open_tray_menu(&mut self, name: String, point: Point, layout: TrayLayout) -> Task<Message> {
+    fn open_tray_menu(&mut self, name: String, layout: TrayLayout) -> Task<Message> {
         let remove = self
             .features
             .iter()
