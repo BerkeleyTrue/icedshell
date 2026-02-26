@@ -1,15 +1,15 @@
 use iced::{
     Color, Element, Length, Task,
     alignment::Vertical,
-    border,
-    widget::{Column, Row, button, container, text},
+    border, padding,
+    widget::{Column, Row, button, container, text, toggler},
 };
 use iced_layershell::actions::{IcedNewMenuSettings, MenuDirection};
 use tracing::info;
 
 use crate::{
     feature::{Comp, Feature},
-    theme::{AppTheme, BASE, SURFACE0, Shade, TEXT, app_theme},
+    theme::{AppTheme, SURFACE0, Shade, TEXT, app_theme},
     tray::{TrayLayoutProps, dbus::TrayLayout},
 };
 
@@ -62,6 +62,7 @@ impl Comp for MenuComp {
             .map(|menu| {
                 Element::from(
                     container(self.view_menu(&self.name, menu))
+                        .padding(padding::left(theme.spacing().xs()))
                         .center_y(theme.spacing().lg())
                         .center_x(Length::Fill),
                 )
@@ -90,8 +91,23 @@ impl MenuComp {
             // Divider
             TrayLayoutProps { type_: Some(t), .. } if t == "seperator" => {
                 // info!("sep");
-                container(text!("---")).center_x(Length::Fill).into()
+                container(text!("---")).into()
             }
+            TrayLayoutProps {
+                label: Some(label),
+                toggle_type: Some(togg_type),
+                toggle_state: Some(togg_state),
+                ..
+            } if togg_type == "checkmark" => toggler(*togg_state > 0)
+                .label(label.replace("_", ""))
+                .text_size(theme.spacing().md())
+                .width(Length::Fill)
+                .size(theme.spacing().sm())
+                .on_toggle({
+                    let id = layout.id;
+                    move |_| Message::ItemSelected(name.to_string(), id)
+                })
+                .into(),
             // regular button
             TrayLayoutProps {
                 label: Some(label), ..
@@ -115,9 +131,9 @@ impl MenuComp {
                             _ => base,
                         }
                     })
+                    .padding(padding::left(theme.spacing().xl()).vertical(theme.spacing().xxs()))
                     .width(Length::Fill)
-                    .on_press(Message::ToggleMenu(layout.id))
-                    .padding(theme.spacing().xs())
+                    .on_press(Message::ItemSelected(name.to_string(), layout.id))
                     .into()
             }
             _ => {
@@ -136,7 +152,7 @@ impl Feature for MenuComp {
         let height = self.layout.children.len() as f32 * item_height + theme.spacing().xs();
 
         IcedNewMenuSettings {
-            size: (200, height as u32),
+            size: (220, height as u32),
             direction: MenuDirection::Up,
         }
     }
