@@ -2,9 +2,10 @@ use iced::{
     Color, Element, Length, Task,
     alignment::Vertical,
     border, padding,
-    widget::{Column, Row, button, container, text, toggler},
+    widget::{Column, Row, button, container, row, text, toggler},
 };
 use iced_layershell::actions::{IcedNewMenuSettings, MenuDirection};
+use lucide_icons::Icon;
 use tracing::info;
 
 use crate::{
@@ -96,6 +97,7 @@ impl MenuComp {
                 // info!("sep");
                 container(text!("---")).into()
             }
+            // toggle state
             TrayLayoutProps {
                 label: Some(label),
                 toggle_type: Some(togg_type),
@@ -111,6 +113,50 @@ impl MenuComp {
                     move |_| Message::ItemSelected(name.to_string(), id)
                 })
                 .into(),
+            // sub menu
+            TrayLayoutProps {
+                children_display: Some(display),
+                label: Some(label),
+                ..
+            } if display == "submenu" => {
+                let is_open = false;
+                let icon = if is_open {
+                    Icon::DiamondPlus.widget()
+                } else {
+                    Icon::DiamondMinus.widget()
+                }
+                .size(theme.spacing().md())
+                .align_y(Vertical::Center)
+                .width(theme.spacing().lg());
+
+                let label = text(label.clone().replace("_", ""))
+                    .align_y(Vertical::Center)
+                    .size(theme.spacing().md());
+
+                let button_content = row![icon, label]
+                    .spacing(theme.spacing().xs())
+                    .align_y(Vertical::Center);
+
+                button(button_content)
+                    .style(|_, status| {
+                        let base = button::Style {
+                            background: Some(Color::TRANSPARENT.into()),
+                            text_color: TEXT,
+                            ..Default::default()
+                        };
+                        match status {
+                            button::Status::Hovered => button::Style {
+                                background: Some(SURFACE0.into()),
+                                ..base
+                            },
+                            _ => base,
+                        }
+                    })
+                    .padding(padding::vertical(theme.spacing().xxs()).left(theme.spacing().xxs()))
+                    .width(Length::Fill)
+                    .on_press(Message::ToggleMenu(layout.id))
+                    .into()
+            }
             // regular button
             TrayLayoutProps {
                 label: Some(label), ..

@@ -4,7 +4,6 @@ use iced::{
     widget::{Container, container, row},
     window,
 };
-use iced_layershell::reexport::NewLayerShellSettings;
 use tracing::debug;
 
 #[derive(Deref, DerefMut)]
