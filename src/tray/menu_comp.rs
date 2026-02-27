@@ -2,7 +2,7 @@ use iced::{
     Color, Element, Length, Task,
     alignment::Vertical,
     border, padding,
-    widget::{Row, button, container, keyed::Column, row, text, toggler},
+    widget::{Column, Row, button, container, row, text, toggler},
 };
 use iced_layershell::actions::{IcedNewMenuSettings, MenuDirection};
 use lucide_icons::Icon;
@@ -32,6 +32,7 @@ pub struct MenuComp {
     name: String,
     layout: TrayLayout,
     theme: AppTheme,
+    open_menus: Vec<TrayMenuItemId>,
 }
 
 impl Comp for MenuComp {
@@ -45,13 +46,21 @@ impl Comp for MenuComp {
         Self {
             name: input.name,
             layout: input.layout,
+            open_menus: Vec::new(),
             theme,
         }
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
-            Message::ToggleMenu(_id) => Task::none(),
+            Message::ToggleMenu(id) => {
+                if self.open_menus.contains(&id) {
+                    self.open_menus.retain(|inner_id| *inner_id != id);
+                } else {
+                    self.open_menus.push(id);
+                }
+                Task::none()
+            }
             Message::ItemSelected(_name, _id) => Task::none(),
         }
     }
@@ -64,19 +73,14 @@ impl Comp for MenuComp {
             .children
             .iter()
             .map(|menu| {
-                (
-                    menu.id,
-                    Element::from(
-                        container(self.view_menu(&self.name, menu))
-                            .padding(padding::left(theme.spacing().xs()))
-                            .center_y(theme.spacing().lg())
-                            .center_x(Length::Fill),
-                    ),
+                Element::from(
+                    container(self.view_menu(&self.name, menu))
+                        .padding(padding::left(theme.spacing().xs()))
+                        .center_y(theme.spacing().lg())
+                        .center_x(Length::Fill),
                 )
             })
-            .fold(Column::new(), |col, (item_id, item_elem)| {
-                col.push(item_id, item_elem)
-            });
+            .fold(Column::new(), |col, item_elem| col.push(item_elem));
 
         container(top_menu)
             .height(Length::Fill)
@@ -124,7 +128,7 @@ impl MenuComp {
                 label: Some(label),
                 ..
             } if display == "submenu" => {
-                let is_open = false;
+                let is_open = self.open_menus.contains(&layout.id);
                 let icon = if is_open {
                     Icon::DiamondMinus.widget()
                 } else {
@@ -142,45 +146,41 @@ impl MenuComp {
                     .spacing(theme.spacing().xs())
                     .align_y(Vertical::Center);
 
-                Column::new()
-                    .push(
-                        (layout.id, 0),
-                        button(button_content)
-                            .style(|_, status| {
-                                let base = button::Style {
-                                    background: Some(Color::TRANSPARENT.into()),
-                                    text_color: TEXT,
-                                    ..Default::default()
-                                };
-                                match status {
-                                    button::Status::Hovered => button::Style {
-                                        background: Some(SURFACE0.into()),
-                                        ..base
-                                    },
-                                    _ => base,
-                                }
-                            })
-                            .padding(
-                                padding::vertical(theme.spacing().xxs())
-                                    .left(theme.spacing().xxs()),
-                            )
-                            .width(Length::Fill)
-                            .on_press(Message::ToggleMenu(layout.id)),
-                    )
-                    .push_maybe(
-                        (layout.id, 1),
-                        if is_open {
-                            Some(Column::with_children(
-                                layout
-                                    .children
-                                    .iter()
-                                    .map(|item| (item.id, self.view_menu(&self.name, item))),
-                            ))
-                        } else {
-                            None
-                        },
-                    )
-                    .into()
+                let content = Column::new().push(
+                    button(button_content)
+                        .style(|_, status| {
+                            let base = button::Style {
+                                background: Some(Color::TRANSPARENT.into()),
+                                text_color: TEXT,
+                                ..Default::default()
+                            };
+                            match status {
+                                button::Status::Hovered => button::Style {
+                                    background: Some(SURFACE0.into()),
+                                    ..base
+                                },
+                                _ => base,
+                            }
+                        })
+                        .padding(
+                            padding::vertical(theme.spacing().xxs()).left(theme.spacing().xxs()),
+                        )
+                        .width(Length::Fill)
+                        .on_press(Message::ToggleMenu(layout.id)),
+                );
+
+                if is_open {
+                    content
+                        .push(Column::with_children(
+                            layout
+                                .children
+                                .iter()
+                                .map(|item| self.view_menu(&self.name, item)),
+                        ))
+                        .into()
+                } else {
+                    content.into()
+                }
             }
             // regular button
             TrayLayoutProps {
