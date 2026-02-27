@@ -5,7 +5,7 @@ use crate::{
     divider::{Angled, Direction, Heading},
     feature::{CompWithProps, align_center},
     niri::state_serv,
-    theme::{AppTheme, Shade, app_theme},
+    theme::{CAT_THEME, Shade},
     widget_ext::ContainExt,
 };
 use iced::{
@@ -30,7 +30,6 @@ pub struct Props<'a> {
 
 pub struct NiriWsComp {
     main_mon: MonitorId,
-    theme: AppTheme,
 }
 
 impl CompWithProps for NiriWsComp {
@@ -40,7 +39,6 @@ impl CompWithProps for NiriWsComp {
 
     fn new(init: Self::Init) -> Self {
         Self {
-            theme: app_theme(),
             main_mon: init.main_mon,
         }
     }
@@ -48,7 +46,7 @@ impl CompWithProps for NiriWsComp {
         Task::none()
     }
     fn view<'a>(&self, Props { state }: Self::Props<'a>) -> Element<'_, Self::Message> {
-        let theme = &self.theme;
+        let theme = &CAT_THEME;
         let monitor_map = state.iter_ws().fold(MonitorMap::new(), |mut mon_map, ws| {
             let monitor_id = ws
                 .monitor_id
@@ -95,7 +93,6 @@ impl CompWithProps for NiriWsComp {
                     .style(move |_| container::Style {
                         background: Some(
                             theme
-                                .clone()
                                 .neutral(if pri == 0 { Shade::S700 } else { Shade::S800 })
                                 .into(),
                         ),

@@ -12,7 +12,7 @@ use crate::{
         left_widgets, right_widgets,
     },
     niri::{state_serv, win_comp, ws_comp},
-    theme::{AppTheme, LAVENDER, ROSEWATER, SURFACE2, app_theme},
+    theme::{CAT_THEME, LAVENDER, ROSEWATER, SURFACE2},
     tray::{TrayLayout, service as tray_serv, tray_comp},
     widget_ext::ContainExt,
 };
@@ -48,7 +48,6 @@ pub struct DeloraMain {
     win: win_comp::NiriWinComp,
     clock: clock::Clock,
     date: date::Date,
-    theme: AppTheme,
     output_name: String,
     niri_serv: state_serv::NiriStateServ,
     tray_serv: tray_serv::TrayService,
@@ -67,7 +66,7 @@ impl Comp for DeloraMain {
     type Init = Init;
 
     fn new(input: Self::Init) -> Self {
-        let theme = app_theme();
+        let theme = &CAT_THEME;
         let height = theme.spacing().xl();
         let padding = theme.spacing().xs();
         let monitor_id = MonitorId(input.output_name.clone());
@@ -82,7 +81,6 @@ impl Comp for DeloraMain {
             clock: clock::Clock::new(()),
             date: date::Date::new(()),
             output_name: input.output_name,
-            theme,
             niri_serv: state_serv::NiriStateServ::new(()),
             tray_serv: tray_serv::TrayService::new(()),
             tray: tray_comp::TrayComp::new(()),
@@ -126,7 +124,7 @@ impl Comp for DeloraMain {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        let theme = &self.theme;
+        let theme = &CAT_THEME;
 
         let date_view = align_center!(self.date.view(theme.background()).map(Message::Date));
 

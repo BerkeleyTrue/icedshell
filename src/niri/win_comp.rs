@@ -10,7 +10,7 @@ use crate::{
     feature::{CompWithProps, align_center},
     fira_fonts::TextExt,
     niri::state_serv,
-    theme::{AppTheme, Shade, app_theme},
+    theme::{CAT_THEME, Shade},
     widget_ext::ContainExt,
 };
 
@@ -23,7 +23,6 @@ pub struct Init {
 
 pub struct NiriWinComp {
     mon: MonitorId,
-    theme: AppTheme,
 }
 
 pub struct Props<'a> {
@@ -38,7 +37,6 @@ impl CompWithProps for NiriWinComp {
     type Message = Message;
     fn new(input: Self::Init) -> Self {
         Self {
-            theme: app_theme(),
             mon: input.monitor_id,
         }
     }
@@ -51,7 +49,7 @@ impl CompWithProps for NiriWinComp {
             next_color,
         }: Self::Props<'a>,
     ) -> iced::Element<'_, Self::Message> {
-        let theme = &self.theme;
+        let theme = &CAT_THEME;
         let second_color = theme.info(Shade::S500);
         let maybe_ws = state
             .iter_ws()

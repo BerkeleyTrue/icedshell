@@ -4,6 +4,8 @@ mod color;
 mod radius;
 mod spacing;
 
+use std::sync::LazyLock;
+
 use iced::{
     Color, color,
     theme::palette::{darken, lighten},
@@ -58,9 +60,7 @@ impl ColorExt for Color {
     }
 }
 
-pub fn app_theme() -> AppTheme {
-    AppTheme::new(catppuccin_tokens())
-}
+pub static CAT_THEME: LazyLock<AppTheme> = LazyLock::new(|| AppTheme::new(catppuccin_tokens()));
 
 fn catppuccin_tokens() -> Tokens {
     Tokens::new(

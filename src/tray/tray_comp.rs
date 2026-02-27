@@ -8,7 +8,7 @@ use tracing::debug;
 use crate::{
     divider::{Angled, Direction, Heading},
     feature::{CompWithProps, align_center},
-    theme::{SURFACE1, SURFACE2, app_theme},
+    theme::{CAT_THEME, SURFACE1, SURFACE2},
     tray::{dbus::TrayLayout, service::TrayService},
     widget_ext::ContainExt,
 };
@@ -49,7 +49,7 @@ impl CompWithProps for TrayComp {
     }
 
     fn view<'a>(&self, props: Self::Props<'a>) -> iced::Element<'_, Self::Message> {
-        let theme = app_theme();
+        let theme = &CAT_THEME;
         let items = props.serv.items.values().map(|item| {
             let height = theme.spacing().xl() - theme.spacing().sm();
             let content = align_center!(

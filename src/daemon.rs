@@ -295,7 +295,7 @@ impl Daemon {
 }
 
 pub fn start(init: Init, settings: iced_layershell::Settings) -> iced_layershell::Result {
-    let theme = mytheme::app_theme();
+    let theme = &mytheme::CAT_THEME;
     iced_layershell::daemon(
         move || Daemon::new(init.clone()),
         || "Icedshell".to_string(),

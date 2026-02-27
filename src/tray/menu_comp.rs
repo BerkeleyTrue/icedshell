@@ -10,7 +10,7 @@ use tracing::info;
 
 use crate::{
     feature::{Comp, Feature},
-    theme::{AppTheme, SURFACE0, Shade, TEXT, app_theme},
+    theme::{CAT_THEME, SURFACE0, Shade, TEXT},
     tray::{
         TrayLayoutProps,
         dbus::{TrayLayout, TrayMenuItemId},
@@ -32,7 +32,6 @@ pub struct Init {
 pub struct MenuComp {
     name: String,
     layout: TrayLayout,
-    theme: AppTheme,
     menu_stack: Vec<TrayMenuItemId>,
 }
 
@@ -51,7 +50,7 @@ impl MenuComp {
     }
 
     fn view_menu<'a>(&'a self, name: &'a str, layout: &'a TrayLayout) -> Element<'a, Message> {
-        let theme = &self.theme;
+        let theme = &CAT_THEME;
         match &layout.props {
             // Divider
             TrayLayoutProps { type_: Some(t), .. } if t == "separator" => {
@@ -155,14 +154,12 @@ impl Comp for MenuComp {
     type Init = Init;
 
     fn new(input: Self::Init) -> Self {
-        let theme = app_theme();
         let layout = &input.layout;
         info!("layout: {layout:?}");
         Self {
             name: input.name,
             layout: input.layout,
             menu_stack: Vec::new(),
-            theme,
         }
     }
 
@@ -181,7 +178,7 @@ impl Comp for MenuComp {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        let theme = &self.theme;
+        let theme = &CAT_THEME;
         let menu_items = Self::get_current_menu(&self.menu_stack, &self.layout);
 
         let mut top_menu = menu_items
@@ -231,12 +228,14 @@ impl Comp for MenuComp {
             .height(Length::Fill)
             .width(Length::Fill)
             .padding(theme.spacing().xs())
-            .style(|_| container::Style {
-                border: border::rounded(theme.radius().lg())
-                    .color(theme.secondary(Shade::S500))
-                    .width(theme.spacing().xxs()),
-                background: Some(theme.neutral(Shade::S900).into()),
-                ..Default::default()
+            .style({
+                move |_| container::Style {
+                    border: border::rounded(theme.radius().lg())
+                        .color(theme.secondary(Shade::S500))
+                        .width(theme.spacing().xxs()),
+                    background: Some(theme.neutral(Shade::S900).into()),
+                    ..Default::default()
+                }
             })
             .into()
     }
@@ -245,7 +244,7 @@ impl Comp for MenuComp {
 impl Feature for MenuComp {
     type Settings = IcedNewMenuSettings;
     fn layer(&self) -> IcedNewMenuSettings {
-        let theme = &self.theme;
+        let theme = &CAT_THEME;
         let item_height = theme.spacing().lg();
         let height = self.layout.children.len() as f32 * item_height + theme.spacing().xs();
 

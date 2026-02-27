@@ -10,7 +10,7 @@ use crate::{
     divider::{Direction, Semi},
     feature::{CompWithProps, align_center},
     fira_fonts::TextExt,
-    theme::{LAVENDER, app_theme},
+    theme::{CAT_THEME, LAVENDER},
     widget_ext::ContainExt,
 };
 
@@ -69,7 +69,7 @@ impl CompWithProps for Date {
     }
 
     fn view(&self, color: Color) -> Element<'_, Message> {
-        let theme = app_theme();
+        let theme = &CAT_THEME;
 
         let time = align_center!(text(&self.date).color(color).bold())
             .padding(padding::right(theme.spacing().sm()));
