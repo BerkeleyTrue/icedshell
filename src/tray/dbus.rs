@@ -264,7 +264,7 @@ pub trait StatusNotifierItem {
     fn tool_tip(&self) -> zbus::Result<(String, Vec<Icon>, String, String)>;
 }
 
-#[derive(Clone, Copy, Debug, Type, Deref, DerefMut, From)]
+#[derive(Clone, Copy, Debug, Type, Deref, DerefMut, From, PartialEq, Eq)]
 pub struct TrayMenuItemId(i32);
 
 /// The menu layout

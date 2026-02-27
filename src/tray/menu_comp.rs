@@ -2,7 +2,7 @@ use iced::{
     Color, Element, Length, Task,
     alignment::Vertical,
     border, padding,
-    widget::{Column, Row, button, container, row, text, toggler},
+    widget::{Row, button, container, keyed::Column, row, text, toggler},
 };
 use iced_layershell::actions::{IcedNewMenuSettings, MenuDirection};
 use lucide_icons::Icon;
@@ -64,14 +64,19 @@ impl Comp for MenuComp {
             .children
             .iter()
             .map(|menu| {
-                Element::from(
-                    container(self.view_menu(&self.name, menu))
-                        .padding(padding::left(theme.spacing().xs()))
-                        .center_y(theme.spacing().lg())
-                        .center_x(Length::Fill),
+                (
+                    menu.id,
+                    Element::from(
+                        container(self.view_menu(&self.name, menu))
+                            .padding(padding::left(theme.spacing().xs()))
+                            .center_y(theme.spacing().lg())
+                            .center_x(Length::Fill),
+                    ),
                 )
             })
-            .fold(Column::new(), |col, item_elem| col.push(item_elem));
+            .fold(Column::new(), |col, (item_id, item_elem)| {
+                col.push(item_id, item_elem)
+            });
 
         container(top_menu)
             .height(Length::Fill)
@@ -89,7 +94,7 @@ impl Comp for MenuComp {
 }
 
 impl MenuComp {
-    fn view_menu<'a>(&self, name: &'a str, layout: &'a TrayLayout) -> Element<'a, Message> {
+    fn view_menu<'a>(&'a self, name: &'a str, layout: &'a TrayLayout) -> Element<'a, Message> {
         let theme = &self.theme;
         match &layout.props {
             // Divider
@@ -121,9 +126,9 @@ impl MenuComp {
             } if display == "submenu" => {
                 let is_open = false;
                 let icon = if is_open {
-                    Icon::DiamondPlus.widget()
-                } else {
                     Icon::DiamondMinus.widget()
+                } else {
+                    Icon::DiamondPlus.widget()
                 }
                 .size(theme.spacing().md())
                 .align_y(Vertical::Center)
@@ -137,24 +142,44 @@ impl MenuComp {
                     .spacing(theme.spacing().xs())
                     .align_y(Vertical::Center);
 
-                button(button_content)
-                    .style(|_, status| {
-                        let base = button::Style {
-                            background: Some(Color::TRANSPARENT.into()),
-                            text_color: TEXT,
-                            ..Default::default()
-                        };
-                        match status {
-                            button::Status::Hovered => button::Style {
-                                background: Some(SURFACE0.into()),
-                                ..base
-                            },
-                            _ => base,
-                        }
-                    })
-                    .padding(padding::vertical(theme.spacing().xxs()).left(theme.spacing().xxs()))
-                    .width(Length::Fill)
-                    .on_press(Message::ToggleMenu(layout.id))
+                Column::new()
+                    .push(
+                        (layout.id, 0),
+                        button(button_content)
+                            .style(|_, status| {
+                                let base = button::Style {
+                                    background: Some(Color::TRANSPARENT.into()),
+                                    text_color: TEXT,
+                                    ..Default::default()
+                                };
+                                match status {
+                                    button::Status::Hovered => button::Style {
+                                        background: Some(SURFACE0.into()),
+                                        ..base
+                                    },
+                                    _ => base,
+                                }
+                            })
+                            .padding(
+                                padding::vertical(theme.spacing().xxs())
+                                    .left(theme.spacing().xxs()),
+                            )
+                            .width(Length::Fill)
+                            .on_press(Message::ToggleMenu(layout.id)),
+                    )
+                    .push_maybe(
+                        (layout.id, 1),
+                        if is_open {
+                            Some(Column::with_children(
+                                layout
+                                    .children
+                                    .iter()
+                                    .map(|item| (item.id, self.view_menu(&self.name, item))),
+                            ))
+                        } else {
+                            None
+                        },
+                    )
                     .into()
             }
             // regular button
