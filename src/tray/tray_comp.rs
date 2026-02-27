@@ -8,7 +8,7 @@ use tracing::debug;
 use crate::{
     divider::{Angled, Direction, Heading},
     feature::{CompWithProps, align_center},
-    theme::{CAT_THEME, SURFACE1, SURFACE2},
+    theme::CAT_THEME,
     tray::{dbus::TrayLayout, service::TrayService},
     widget_ext::ContainExt,
 };
@@ -62,11 +62,11 @@ impl CompWithProps for TrayComp {
                 .padding(padding::vertical(theme.spacing().xs()))
                 .style(|_, status| match status {
                     button::Status::Hovered => button::Style {
-                        background: Some(SURFACE1.into()),
+                        background: Some(theme.surface1().into()),
                         ..Default::default()
                     },
                     _ => button::Style {
-                        background: Some(SURFACE2.into()),
+                        background: Some(theme.surface2().into()),
                         ..Default::default()
                     },
                 })
@@ -98,7 +98,7 @@ impl CompWithProps for TrayComp {
         });
 
         let end_div = align_center!(Angled::new(
-            SURFACE2,
+            theme.surface2(),
             Direction::Right,
             Heading::North,
             theme.spacing().xl(),
@@ -106,7 +106,7 @@ impl CompWithProps for TrayComp {
         .background(props.next_color);
 
         let content = align_center!(row(items).spacing(theme.spacing().xs()))
-            .background(SURFACE2)
+            .background(theme.surface2())
             .padding(padding::horizontal(theme.spacing().sm()));
 
         row![content, end_div].into()

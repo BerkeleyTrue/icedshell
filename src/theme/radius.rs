@@ -1,21 +1,3 @@
-pub enum RadiusSize {
-    None = 0,
-    Xs = 1,
-    Sm = 2,
-    Md = 3,
-    Lg = 4,
-    Xl = 5,
-    Xl2 = 6,
-    Full = 7,
-}
-
-impl RadiusSize {
-    #[must_use]
-    pub const fn index(self) -> usize {
-        self as usize
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RadiusScale {
     values: [f32; 8],
@@ -25,17 +7,6 @@ impl RadiusScale {
     pub const DEFAULT: Self = Self {
         values: [0.0, 2.0, 4.0, 6.0, 8.0, 12.0, 16.0, 9999.0],
     };
-
-    #[must_use]
-    pub const fn new(values: [f32; 8]) -> Self {
-        Self { values }
-    }
-
-    #[inline(always)]
-    #[must_use]
-    pub const fn get(&self, size: RadiusSize) -> f32 {
-        self.values[size.index()]
-    }
 
     #[inline(always)]
     #[must_use]

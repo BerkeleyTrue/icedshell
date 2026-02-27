@@ -1,24 +1,4 @@
 #[derive(Debug, Clone)]
-pub enum SpacingSize {
-    Xxs = 0,
-    Xs = 1,
-    Sm = 2,
-    Md = 3,
-    Lg = 4,
-    Xl = 5,
-    Xl2 = 6,
-    Xl3 = 7,
-    Xl4 = 8,
-    Xl5 = 9,
-}
-
-impl SpacingSize {
-    pub const fn index(self) -> usize {
-        self as usize
-    }
-}
-
-#[derive(Debug, Clone)]
 pub struct SpacingScale {
     values: [f32; 10],
 }
@@ -27,13 +7,6 @@ impl SpacingScale {
     pub const DEFAULT: Self = Self {
         values: [2.0, 4.0, 8.0, 12.0, 16.0, 24.0, 32.0, 48.0, 64.0, 96.0],
     };
-
-    /// get a value by size
-    #[inline(always)]
-    #[must_use]
-    pub const fn get(&self, size: SpacingSize) -> f32 {
-        self.values[size.index()]
-    }
 
     /// 2px
     #[inline(always)]
@@ -103,10 +76,5 @@ impl SpacingScale {
     #[must_use]
     pub const fn xl5(&self) -> f32 {
         self.values[9]
-    }
-
-    #[must_use]
-    pub const fn values(&self) -> &[f32; 10] {
-        &self.values
     }
 }

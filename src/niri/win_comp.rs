@@ -10,7 +10,7 @@ use crate::{
     feature::{CompWithProps, align_center},
     fira_fonts::TextExt,
     niri::state_serv,
-    theme::{CAT_THEME, Shade},
+    theme::CAT_THEME,
     widget_ext::ContainExt,
 };
 
@@ -50,7 +50,7 @@ impl CompWithProps for NiriWinComp {
         }: Self::Props<'a>,
     ) -> iced::Element<'_, Self::Message> {
         let theme = &CAT_THEME;
-        let second_color = theme.info(Shade::S500);
+        let second_color = theme.blue();
         let maybe_ws = state
             .iter_ws()
             .find(move |ws| ws.monitor_id == Some(self.mon.clone()) && ws.is_active);
@@ -100,7 +100,7 @@ impl CompWithProps for NiriWinComp {
 
         let title_cont = align_center!(row![
             app_icon,
-            align_center!(text!("{title}").color(theme.neutral(Shade::S700)).bold())
+            align_center!(text!("{title}").color(theme.surface1()).bold())
         ])
         .background(color)
         .padding(padding::horizontal(theme.spacing().sm()));

@@ -4,11 +4,12 @@ use iced::{
     widget::{Container, container},
 };
 
-use crate::theme::RED;
+use crate::theme::CAT_THEME;
 
 pub fn debug_border(_: &Theme) -> container::Style {
+    let theme = &CAT_THEME;
     container::Style {
-        border: border::width(2).color(RED),
+        border: border::width(2).color(theme.red()),
         ..Default::default()
     }
 }

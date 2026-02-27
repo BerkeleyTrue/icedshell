@@ -10,7 +10,7 @@ use tracing::info;
 
 use crate::{
     feature::{Comp, Feature},
-    theme::{CAT_THEME, SURFACE0, Shade, TEXT},
+    theme::CAT_THEME,
     tray::{
         TrayLayoutProps,
         dbus::{TrayLayout, TrayMenuItemId},
@@ -97,12 +97,12 @@ impl MenuComp {
                     .style(|_, status| {
                         let base = button::Style {
                             background: Some(Color::TRANSPARENT.into()),
-                            text_color: TEXT,
+                            text_color: theme.text_color(),
                             ..Default::default()
                         };
                         match status {
                             button::Status::Hovered => button::Style {
-                                background: Some(SURFACE0.into()),
+                                background: Some(theme.surface0().into()),
                                 ..base
                             },
                             _ => base,
@@ -125,12 +125,12 @@ impl MenuComp {
                     .style(|_, status| {
                         let base = button::Style {
                             background: Some(Color::TRANSPARENT.into()),
-                            text_color: TEXT,
+                            text_color: theme.text_color(),
                             ..Default::default()
                         };
                         match status {
                             button::Status::Hovered => button::Style {
-                                background: Some(SURFACE0.into()),
+                                background: Some(theme.surface0().into()),
                                 ..base
                             },
                             _ => base,
@@ -204,12 +204,12 @@ impl Comp for MenuComp {
                         .style(|_, status| {
                             let base = button::Style {
                                 background: Some(Color::TRANSPARENT.into()),
-                                text_color: TEXT,
+                                text_color: theme.text_color(),
                                 ..Default::default()
                             };
                             match status {
                                 button::Status::Hovered => button::Style {
-                                    background: Some(SURFACE0.into()),
+                                    background: Some(theme.surface0().into()),
                                     ..base
                                 },
                                 _ => base,
@@ -231,9 +231,9 @@ impl Comp for MenuComp {
             .style({
                 move |_| container::Style {
                     border: border::rounded(theme.radius().lg())
-                        .color(theme.secondary(Shade::S500))
+                        .color(theme.mauve())
                         .width(theme.spacing().xxs()),
-                    background: Some(theme.neutral(Shade::S900).into()),
+                    background: Some(theme.base().into()),
                     ..Default::default()
                 }
             })

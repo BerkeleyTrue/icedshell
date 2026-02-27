@@ -10,7 +10,7 @@ use crate::{
     divider::{Direction, Semi},
     feature::{CompWithProps, align_center},
     fira_fonts::TextExt,
-    theme::{CAT_THEME, LAVENDER},
+    theme::CAT_THEME,
     widget_ext::ContainExt,
 };
 
@@ -74,10 +74,10 @@ impl CompWithProps for Date {
         let time = align_center!(text(&self.date).color(color).bold())
             .padding(padding::right(theme.spacing().sm()));
 
-        let div = Semi::new(LAVENDER, Direction::Left, theme.spacing().xl());
+        let div = Semi::new(theme.lavender(), Direction::Left, theme.spacing().xl());
 
         let date = align_center!(text(&self.week).color(color))
-            .background(LAVENDER)
+            .background(theme.lavender())
             .padding(padding::horizontal(theme.spacing().sm()));
 
         align_center!(row![time, div, date]).into()

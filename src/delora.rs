@@ -12,7 +12,7 @@ use crate::{
         left_widgets, right_widgets,
     },
     niri::{state_serv, win_comp, ws_comp},
-    theme::{CAT_THEME, LAVENDER, ROSEWATER, SURFACE2},
+    theme::CAT_THEME,
     tray::{TrayLayout, service as tray_serv, tray_comp},
     widget_ext::ContainExt,
 };
@@ -137,7 +137,7 @@ impl Comp for DeloraMain {
         );
 
         let div = align_center!(Angled::new(
-            LAVENDER,
+            theme.lavender(),
             Direction::Right,
             Heading::South,
             theme.spacing().xl(),
@@ -147,13 +147,13 @@ impl Comp for DeloraMain {
         let clock_view = align_center!(self.clock.view(theme.background()).map(Message::Clock))
             .padding(padding::right(theme.spacing().sm()));
 
-        let win_div = Semi::new(ROSEWATER, Direction::Left, theme.spacing().xl());
+        let win_div = Semi::new(theme.rosewater(), Direction::Left, theme.spacing().xl());
 
         let win = align_center!(
             self.win
                 .view(win_comp::Props {
-                    color: ROSEWATER,
-                    next_color: SURFACE2,
+                    color: theme.rosewater(),
+                    next_color: theme.surface2(),
                     state: &self.niri_serv,
                 })
                 .map(Message::Win),

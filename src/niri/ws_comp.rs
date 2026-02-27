@@ -5,7 +5,7 @@ use crate::{
     divider::{Angled, Direction, Heading},
     feature::{CompWithProps, align_center},
     niri::state_serv,
-    theme::{CAT_THEME, Shade},
+    theme::CAT_THEME,
     widget_ext::ContainExt,
 };
 use iced::{
@@ -74,9 +74,7 @@ impl CompWithProps for NiriWsComp {
                     };
 
                     if ws.is_focused {
-                        icon = Icon::CircleDot
-                            .widget()
-                            .color(theme.destructive(Shade::S500))
+                        icon = Icon::CircleDot.widget().color(theme.maroon())
                     }
 
                     // ws
@@ -92,9 +90,12 @@ impl CompWithProps for NiriWsComp {
                     .padding(padding::horizontal(theme.spacing().sm()))
                     .style(move |_| container::Style {
                         background: Some(
-                            theme
-                                .neutral(if pri == 0 { Shade::S700 } else { Shade::S800 })
-                                .into(),
+                            if pri == 0 {
+                                theme.surface1()
+                            } else {
+                                theme.surface0()
+                            }
+                            .into(),
                         ),
                         border: border::rounded(theme.radius().xs()),
                         ..Default::default()
