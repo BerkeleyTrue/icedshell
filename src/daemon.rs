@@ -23,7 +23,7 @@ use crate::{
     feature::{Comp, FeatWindow, Feature, Service},
     niri::{self, monitors::MonitorsServ},
     theme::{self as mytheme},
-    tray::{TrayLayout, menu_comp as tray_menu},
+    tray::{TrayLayout, TrayMenuItemId, menu_comp as tray_menu},
 };
 
 #[derive(Clone)]
@@ -74,6 +74,12 @@ pub enum Message {
 
     Delora(window::Id, delora::Message),
     TrayMenu(window::Id, tray_menu::Message),
+    TrayMenuItemClicked(
+        /// sni item name
+        String,
+        /// menu item id
+        TrayMenuItemId,
+    ),
 
     FeatUnfocused(window::Id),
     FeatFocused(window::Id),
@@ -162,8 +168,18 @@ impl Daemon {
             }
             Message::TrayMenu(win_id, message) => {
                 if let Some(Feat::TrayMenu(menu)) = self.features.get_mut(&win_id) {
-                    menu.update(message.clone())
-                        .map(move |m| Message::TrayMenu(win_id, m))
+                    let inner_task = menu
+                        .update(message.clone())
+                        .map(move |m| Message::TrayMenu(win_id, m));
+
+                    let outer_task =
+                        if let tray_menu::Message::ItemSelected(name, menu_item_id) = message {
+                            Task::done(Message::TrayMenuItemClicked(name, menu_item_id))
+                        } else {
+                            Task::none()
+                        };
+
+                    inner_task.chain(outer_task)
                 } else {
                     Task::none()
                 }
@@ -193,6 +209,17 @@ impl Daemon {
             },
             Message::FeatUnfocused(id) => match self.features.get(&id) {
                 Some(Feat::TrayMenu(_)) => self.unfocus_tray(id),
+                _ => Task::none(),
+            },
+            Message::TrayMenuItemClicked(name, menu_item_id) => match self
+                .features
+                .iter_mut()
+                .find(|(_, feat)| matches!(feat, Feat::Delora(_)))
+                .map(|(win_id, feat)| (*win_id, feat))
+            {
+                Some((win_id, Feat::Delora(delora))) => delora
+                    .tray_menu_item_clicked(name, menu_item_id)
+                    .map(move |m| Message::Delora(win_id, m)),
                 _ => Task::none(),
             },
             Message::Quit => exit(),

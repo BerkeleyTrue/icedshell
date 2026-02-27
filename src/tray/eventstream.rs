@@ -6,9 +6,12 @@ use tracing::debug;
 
 use crate::{
     fdo_icons::{self, FdIcon},
-    tray::dbus::{
-        DBusMenuProxy, StatusNotifierItemProxy, StatusNotifierWatcher, StatusNotifierWatcherProxy,
-        TrayLayout, icons_to_fd_icon,
+    tray::{
+        TrayMenuItemId,
+        dbus::{
+            DBusMenuProxy, StatusNotifierItemProxy, StatusNotifierWatcher,
+            StatusNotifierWatcherProxy, TrayLayout, icons_to_fd_icon,
+        },
     },
 };
 
@@ -72,12 +75,12 @@ impl SNItem {
         })
     }
 
-    pub async fn menu_item_clicked(&self, id: i32) -> anyhow::Result<TrayLayout> {
+    pub async fn menu_item_clicked(&self, id: TrayMenuItemId) -> anyhow::Result<TrayLayout> {
         let value = zbus::zvariant::Value::I32(32).try_to_owned()?;
 
         self.menu_proxy
             .event(
-                id,
+                *id,
                 "clicked",
                 &value,
                 time::OffsetDateTime::now_utc().microsecond(),

@@ -2,6 +2,7 @@ use crate::{
     fdo_icons::FdIcon,
     feature::Service,
     tray::{
+        TrayMenuItemId,
         dbus::TrayLayout,
         eventstream::{SNItem, SNItemEvent, TrayEvent, listen},
     },
@@ -31,7 +32,7 @@ pub struct TrayService {
 }
 
 impl TrayService {
-    pub fn menu_item_clicked(&mut self, id: i32, name: String) -> Task<Message> {
+    pub fn menu_item_clicked(&mut self, name: String, id: TrayMenuItemId) -> Task<Message> {
         debug!("Click on {name:} menu: {id}");
         self.items
             .get(&name)

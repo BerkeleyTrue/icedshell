@@ -13,7 +13,7 @@ use crate::{
     },
     niri::{state_serv, win_comp, ws_comp},
     theme::CAT_THEME,
-    tray::{TrayLayout, service as tray_serv, tray_comp},
+    tray::{TrayLayout, TrayMenuItemId, service as tray_serv, tray_comp},
     widget_ext::ContainExt,
 };
 
@@ -195,5 +195,13 @@ impl Feature for DeloraMain {
             namespace: Some("DeloraMainBar".into()),
             margin: None,
         }
+    }
+}
+
+impl DeloraMain {
+    pub fn tray_menu_item_clicked(&mut self, name: String, id: TrayMenuItemId) -> Task<Message> {
+        self.tray_serv
+            .menu_item_clicked(name, id)
+            .map(Message::TrayService)
     }
 }

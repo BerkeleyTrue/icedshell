@@ -1,4 +1,4 @@
-use derive_more::{Deref, DerefMut, From};
+use derive_more::{Deref, DerefMut, Display, From};
 use iced::{advanced::image, futures::StreamExt};
 use std::time::Duration;
 use tracing::{info, trace, warn};
@@ -264,7 +264,7 @@ pub trait StatusNotifierItem {
     fn tool_tip(&self) -> zbus::Result<(String, Vec<Icon>, String, String)>;
 }
 
-#[derive(Clone, Copy, Debug, Type, Deref, DerefMut, From, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Type, Deref, DerefMut, From, PartialEq, Eq, Display)]
 pub struct TrayMenuItemId(i32);
 
 /// The menu layout
