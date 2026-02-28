@@ -12,6 +12,7 @@ use crate::{
         left_widgets, right_widgets,
     },
     niri::{state_serv, win_comp, ws_comp},
+    system_info as sys_info,
     theme::CAT_THEME,
     tray::{TrayLayout, TrayMenuItemId, service as tray_serv, tray_comp},
     widget_ext::ContainExt,
@@ -34,6 +35,8 @@ pub enum Message {
         /// menu layout
         TrayLayout,
     ),
+
+    SysInfo(sys_info::Message),
 }
 
 pub struct Init {
@@ -52,6 +55,7 @@ pub struct DeloraMain {
     niri_serv: state_serv::NiriStateServ,
     tray_serv: tray_serv::TrayService,
     tray: tray_comp::TrayComp,
+    sys_info: sys_info::SysInfoComp,
 }
 
 impl DeloraMain {
@@ -84,6 +88,7 @@ impl Comp for DeloraMain {
             niri_serv: state_serv::NiriStateServ::new(()),
             tray_serv: tray_serv::TrayService::new(()),
             tray: tray_comp::TrayComp::new(()),
+            sys_info: sys_info::SysInfoComp::new(()),
         }
     }
 
@@ -167,11 +172,13 @@ impl Comp for DeloraMain {
             })
             .map(Message::Tray);
 
+        let sys_view = self.sys_info.view().map(Message::SysInfo);
+
         // main bar
         bar_widgets!(
             left:  date_view, div, niri_ws_view;
             center: clock_view, win_div, win, tray;
-            right:
+            right: sys_view
         )
         .background(Color::TRANSPARENT)
         .padding(padding::left(theme.spacing().md()).bottom(self.padding))

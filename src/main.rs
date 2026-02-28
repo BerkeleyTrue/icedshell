@@ -7,6 +7,7 @@ mod fdo_icons;
 mod feature;
 mod fira_fonts;
 mod niri;
+mod system_info;
 mod theme;
 mod tray;
 mod widget_ext;

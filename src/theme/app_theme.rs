@@ -27,6 +27,12 @@ impl AppTheme {
         &self.radius
     }
 
+    /// Transparent color
+    #[must_use]
+    pub const fn trans(&self) -> Color {
+        Color::TRANSPARENT
+    }
+
     // Catppuccin Frappe color accessors
 
     /// #f2d5cf
