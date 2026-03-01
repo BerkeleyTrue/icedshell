@@ -1,6 +1,7 @@
 use iced::{
+    Task,
     alignment::Vertical,
-    padding,
+    padding, time,
     widget::{container, row, text},
 };
 use lucide_icons::Icon;
@@ -18,11 +19,14 @@ use crate::{
 const BYTES_IN_GIG: u64 = 1_073_741_824;
 
 #[derive(Debug, Clone)]
-pub enum Message {}
+pub enum Message {
+    SystemLoad(f64),
+}
 
 pub struct SysInfoComp {
     disks: Disks,
     system: System,
+    load: f64,
 }
 
 impl Comp for SysInfoComp {
@@ -37,11 +41,54 @@ impl Comp for SysInfoComp {
         );
         let disks =
             Disks::new_with_refreshed_list_specifics(DiskRefreshKind::nothing().with_storage());
-        Self { disks, system }
+        Self {
+            disks,
+            system,
+            load: 0.,
+        }
+    }
+
+    fn subscription(&self) -> iced::Subscription<Self::Message> {
+        time::every(time::Duration::from_millis(250))
+            .map(|_| Message::SystemLoad(System::load_average().one))
+    }
+
+    fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
+        match message {
+            Message::SystemLoad(load) => {
+                self.load = load;
+                Task::none()
+            }
+        }
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let theme = &CAT_THEME;
+        let cpu = {
+            let icon = Icon::BicepsFlexed.widget().center().color(theme.base());
+            let load = self.load;
+
+            let div = align_center!(Angled::new(
+                theme.peach(),
+                divider::Direction::Left,
+                divider::Heading::North,
+                theme.spacing().xl(),
+            ))
+            .background(theme.trans());
+
+            let text = text!("{load:.0}%").color(theme.base()).bold();
+
+            let content = container(
+                row![icon, text]
+                    .align_y(Vertical::Center)
+                    .spacing(theme.spacing().xxs()),
+            )
+            .background(theme.peach())
+            .padding(padding::horizontal(theme.spacing().md()));
+
+            row![div, content].align_y(Vertical::Center)
+        };
+
         let mem = {
             let icon = Icon::MemoryStick
                 .widget()
@@ -58,7 +105,7 @@ impl Comp for SysInfoComp {
                 divider::Heading::North,
                 theme.spacing().xl(),
             ))
-            .background(theme.trans());
+            .background(theme.peach());
 
             let text = text!("{mem:.0}%").color(theme.base()).bold();
 
@@ -108,7 +155,7 @@ impl Comp for SysInfoComp {
             align_center!(row![div, main])
         };
 
-        container(row![mem, disk_usage])
+        container(row![cpu, mem, disk_usage])
             .align_y(Vertical::Center)
             .into()
     }

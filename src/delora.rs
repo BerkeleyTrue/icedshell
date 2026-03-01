@@ -114,6 +114,7 @@ impl Comp for DeloraMain {
                 inner_task.chain(out_task)
             }
             Message::OpenTrayMenu(_, _) => Task::none(),
+            Message::SysInfo(message) => self.sys_info.update(message).map(Message::SysInfo),
         }
     }
 
@@ -125,7 +126,10 @@ impl Comp for DeloraMain {
         let niri_win = self.win.subscription().map(Message::Win);
         let tray_serv = self.tray_serv.subscription().map(Message::TrayService);
         let tray = self.tray.subscription().map(Message::Tray);
-        Subscription::batch([clock, date, niri_ws, niri_win, niri_serv, tray_serv, tray])
+        let sys_info = self.sys_info.subscription().map(Message::SysInfo);
+        Subscription::batch([
+            clock, date, niri_ws, niri_win, niri_serv, tray_serv, tray, sys_info,
+        ])
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
