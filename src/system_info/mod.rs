@@ -54,9 +54,9 @@ impl Comp for SysInfoComp {
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
         let load_sub = time::every(time::Duration::from_millis(250))
-            .map(|_| Message::SystemLoad(System::load_average().one));
+            .map(|_| Message::SystemLoad(System::load_average().five));
 
-        let avg_temp_sub = Subscription::run_with(cpu_temp::ListenData(250), cpu_temp::listen)
+        let avg_temp_sub = Subscription::run_with(cpu_temp::ListenData(1000), cpu_temp::listen)
             .filter_map(|res| match res {
                 Ok(temp) => Some(Message::CpuTemp(temp)),
                 Err(err) => {

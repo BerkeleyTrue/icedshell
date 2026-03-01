@@ -41,11 +41,12 @@ async fn get_hwmon_paths() -> anyhow::Result<Vec<PathBuf>> {
         let mut dirs = fs::read_dir("/sys/class/hwmon/").await?;
 
         while let Some(entry) = dirs.next_entry().await? {
-            let file_type = entry.file_type().await?;
+            let path = entry.path();
+            let is_dir = fs::metadata(&path).await?.is_dir();
             let name = entry.file_name();
             let name = name.to_string_lossy();
-            if name.starts_with("hwmon") && file_type.is_dir() {
-                paths.push(entry.path());
+            if name.starts_with("hwmon") && is_dir {
+                paths.push(path);
             }
         }
     }
