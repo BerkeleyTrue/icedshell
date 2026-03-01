@@ -7,7 +7,7 @@ use iced::{
 };
 use lucide_icons::Icon;
 use sysinfo::{CpuRefreshKind, DiskRefreshKind, Disks, MemoryRefreshKind, RefreshKind, System};
-use tracing::{debug, info};
+use tracing::info;
 
 use crate::{
     divider::{self, Angled},
@@ -23,6 +23,7 @@ const BYTES_IN_GIG: u64 = 1_073_741_824;
 pub enum Message {
     SystemLoad(f64),
     CpuTemp(f32),
+    RefreshTick,
 }
 
 pub struct SysInfoComp {
@@ -53,8 +54,8 @@ impl Comp for SysInfoComp {
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
-        let load_sub = time::every(time::Duration::from_millis(250))
-            .map(|_| Message::SystemLoad(System::load_average().five));
+        let load_sub = time::every(time::Duration::from_millis(750))
+            .map(|_| Message::SystemLoad(System::load_average().one));
 
         let avg_temp_sub = Subscription::run_with(cpu_temp::ListenData(1000), cpu_temp::listen)
             .filter_map(|res| match res {
@@ -65,7 +66,10 @@ impl Comp for SysInfoComp {
                 }
             });
 
-        Subscription::batch([load_sub, avg_temp_sub])
+        let refresh_sub =
+            time::every(time::Duration::from_millis(750)).map(|_| Message::RefreshTick);
+
+        Subscription::batch([load_sub, avg_temp_sub, refresh_sub])
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
@@ -78,15 +82,17 @@ impl Comp for SysInfoComp {
                 self.cpu_temp = cpu_temp;
                 Task::none()
             }
+            Message::RefreshTick => {
+                self.system.refresh_memory();
+                self.system.refresh_cpu_usage();
+                Task::none()
+            }
         }
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let theme = &CAT_THEME;
-        let cpu = {
-            let icon = Icon::BicepsFlexed.widget().center().color(theme.base());
-            let load = self.load;
-
+        let avg_load = {
             let div = align_center!(Angled::new(
                 theme.peach(),
                 divider::Direction::Left,
@@ -95,12 +101,20 @@ impl Comp for SysInfoComp {
             ))
             .background(theme.trans());
 
+            let icon = Icon::BicepsFlexed
+                .widget()
+                .center()
+                .color(theme.base())
+                .size(theme.spacing().md());
+
+            let load = self.load;
+
             let text = text!("{load:.0}%").color(theme.base()).bold();
 
             let content = container(
                 row![icon, text]
                     .align_y(Vertical::Center)
-                    .spacing(theme.spacing().xxs()),
+                    .spacing(theme.spacing().xs()),
             )
             .background(theme.peach())
             .padding(padding::horizontal(theme.spacing().md()));
@@ -108,14 +122,7 @@ impl Comp for SysInfoComp {
             row![div, content].align_y(Vertical::Center)
         };
 
-        let temp = {
-            let icon = Icon::Thermometer
-                .widget()
-                .center()
-                .size(theme.spacing().md())
-                .color(theme.base());
-            let temp = self.cpu_temp;
-
+        let cpu = {
             let div = align_center!(Angled::new(
                 theme.mauve(),
                 divider::Direction::Left,
@@ -124,12 +131,28 @@ impl Comp for SysInfoComp {
             ))
             .background(theme.peach());
 
-            let text = text!("{temp:.0}%").center().color(theme.base()).bold();
+            let temp_icon = Icon::Thermometer
+                .widget()
+                .center()
+                .size(theme.spacing().md())
+                .color(theme.base());
+
+            let cpu_icon = Icon::Cpu
+                .widget()
+                .center()
+                .size(theme.spacing().md())
+                .color(theme.base());
+
+            let temp = self.cpu_temp;
+            let usage = self.system.global_cpu_usage();
+
+            let temp_text = text!("{temp:.0} C").center().color(theme.base()).bold();
+            let usage_text = text!("{usage:.0}%").center().color(theme.base()).bold();
 
             let content = container(
-                row![icon, text]
+                row![cpu_icon, usage_text, temp_icon, temp_text]
                     .align_y(Vertical::Center)
-                    .spacing(theme.spacing().xxs()),
+                    .spacing(theme.spacing().xs()),
             )
             .background(theme.mauve())
             .padding(padding::horizontal(theme.spacing().md()));
@@ -203,7 +226,7 @@ impl Comp for SysInfoComp {
             align_center!(row![div, main])
         };
 
-        container(row![cpu, temp, mem, disk_usage])
+        container(row![avg_load, cpu, mem, disk_usage])
             .align_y(Vertical::Center)
             .into()
     }
