@@ -1,12 +1,13 @@
+mod cpu_temp;
 use iced::{
-    Task,
+    Subscription, Task,
     alignment::Vertical,
     padding, time,
     widget::{container, row, text},
 };
 use lucide_icons::Icon;
 use sysinfo::{CpuRefreshKind, DiskRefreshKind, Disks, MemoryRefreshKind, RefreshKind, System};
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::{
     divider::{self, Angled},
@@ -21,12 +22,14 @@ const BYTES_IN_GIG: u64 = 1_073_741_824;
 #[derive(Debug, Clone)]
 pub enum Message {
     SystemLoad(f64),
+    CpuTemp(f32),
 }
 
 pub struct SysInfoComp {
     disks: Disks,
     system: System,
     load: f64,
+    cpu_temp: f32,
 }
 
 impl Comp for SysInfoComp {
@@ -45,18 +48,34 @@ impl Comp for SysInfoComp {
             disks,
             system,
             load: 0.,
+            cpu_temp: 0.,
         }
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
-        time::every(time::Duration::from_millis(250))
-            .map(|_| Message::SystemLoad(System::load_average().one))
+        let load_sub = time::every(time::Duration::from_millis(250))
+            .map(|_| Message::SystemLoad(System::load_average().one));
+
+        let avg_temp_sub = Subscription::run_with(cpu_temp::ListenData(250), cpu_temp::listen)
+            .filter_map(|res| match res {
+                Ok(temp) => Some(Message::CpuTemp(temp)),
+                Err(err) => {
+                    info!("Error getting temp {err:?}");
+                    None
+                }
+            });
+
+        Subscription::batch([load_sub, avg_temp_sub])
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
             Message::SystemLoad(load) => {
                 self.load = load;
+                Task::none()
+            }
+            Message::CpuTemp(cpu_temp) => {
+                self.cpu_temp = cpu_temp;
                 Task::none()
             }
         }
@@ -89,6 +108,35 @@ impl Comp for SysInfoComp {
             row![div, content].align_y(Vertical::Center)
         };
 
+        let temp = {
+            let icon = Icon::Thermometer
+                .widget()
+                .center()
+                .size(theme.spacing().md())
+                .color(theme.base());
+            let temp = self.cpu_temp;
+
+            let div = align_center!(Angled::new(
+                theme.mauve(),
+                divider::Direction::Left,
+                divider::Heading::North,
+                theme.spacing().xl(),
+            ))
+            .background(theme.peach());
+
+            let text = text!("{temp:.0}%").center().color(theme.base()).bold();
+
+            let content = container(
+                row![icon, text]
+                    .align_y(Vertical::Center)
+                    .spacing(theme.spacing().xxs()),
+            )
+            .background(theme.mauve())
+            .padding(padding::horizontal(theme.spacing().md()));
+
+            row![div, content].align_y(Vertical::Center)
+        };
+
         let mem = {
             let icon = Icon::MemoryStick
                 .widget()
@@ -105,7 +153,7 @@ impl Comp for SysInfoComp {
                 divider::Heading::North,
                 theme.spacing().xl(),
             ))
-            .background(theme.peach());
+            .background(theme.mauve());
 
             let text = text!("{mem:.0}%").color(theme.base()).bold();
 
@@ -155,7 +203,7 @@ impl Comp for SysInfoComp {
             align_center!(row![div, main])
         };
 
-        container(row![cpu, mem, disk_usage])
+        container(row![cpu, temp, mem, disk_usage])
             .align_y(Vertical::Center)
             .into()
     }

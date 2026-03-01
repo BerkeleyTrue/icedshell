@@ -82,7 +82,7 @@ impl NiriStream {
 
 pub fn listen() -> impl Stream<Item = Result<NiriEvent, NiriStreamError>> {
     let eventstream = NiriStream::Disconnected { attempts: 0 };
-    stream::unfold(eventstream, |es| async move {
+    stream::unfold(eventstream, |es| async {
         match es {
             NiriStream::Disconnected { attempts } => {
                 if attempts >= 4 {
