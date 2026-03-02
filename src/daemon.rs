@@ -21,6 +21,7 @@ use crate::{
     AppCommand, Cli,
     delora::{self, DeloraMain},
     feature::{Comp, FeatWindow, Feature, Service},
+    launcher,
     niri::{self, monitors::MonitorsServ},
     socket,
     theme::{self as mytheme},
@@ -64,6 +65,7 @@ impl From<Cli> for Init {
 enum Feat {
     Delora(FeatWindow<DeloraMain>),
     TrayMenu(FeatWindow<tray_menu::MenuComp>),
+    Launcher(FeatWindow<launcher::Launcher>),
 }
 
 #[derive(Deref, DerefMut)]
@@ -87,6 +89,7 @@ pub enum Message {
     FeatFocused(window::Id),
 
     OpenLauncher,
+    Launcher(window::Id, launcher::Message),
 
     Socket(socket::Request),
 
@@ -154,6 +157,10 @@ impl Daemon {
                         .subscription()
                         .with(win_id)
                         .map(|(win_id, m)| Message::TrayMenu(win_id, m)),
+                    Feat::Launcher(launcher) => launcher
+                        .subscription()
+                        .with(win_id)
+                        .map(|(win_id, m)| Message::Launcher(win_id, m)),
                 }
             })
             .collect();
@@ -200,6 +207,15 @@ impl Daemon {
                     Task::none()
                 }
             }
+            Message::Launcher(win_id, message) => {
+                if let Some(Feat::Launcher(launcher)) = self.features.get_mut(&win_id) {
+                    launcher
+                        .update(message.clone())
+                        .map(move |m| Message::Launcher(win_id, m))
+                } else {
+                    Task::none()
+                }
+            }
             Message::NiriMon(message) => {
                 let inner_task = self.mon_serv.update(message).map(Message::NiriMon);
                 let num_mon = self.mon_serv.len();
@@ -239,10 +255,14 @@ impl Daemon {
                 _ => Task::none(),
             },
             Message::Quit => exit(),
-            Message::Socket(req) => {
-                info!("request: {req:?}");
-                Task::none()
-            }
+
+            Message::Socket(req) => match req {
+                socket::Request::Launcher => self.open_launcher(),
+                // _ => {
+                //     info!("request: {req:?}");
+                //     Task::none()
+                // }
+            },
             _ => Task::none(),
         }
     }
@@ -252,6 +272,9 @@ impl Daemon {
             Some(Feat::Delora(delora)) => delora.view().map(move |m| Message::Delora(win_id, m)),
             Some(Feat::TrayMenu(menu_feat)) => {
                 menu_feat.view().map(move |m| Message::TrayMenu(win_id, m))
+            }
+            Some(Feat::Launcher(launcher)) => {
+                launcher.view().map(move |m| Message::Launcher(win_id, m))
             }
             None => container(space()).into(),
         }
@@ -337,6 +360,37 @@ impl Daemon {
         remove.chain(Task::done(Message::NewMenu {
             settings,
             id: main_id,
+        }))
+    }
+}
+
+// launcher window
+impl Daemon {
+    fn open_launcher(&mut self) -> Task<Message> {
+        let (launcher, layer_settings) = launcher::Launcher::new(()).open();
+        let win_id = launcher.id;
+
+        let remove = self
+            .features
+            .iter()
+            .find(|(_, feat)| matches!(feat, Feat::Launcher(_)))
+            .and_then(|(win_id, old_win)| {
+                if let Feat::Launcher(_) = old_win {
+                    return Some(*win_id);
+                }
+                None
+            })
+            .map(|win_id| {
+                self.features.remove(&win_id);
+                Task::done(Message::RemoveWindow(win_id))
+            })
+            .unwrap_or(Task::none());
+
+        self.features.insert(win_id, Feat::Launcher(launcher));
+
+        remove.chain(Task::done(Message::NewLayerShell {
+            settings: layer_settings,
+            id: win_id,
         }))
     }
 }

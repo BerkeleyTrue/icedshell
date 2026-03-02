@@ -6,6 +6,7 @@ mod divider;
 mod fdo_icons;
 mod feature;
 mod fira_fonts;
+mod launcher;
 mod niri;
 mod socket;
 mod system_info;
