@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use derive_more::{Deref, DerefMut, From};
 use iced::futures::{
     StreamExt, TryStreamExt,
-    stream::{self, BoxStream, empty},
+    stream::{self, BoxStream},
 };
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -11,7 +11,6 @@ use tokio::{
     net::{UnixListener, UnixStream},
 };
 use tokio_stream::wrappers::{LinesStream, UnixListenerStream};
-use tracing::info;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Request {
@@ -61,7 +60,6 @@ pub fn listen() -> IcedSocket {
                 .and_then(|line| async move { Request::from_string_line(&line) })
                 .boxed()
         })
-        .map_err(|err| stream::once(async move { err }))
-        .unwrap_or(empty().boxed())
+        .unwrap_or_else(|err| stream::once(async move { Err(err) }).boxed())
         .into()
 }
