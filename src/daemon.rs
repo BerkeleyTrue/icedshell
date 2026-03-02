@@ -137,7 +137,7 @@ impl Daemon {
         let socket_sub = Subscription::run(|| launcher::listen().0).filter_map(|res| match res {
             Ok(request) => Some(Message::Socket(request)),
             Err(err) => {
-                log_err!("Error starting socket listener: {err:?}");
+                info!("Error starting socket listener: {err:?}");
                 None
             }
         });

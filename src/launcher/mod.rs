@@ -11,6 +11,7 @@ use tokio::{
     net::{UnixListener, UnixStream},
 };
 use tokio_stream::wrappers::{LinesStream, UnixListenerStream};
+use tracing::info;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Request {
@@ -48,7 +49,16 @@ pub async fn connect_and_launch() -> anyhow::Result<()> {
 
 pub fn listen() -> IcedSocket {
     get_path()
-        .and_then(|path| UnixListener::bind(path).map_err(anyhow::Error::from))
+        .and_then(|path| {
+            UnixListener::bind(&path).or_else(|err| match err.kind() {
+                std::io::ErrorKind::AddrInUse => {
+                    info!("clearing stale socket");
+                    std::fs::remove_file(&path)?;
+                    UnixListener::bind(&path).map_err(anyhow::Error::from)
+                }
+                _ => Err(anyhow::Error::from(err)),
+            })
+        })
         .map(|listener| {
             UnixListenerStream::new(listener)
                 .flat_map(|client_stream_res| match client_stream_res {
