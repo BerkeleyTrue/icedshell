@@ -35,16 +35,17 @@ pub fn get_path() -> anyhow::Result<PathBuf> {
     Ok(PathBuf::from(std::env::var("XDG_RUNTIME_DIR")?).join("icedshell.sock"))
 }
 
-pub async fn connect_and_launch() -> anyhow::Result<()> {
-    let path = get_path()?;
-    let mut stream = UnixStream::connect(path).await?;
-    let req = Request::Launcher.to_string_line()?;
+pub fn connect_and_launch() -> anyhow::Result<()> {
+    tokio::runtime::Runtime::new()?.block_on(async {
+        let path = get_path()?;
+        let mut stream = UnixStream::connect(path).await?;
+        let req = Request::Launcher.to_string_line()?;
 
-    stream.writable().await?;
-    stream.write_all(req.as_bytes()).await?;
-    stream.shutdown().await?;
-
-    Ok(())
+        stream.writable().await?;
+        stream.write_all(req.as_bytes()).await?;
+        stream.shutdown().await?;
+        Ok(())
+    })
 }
 
 pub fn listen() -> IcedSocket {

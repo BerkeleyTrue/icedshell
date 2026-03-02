@@ -6,8 +6,8 @@ mod divider;
 mod fdo_icons;
 mod feature;
 mod fira_fonts;
-mod launcher;
 mod niri;
+mod socket;
 mod system_info;
 mod theme;
 mod tray;
@@ -87,12 +87,10 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         AppCommand::Launcher => {
-            tokio::runtime::Runtime::new()?.block_on(async {
-                match launcher::connect_and_launch().await {
-                    Ok(res) => info!("Res: {res:?}"),
-                    Err(err) => log_err!("request err: {err:?}"),
-                };
-            });
+            match socket::connect_and_launch() {
+                Ok(res) => info!("Res: {res:?}"),
+                Err(err) => log_err!("request err: {err:?}"),
+            };
             Ok(())
         }
     }
