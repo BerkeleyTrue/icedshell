@@ -15,7 +15,7 @@ where
 
     #[deref]
     #[deref_mut]
-    pub view: T,
+    pub view: Box<T>,
 }
 
 pub trait Comp {
@@ -82,7 +82,13 @@ pub trait Feature: Sized + Comp {
         debug!("{id:}");
         let settings = self.layer();
 
-        (FeatWindow { id, view: self }, settings)
+        (
+            FeatWindow {
+                id,
+                view: Box::new(self),
+            },
+            settings,
+        )
     }
 }
 

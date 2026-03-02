@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Deref};
+use std::collections::HashMap;
 
 use derive_more::{Deref, DerefMut};
 use iced::{
@@ -61,8 +61,6 @@ impl From<Cli> for Init {
     }
 }
 
-// TODO: reconsider when menu is more flush
-#[allow(clippy::large_enum_variant)]
 enum Feat {
     Delora(FeatWindow<DeloraMain>),
     TrayMenu(FeatWindow<tray_menu::MenuComp>),
@@ -137,7 +135,7 @@ impl Daemon {
         let socket_sub = Subscription::run(|| socket::listen().0).filter_map(|res| match res {
             Ok(request) => Some(Message::Socket(request)),
             Err(err) => {
-                info!("Error starting socket listener: {err:?}");
+                log_err!("Error starting socket listener: {err:?}");
                 None
             }
         });
