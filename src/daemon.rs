@@ -18,7 +18,7 @@ use iced_layershell::{
 use tracing::info;
 
 use crate::{
-    Cli,
+    AppCommand, Cli,
     delora::{self, DeloraMain},
     feature::{Comp, FeatWindow, Feature, Service},
     niri::{self, monitors::MonitorsServ},
@@ -51,7 +51,10 @@ impl Init {
 impl From<Cli> for Init {
     fn from(cli: Cli) -> Self {
         Self {
-            quit_keybinds: cli.quit_keybindings,
+            quit_keybinds: cli.command.is_some_and(|x| match x {
+                AppCommand::Daemon { quit_keybindings } => quit_keybindings,
+                _ => false,
+            }),
             host: Hosts::Delora,
         }
     }

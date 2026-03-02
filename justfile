@@ -19,11 +19,19 @@ run:
   fi
 
 [group('build')]
+launcher:
+  if [ -n "{{nixgl}}" ]; then \
+    {{nixgl}} cargo run -- -v launcher; \
+  else \
+    cargo run -- -v launcher; \
+  fi
+
+[group('build')]
 watch:
   if [ -n "{{nixgl}}" ]; then \
-    {{nixgl}} cargo watch -w src -w resources -x "run -- --quit-keybindings -v"; \
+    {{nixgl}} cargo watch -w src -w resources -x "run -- -v daemon --quit-keybindings"; \
   else \
-    cargo watch -w src -w resources -x "run -- --quit-keybindings -v"; \
+    cargo watch -w src -w resources -x "run -- -v daemon --quit-keybindings"; \
   fi
 
 [group('build')]
