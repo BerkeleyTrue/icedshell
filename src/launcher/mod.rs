@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use derive_more::{Deref, DerefMut, From};
 use iced::futures::{
-    StreamExt,
-    stream::{BoxStream, empty},
+    StreamExt, TryStreamExt,
+    stream::{self, BoxStream, empty},
 };
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -19,7 +19,7 @@ pub enum Request {
 }
 
 #[derive(Deref, DerefMut, From)]
-pub struct IcedSocket(BoxStream<'static, Request>);
+pub struct IcedSocket(pub BoxStream<'static, anyhow::Result<Request>>);
 
 impl Request {
     fn to_string_line(&self) -> anyhow::Result<String> {
@@ -47,28 +47,21 @@ pub async fn connect_and_launch() -> anyhow::Result<()> {
     Ok(())
 }
 
-// TODO: map errors to stream items
-pub fn listen() -> anyhow::Result<IcedSocket> {
-    let path = get_path()?;
-    let listener = UnixListener::bind(path)?;
-
-    let stream =
-        UnixListenerStream::new(listener).flat_map(|client_stream_res| match client_stream_res {
-            Ok(stream) => LinesStream::new(BufReader::new(stream).lines()).boxed(),
-            Err(err) => {
-                info!("Error opening client stream: {err:?}");
-                empty().boxed()
-            }
-        });
-
-    let stream = tokio_stream::StreamExt::filter_map(stream, |res| {
-        res.map_err(anyhow::Error::from)
-            .and_then(|req| Request::from_string_line(&req))
-            .inspect_err(|err| {
-                info!("Error parsing message: {err:?}");
-            })
-            .ok()
-    });
-
-    Ok(stream.boxed().into())
+pub fn listen() -> IcedSocket {
+    get_path()
+        .and_then(|path| UnixListener::bind(path).map_err(anyhow::Error::from))
+        .map(|listener| {
+            UnixListenerStream::new(listener)
+                .flat_map(|client_stream_res| match client_stream_res {
+                    Ok(stream) => LinesStream::new(BufReader::new(stream).lines())
+                        .map(|res| res.map_err(anyhow::Error::from))
+                        .boxed(),
+                    Err(err) => stream::once(async move { Err(anyhow::Error::from(err)) }).boxed(),
+                })
+                .and_then(|line| async move { Request::from_string_line(&line) })
+                .boxed()
+        })
+        .map_err(|err| stream::once(async move { err }))
+        .unwrap_or(empty().boxed())
+        .into()
 }

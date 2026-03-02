@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref};
 
 use derive_more::{Deref, DerefMut};
 use iced::{
@@ -15,12 +15,13 @@ use iced_layershell::{
     settings::{LayerShellSettings, StartMode},
     to_layer_message,
 };
-use tracing::info;
+use tracing::{error as log_err, info};
 
 use crate::{
     AppCommand, Cli,
     delora::{self, DeloraMain},
     feature::{Comp, FeatWindow, Feature, Service},
+    launcher,
     niri::{self, monitors::MonitorsServ},
     theme::{self as mytheme},
     tray::{TrayLayout, TrayMenuItemId, menu_comp as tray_menu},
@@ -89,6 +90,8 @@ pub enum Message {
 
     OpenLauncher,
 
+    Socket(launcher::Request),
+
     Quit,
 }
 
@@ -131,7 +134,13 @@ impl Daemon {
 
         let niri_mon = self.mon_serv.subscription().map(Message::NiriMon);
 
-        // let launcher_socket = launcher::listen().map(Message::)
+        let socket_sub = Subscription::run(|| launcher::listen().0).filter_map(|res| match res {
+            Ok(request) => Some(Message::Socket(request)),
+            Err(err) => {
+                log_err!("Error starting socket listener: {err:?}");
+                None
+            }
+        });
 
         let mut win_subs: Vec<_> = self
             .features
@@ -151,7 +160,7 @@ impl Daemon {
             })
             .collect();
 
-        let mut subs = vec![quit_binds, niri_mon, focus_subs];
+        let mut subs = vec![quit_binds, niri_mon, focus_subs, socket_sub];
         subs.append(&mut win_subs);
         Subscription::batch(subs)
     }
@@ -232,6 +241,10 @@ impl Daemon {
                 _ => Task::none(),
             },
             Message::Quit => exit(),
+            Message::Socket(req) => {
+                info!("request: {req:?}");
+                Task::none()
+            }
             _ => Task::none(),
         }
     }

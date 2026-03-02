@@ -18,7 +18,7 @@ use clap::{Parser, Subcommand};
 use derive_more::Display;
 use iced_layershell::Settings;
 use lucide_icons::LUCIDE_FONT_BYTES;
-use tracing::{Level, info};
+use tracing::{Level, error as log_err, info};
 use tracing_subscriber::FmtSubscriber;
 
 #[derive(Parser, Debug)]
@@ -87,7 +87,12 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         AppCommand::Launcher => {
-            info!("App Launcher");
+            tokio::runtime::Runtime::new()?.block_on(async {
+                match launcher::connect_and_launch().await {
+                    Ok(res) => info!("Res: {res:?}"),
+                    Err(err) => log_err!("request err: {err:?}"),
+                };
+            });
             Ok(())
         }
     }
