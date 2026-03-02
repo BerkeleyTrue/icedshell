@@ -10,7 +10,7 @@ use sysinfo::{CpuRefreshKind, DiskRefreshKind, Disks, MemoryRefreshKind, Refresh
 use tracing::info;
 
 use crate::{
-    divider::{self, Angled},
+    divider::{self, Angled, Semi},
     feature::{Comp, align_center},
     fira_fonts::TextExt,
     theme::CAT_THEME,
@@ -92,35 +92,6 @@ impl Comp for SysInfoComp {
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let theme = &CAT_THEME;
-        let avg_load = {
-            let div = align_center!(Angled::new(
-                theme.peach(),
-                divider::Direction::Left,
-                divider::Heading::North,
-                theme.spacing().xl(),
-            ))
-            .background(theme.trans());
-
-            let icon = Icon::BicepsFlexed
-                .widget()
-                .center()
-                .color(theme.base())
-                .size(theme.spacing().md());
-
-            let load = self.load;
-
-            let text = text!("{load:.0}%").color(theme.base()).bold();
-
-            let content = container(
-                row![icon, text]
-                    .align_y(Vertical::Center)
-                    .spacing(theme.spacing().xs()),
-            )
-            .background(theme.peach())
-            .padding(padding::horizontal(theme.spacing().md()));
-
-            row![div, content].align_y(Vertical::Center)
-        };
 
         let cpu = {
             let div = align_center!(Angled::new(
@@ -129,7 +100,7 @@ impl Comp for SysInfoComp {
                 divider::Heading::North,
                 theme.spacing().xl(),
             ))
-            .background(theme.peach());
+            .background(theme.trans());
 
             let temp_icon = Icon::Thermometer
                 .widget()
@@ -149,7 +120,7 @@ impl Comp for SysInfoComp {
             let temp_text = text!("{temp:.0} C").center().color(theme.base()).bold();
             let usage_text = text!("{usage:.0}%").center().color(theme.base()).bold();
 
-            let content = container(
+            let content = align_center!(
                 row![cpu_icon, usage_text, temp_icon, temp_text]
                     .align_y(Vertical::Center)
                     .spacing(theme.spacing().xs()),
@@ -160,27 +131,58 @@ impl Comp for SysInfoComp {
             row![div, content].align_y(Vertical::Center)
         };
 
-        let mem = {
-            let icon = Icon::MemoryStick
-                .widget()
-                .size(theme.spacing().lg())
-                .color(theme.base())
-                .center();
-            let tot_mem = self.system.total_memory() as f32;
-            let avail_mem = self.system.available_memory() as f32;
-            let mem = ((tot_mem - avail_mem) / tot_mem) * 100.0;
-
+        let avg_load = {
             let div = align_center!(Angled::new(
-                theme.blue(),
+                theme.peach(),
                 divider::Direction::Left,
                 divider::Heading::North,
                 theme.spacing().xl(),
             ))
             .background(theme.mauve());
 
+            let icon = Icon::BicepsFlexed
+                .widget()
+                .center()
+                .color(theme.base())
+                .size(theme.spacing().md());
+
+            let load = self.load;
+
+            let text = text!("{load:.0}%").color(theme.base()).bold();
+
+            let content = align_center!(
+                row![icon, text]
+                    .align_y(Vertical::Center)
+                    .spacing(theme.spacing().xs()),
+            )
+            .background(theme.peach())
+            .padding(padding::horizontal(theme.spacing().md()));
+
+            row![div, content].align_y(Vertical::Center)
+        };
+
+        let mem = {
+            let div = align_center!(Angled::new(
+                theme.blue(),
+                divider::Direction::Left,
+                divider::Heading::North,
+                theme.spacing().xl(),
+            ))
+            .background(theme.peach());
+
+            let icon = Icon::MemoryStick
+                .widget()
+                .size(theme.spacing().lg())
+                .color(theme.base())
+                .center();
+
+            let tot_mem = self.system.total_memory() as f32;
+            let avail_mem = self.system.available_memory() as f32;
+            let mem = ((tot_mem - avail_mem) / tot_mem) * 100.0;
+
             let text = text!("{mem:.0}%").color(theme.base()).bold();
 
-            let content = container(
+            let content = align_center!(
                 row![icon, text]
                     .align_y(Vertical::Center)
                     .spacing(theme.spacing().xxs()),
@@ -192,6 +194,13 @@ impl Comp for SysInfoComp {
         };
 
         let disk_usage = {
+            let div = align_center!(Semi::new(
+                theme.blue(),
+                divider::Direction::Right,
+                theme.spacing().xl(),
+            ))
+            .background(theme.trans());
+
             let icon = Icon::HardDrive
                 .widget()
                 .size(theme.spacing().lg())
@@ -207,26 +216,18 @@ impl Comp for SysInfoComp {
 
             let text = text!("{disk}G").color(theme.base()).bold();
 
-            let div = align_center!(Angled::new(
-                theme.green(),
-                divider::Direction::Left,
-                divider::Heading::North,
-                theme.spacing().xl(),
-            ))
-            .background(theme.blue());
-
-            let main = container(
+            let main = align_center!(
                 row![icon, text]
                     .align_y(Vertical::Center)
                     .spacing(theme.spacing().xxs()),
             )
-            .background(theme.green())
-            .padding(padding::horizontal(theme.spacing().xs()));
+            .background(theme.trans())
+            .padding(padding::horizontal(theme.spacing().lg()));
 
             align_center!(row![div, main])
         };
 
-        container(row![avg_load, cpu, mem, disk_usage])
+        container(row![cpu, avg_load, mem, disk_usage])
             .align_y(Vertical::Center)
             .into()
     }
