@@ -87,6 +87,8 @@ pub enum Message {
     FeatUnfocused(window::Id),
     FeatFocused(window::Id),
 
+    OpenLauncher,
+
     Quit,
 }
 
@@ -101,9 +103,10 @@ struct Daemon {
 impl Daemon {
     fn new(init: Init) -> Self {
         Self {
+            quit_keybinds: init.quit_keybinds,
+
             features: Features(HashMap::new()),
             mon_serv: MonitorsServ::new(()),
-            quit_keybinds: init.quit_keybinds,
             tray_focused: false,
             tray_close_handle: None,
         }
@@ -127,6 +130,9 @@ impl Daemon {
             });
 
         let niri_mon = self.mon_serv.subscription().map(Message::NiriMon);
+
+        // let launcher_socket = launcher::listen().map(Message::)
+
         let mut win_subs: Vec<_> = self
             .features
             .iter()
@@ -324,8 +330,9 @@ impl Daemon {
     }
 }
 
-pub fn start(init: Init, settings: iced_layershell::Settings) -> iced_layershell::Result {
+pub fn start(init: Init, settings: iced_layershell::Settings) -> anyhow::Result<()> {
     let theme = &mytheme::CAT_THEME;
+
     iced_layershell::daemon(
         move || Daemon::new(init.clone()),
         || "Icedshell".to_string(),
@@ -344,5 +351,7 @@ pub fn start(init: Init, settings: iced_layershell::Settings) -> iced_layershell
         start_mode: StartMode::Background,
         ..Default::default()
     })
-    .run()
+    .run()?;
+
+    Ok(())
 }
