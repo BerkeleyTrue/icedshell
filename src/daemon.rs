@@ -241,6 +241,7 @@ impl Daemon {
             },
             Message::FeatUnfocused(id) => match self.features.get(&id) {
                 Some(Feat::TrayMenu(_)) => self.unfocus_tray(id),
+                Some(Feat::Launcher(_)) => self.on_unfocus_launcher(id),
                 _ => Task::none(),
             },
             Message::TrayMenuItemClicked(name, menu_item_id) => match self
@@ -392,6 +393,15 @@ impl Daemon {
             settings: layer_settings,
             id: win_id,
         }))
+    }
+
+    fn on_unfocus_launcher(&mut self, id: window::Id) -> Task<Message> {
+        Task::perform(
+            async {
+                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            },
+            move |_| Message::RemoveWindow(id),
+        )
     }
 }
 
