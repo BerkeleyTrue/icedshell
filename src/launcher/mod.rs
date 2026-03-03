@@ -1,8 +1,8 @@
 use derive_more::Display;
 use iced::{
-    Border, Element, Length, Task,
+    Border, Event, Length, Task,
     alignment::Vertical,
-    border,
+    border, event,
     keyboard::{self, Key, key::Named},
     padding,
     widget::{column, container, operation::focus, row, text, text_input},
@@ -15,7 +15,6 @@ use tracing::info;
 use crate::{
     feature::{Comp, Feature, align_center},
     theme::CAT_THEME,
-    widget_ext::ContainExt,
 };
 
 #[derive(Clone, Debug, Display)]
@@ -53,11 +52,11 @@ impl Comp for Launcher {
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
-        keyboard::listen().filter_map(|ev| match ev {
-            keyboard::Event::KeyPressed {
+        event::listen_with(|event, _, _| match event {
+            Event::Keyboard(keyboard::Event::KeyPressed {
                 key: Key::Named(Named::Escape),
                 ..
-            } => Some(Message::Close),
+            }) => Some(Message::Close),
             _ => None,
         })
     }
