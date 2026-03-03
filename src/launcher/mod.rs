@@ -5,7 +5,7 @@ use iced::{
     border,
     keyboard::{self, Key, key::Named},
     padding,
-    widget::{column, container, row, text, text_input},
+    widget::{column, container, operation::focus, row, text, text_input},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
@@ -39,11 +39,17 @@ impl Comp for Launcher {
     type Init = ();
 
     fn new(_input: Self::Init) -> (Self, Task<Self::Message>) {
-        Self {
-            prompt_type: PromptType::Run,
-            search: "".to_string(),
-        }
-        .to_tuple()
+        (
+            Self {
+                prompt_type: PromptType::Run,
+                search: "".to_string(),
+            },
+            Task::future(async {
+                tokio::time::sleep(tokio::time::Duration::from_millis(250)).await;
+            })
+            .discard()
+            .chain(focus::<Message>("search-input")),
+        )
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
@@ -74,6 +80,7 @@ impl Comp for Launcher {
         let prompt = {
             let size = theme.spacing().lg();
             let input = text_input("", &self.search)
+                .id("search-input")
                 .width(Length::Fill)
                 .padding(padding::horizontal(theme.spacing().sm()))
                 .style(|_, _| text_input::Style {
