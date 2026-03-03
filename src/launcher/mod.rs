@@ -38,11 +38,12 @@ impl Comp for Launcher {
     type Message = Message;
     type Init = ();
 
-    fn new(_input: Self::Init) -> Self {
+    fn new(_input: Self::Init) -> (Self, Task<Self::Message>) {
         Self {
             prompt_type: PromptType::Run,
             search: "".to_string(),
         }
+        .to_tuple()
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {

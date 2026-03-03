@@ -2,13 +2,15 @@ use std::collections::HashMap;
 
 use derive_more::{Deref, DerefMut};
 use iced::{
-    Color, Element, Event, Subscription, Task, event, exit,
+    Color, Element, Event, Subscription, Task,
+    advanced::graphics::futures::MaybeSend,
+    event, exit,
     keyboard::{self, Key, key::Named},
     mouse,
     task::Handle,
     theme::Style,
     widget::{container, space},
-    window::{self, Id},
+    window::Id,
 };
 use iced_layershell::{
     reexport::KeyboardInteractivity,
@@ -69,15 +71,15 @@ enum Feat {
 }
 
 #[derive(Deref, DerefMut)]
-struct Features(HashMap<window::Id, Feat>);
+struct Features(HashMap<Id, Feat>);
 
 #[to_layer_message(multi)]
 #[derive(Debug, Clone)]
 pub enum Message {
     NiriMon(niri::monitors::Message),
 
-    Delora(window::Id, delora::Message),
-    TrayMenu(window::Id, tray_menu::Message),
+    Delora(Id, delora::Message),
+    TrayMenu(Id, tray_menu::Message),
     TrayMenuItemClicked(
         /// sni item name
         String,
@@ -85,11 +87,11 @@ pub enum Message {
         TrayMenuItemId,
     ),
 
-    FeatUnfocused(window::Id),
-    FeatFocused(window::Id),
+    FeatUnfocused(Id),
+    FeatFocused(Id),
 
     OpenLauncher,
-    Launcher(window::Id, launcher::Message),
+    Launcher(Id, launcher::Message),
 
     Socket(socket::Request),
 
@@ -193,7 +195,7 @@ impl Daemon {
                 if let Some(Feat::TrayMenu(menu)) = self.features.get_mut(&win_id) {
                     let inner_task = menu
                         .update(message.clone())
-                        .map(move |m| Message::TrayMenu(win_id, m));
+                        .map_feat(win_id, Message::TrayMenu);
 
                     let outer_task =
                         if let tray_menu::Message::ItemSelected(name, menu_item_id) = message {
@@ -211,7 +213,7 @@ impl Daemon {
                 if let Some(Feat::Launcher(launcher)) = self.features.get_mut(&win_id) {
                     let inner_task = launcher
                         .update(message.clone())
-                        .map(move |m| Message::Launcher(win_id, m));
+                        .map_feat(win_id, Message::Launcher);
 
                     let out_task = if matches!(message, launcher::Message::Close) {
                         Task::done(Message::RemoveWindow(win_id))
@@ -260,7 +262,7 @@ impl Daemon {
             {
                 Some((win_id, Feat::Delora(delora))) => delora
                     .tray_menu_item_clicked(name, menu_item_id)
-                    .map(move |m| Message::Delora(win_id, m)),
+                    .map_feat(win_id, Message::Delora),
                 _ => Task::none(),
             },
             Message::Quit => exit(),
@@ -278,13 +280,9 @@ impl Daemon {
 
     fn view(&self, win_id: Id) -> Element<'_, Message> {
         match self.features.get(&win_id) {
-            Some(Feat::Delora(delora)) => delora.view().map(move |m| Message::Delora(win_id, m)),
-            Some(Feat::TrayMenu(menu_feat)) => {
-                menu_feat.view().map(move |m| Message::TrayMenu(win_id, m))
-            }
-            Some(Feat::Launcher(launcher)) => {
-                launcher.view().map(move |m| Message::Launcher(win_id, m))
-            }
+            Some(Feat::Delora(delora)) => delora.view().map_feat(win_id, Message::Delora),
+            Some(Feat::TrayMenu(menu_feat)) => menu_feat.view().map_feat(win_id, Message::TrayMenu),
+            Some(Feat::Launcher(launcher)) => launcher.view().map_feat(win_id, Message::Launcher),
             None => container(space()).into(),
         }
     }
@@ -293,9 +291,9 @@ impl Daemon {
 // delora bar feature logic
 impl Daemon {
     fn open_delora_main(&mut self, output_name: String) -> Task<Message> {
-        let (mut main_bar, main_layer_settings) =
-            DeloraMain::new(delora::Init { output_name }).open();
-        let main_id = main_bar.id;
+        let (main_bar, inner_task) = DeloraMain::new(delora::Init { output_name });
+        let (mut main_feat, main_layer_settings) = main_bar.open();
+        let main_id = main_feat.id;
 
         let remove = self
             .features
@@ -303,7 +301,7 @@ impl Daemon {
             .find(|(_, feat)| matches!(feat, Feat::Delora(_)))
             .and_then(|(win_id, old_win)| {
                 if let Feat::Delora(old_win) = old_win {
-                    main_bar.view.clone_servs(old_win);
+                    main_feat.view.clone_servs(old_win);
                     return Some(*win_id);
                 }
                 None
@@ -314,12 +312,14 @@ impl Daemon {
             })
             .unwrap_or(Task::none());
 
-        self.features.insert(main_id, Feat::Delora(main_bar));
+        self.features.insert(main_id, Feat::Delora(main_feat));
 
-        remove.chain(Task::done(Message::NewLayerShell {
-            settings: main_layer_settings,
-            id: main_id,
-        }))
+        remove
+            .chain(Task::done(Message::NewLayerShell {
+                settings: main_layer_settings,
+                id: main_id,
+            }))
+            .chain(inner_task.map_feat(main_id, Message::Delora))
     }
 }
 
@@ -333,7 +333,7 @@ impl Daemon {
         }
         Task::none()
     }
-    fn unfocus_tray(&mut self, id: window::Id) -> Task<Message> {
+    fn unfocus_tray(&mut self, id: Id) -> Task<Message> {
         self.tray_focused = false;
         let (task, handle) = Task::perform(
             tokio::time::sleep(tokio::time::Duration::from_millis(500)),
@@ -358,26 +358,31 @@ impl Daemon {
             })
             .unwrap_or(Task::none());
 
-        let (new_feat, settings) =
-            tray_menu::MenuComp::new(tray_menu::Init { name, layout }).open();
-        let main_id = new_feat.id;
+        let (menu, inner_task) = tray_menu::MenuComp::new(tray_menu::Init { name, layout });
+        let (menu_feat, layer_settings) = menu.open();
+        let win_id = menu_feat.id;
+        let inner_task = inner_task.map(move |m| Message::TrayMenu(win_id, m));
 
-        self.features.insert(main_id, Feat::TrayMenu(new_feat));
+        self.features.insert(win_id, Feat::TrayMenu(menu_feat));
 
         info!("opening tray menu window");
 
-        remove.chain(Task::done(Message::NewMenu {
-            settings,
-            id: main_id,
-        }))
+        remove
+            .chain(Task::done(Message::NewMenu {
+                settings: layer_settings,
+                id: win_id,
+            }))
+            .chain(inner_task)
     }
 }
 
 // launcher window
 impl Daemon {
     fn open_launcher(&mut self) -> Task<Message> {
-        let (launcher, layer_settings) = launcher::Launcher::new(()).open();
-        let win_id = launcher.id;
+        let (launcher, inner_task) = launcher::Launcher::new(());
+        let (launcher_feat, layer_settings) = launcher.open();
+        let win_id = launcher_feat.id;
+        let inner_task = inner_task.map_feat(win_id, Message::Launcher);
 
         let remove = self
             .features
@@ -395,15 +400,17 @@ impl Daemon {
             })
             .unwrap_or(Task::none());
 
-        self.features.insert(win_id, Feat::Launcher(launcher));
+        self.features.insert(win_id, Feat::Launcher(launcher_feat));
 
-        remove.chain(Task::done(Message::NewLayerShell {
-            settings: layer_settings,
-            id: win_id,
-        }))
+        remove
+            .chain(Task::done(Message::NewLayerShell {
+                settings: layer_settings,
+                id: win_id,
+            }))
+            .chain(inner_task)
     }
 
-    fn on_unfocus_launcher(&mut self, id: window::Id) -> Task<Message> {
+    fn on_unfocus_launcher(&mut self, id: Id) -> Task<Message> {
         Task::perform(
             async {
                 tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -437,4 +444,38 @@ pub fn start(init: Init, settings: iced_layershell::Settings) -> anyhow::Result<
     .run()?;
 
     Ok(())
+}
+
+trait TaskExt<T> {
+    fn map_feat<O>(self, id: Id, f: impl FnMut(Id, T) -> O + MaybeSend + 'static) -> Task<O>
+    where
+        T: MaybeSend + 'static,
+        O: MaybeSend + 'static;
+}
+
+impl<T> TaskExt<T> for Task<T> {
+    fn map_feat<O>(self, id: Id, mut f: impl FnMut(Id, T) -> O + MaybeSend + 'static) -> Task<O>
+    where
+        T: MaybeSend + 'static,
+        O: MaybeSend + 'static,
+    {
+        self.map(move |m| f(id, m))
+    }
+}
+
+trait ElementExt<'a, Message> {
+    fn map_feat<B>(self, id: Id, f: impl Fn(Id, Message) -> B + 'a) -> Element<'a, B>
+    where
+        Message: 'a,
+        B: 'a;
+}
+
+impl<'a, Message> ElementExt<'a, Message> for Element<'a, Message> {
+    fn map_feat<B>(self, id: Id, f: impl Fn(Id, Message) -> B + 'a) -> Element<'a, B>
+    where
+        Message: 'a,
+        B: 'a,
+    {
+        self.map(move |m| f(id, m))
+    }
 }

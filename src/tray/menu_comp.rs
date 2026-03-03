@@ -153,7 +153,7 @@ impl Comp for MenuComp {
     type Message = Message;
     type Init = Init;
 
-    fn new(input: Self::Init) -> Self {
+    fn new(input: Self::Init) -> (Self, Task<Self::Message>) {
         let layout = &input.layout;
         info!("layout: {layout:?}");
         Self {
@@ -161,6 +161,7 @@ impl Comp for MenuComp {
             layout: input.layout,
             menu_stack: Vec::new(),
         }
+        .to_tuple()
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {

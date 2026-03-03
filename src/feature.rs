@@ -18,11 +18,16 @@ where
     pub view: Box<T>,
 }
 
-pub trait Comp {
+pub trait Comp: Sized {
     type Message;
     type Init;
 
-    fn new(input: Self::Init) -> Self;
+    fn new(input: Self::Init) -> (Self, Task<Self::Message>);
+
+    /// helper: convert self to tuple with empty task
+    fn to_tuple(self) -> (Self, Task<Self::Message>) {
+        (self, Task::none())
+    }
 
     fn subscription(&self) -> Subscription<Self::Message> {
         Subscription::none()
@@ -67,7 +72,7 @@ pub trait Service {
     fn update(&mut self, message: Self::Message) -> Task<Self::Message>;
 }
 
-pub trait Feature: Sized + Comp {
+pub trait Feature: Sized {
     type Settings;
 
     fn layer(&self) -> Self::Settings;

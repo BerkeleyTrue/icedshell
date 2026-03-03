@@ -69,26 +69,31 @@ impl Comp for DeloraMain {
     type Message = Message;
     type Init = Init;
 
-    fn new(input: Self::Init) -> Self {
+    fn new(input: Self::Init) -> (Self, Task<Message>) {
         let theme = &CAT_THEME;
         let height = theme.spacing().xl();
         let padding = theme.spacing().xs();
         let monitor_id = MonitorId(input.output_name.clone());
-        Self {
-            height,
-            padding,
+        let (sys_info, sys_info_task) = sys_info::SysInfoComp::new(());
+        {
+            let (delora, task) = Self {
+                height,
+                padding,
 
-            ws: ws_comp::NiriWsComp::new(ws_comp::Init {
-                main_mon: monitor_id.clone(),
-            }),
-            win: win_comp::NiriWinComp::new(win_comp::Init { monitor_id }),
-            clock: clock::Clock::new(()),
-            date: date::Date::new(()),
-            output_name: input.output_name,
-            niri_serv: state_serv::NiriStateServ::new(()),
-            tray_serv: tray_serv::TrayService::new(()),
-            tray: tray_comp::TrayComp::new(()),
-            sys_info: sys_info::SysInfoComp::new(()),
+                ws: ws_comp::NiriWsComp::new(ws_comp::Init {
+                    main_mon: monitor_id.clone(),
+                }),
+                win: win_comp::NiriWinComp::new(win_comp::Init { monitor_id }),
+                clock: clock::Clock::new(()),
+                date: date::Date::new(()),
+                output_name: input.output_name,
+                niri_serv: state_serv::NiriStateServ::new(()),
+                tray_serv: tray_serv::TrayService::new(()),
+                tray: tray_comp::TrayComp::new(()),
+                sys_info,
+            }
+            .to_tuple();
+            (delora, sys_info_task.map(Message::SysInfo).chain(task))
         }
     }
 

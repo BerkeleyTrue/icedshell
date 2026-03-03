@@ -37,7 +37,7 @@ impl Comp for SysInfoComp {
     type Message = Message;
     type Init = ();
 
-    fn new(_input: Self::Init) -> Self {
+    fn new(_input: Self::Init) -> (Self, Task<Self::Message>) {
         let system = System::new_with_specifics(
             RefreshKind::nothing()
                 .with_cpu(CpuRefreshKind::nothing().with_cpu_usage())
@@ -51,6 +51,7 @@ impl Comp for SysInfoComp {
             load: 0.,
             cpu_temp: 0.,
         }
+        .to_tuple()
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
