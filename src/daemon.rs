@@ -209,9 +209,17 @@ impl Daemon {
             }
             Message::Launcher(win_id, message) => {
                 if let Some(Feat::Launcher(launcher)) = self.features.get_mut(&win_id) {
-                    launcher
+                    let inner_task = launcher
                         .update(message.clone())
-                        .map(move |m| Message::Launcher(win_id, m))
+                        .map(move |m| Message::Launcher(win_id, m));
+
+                    let out_task = if matches!(message, launcher::Message::Close) {
+                        Task::done(Message::RemoveWindow(win_id))
+                    } else {
+                        Task::none()
+                    };
+
+                    inner_task.chain(out_task)
                 } else {
                     Task::none()
                 }

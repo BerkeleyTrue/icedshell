@@ -1,41 +1,114 @@
+use derive_more::Display;
 use iced::{
-    Length, border,
-    widget::{Space, container, text},
+    Border, Element, Length, Task,
+    alignment::Vertical,
+    border,
+    keyboard::{self, Key, key::Named},
+    padding,
+    widget::{column, container, row, text, text_input},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
+use tracing::info;
 
 use crate::{
-    feature::{Comp, Feature},
+    feature::{Comp, Feature, align_center},
     theme::CAT_THEME,
+    widget_ext::ContainExt,
 };
 
-#[derive(Clone, Debug)]
-pub enum Message {}
+#[derive(Clone, Debug, Display)]
+enum PromptType {
+    Run,
+}
 
-pub struct Launcher {}
+#[derive(Clone, Debug)]
+pub enum Message {
+    Close,
+    SearchUpdated(String),
+}
+
+pub struct Launcher {
+    search: String,
+    prompt_type: PromptType,
+}
 
 impl Comp for Launcher {
     type Message = Message;
     type Init = ();
 
     fn new(_input: Self::Init) -> Self {
-        Self {}
+        Self {
+            prompt_type: PromptType::Run,
+            search: "".to_string(),
+        }
+    }
+
+    fn subscription(&self) -> iced::Subscription<Self::Message> {
+        keyboard::listen().filter_map(|ev| match ev {
+            keyboard::Event::KeyPressed {
+                key: Key::Named(Named::Escape),
+                ..
+            } => Some(Message::Close),
+            _ => None,
+        })
+    }
+
+    fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
+        match message {
+            Message::Close => {
+                info!("close window");
+                Task::none()
+            }
+            Message::SearchUpdated(search) => {
+                self.search = search;
+                Task::none()
+            }
+        }
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let theme = &CAT_THEME;
-        container(text!("foo"))
+        let prompt = {
+            let size = theme.spacing().lg();
+            let input = text_input("", &self.search)
+                .width(Length::Fill)
+                .padding(padding::horizontal(theme.spacing().sm()))
+                .style(|_, _| text_input::Style {
+                    background: theme.background().into(),
+                    border: Border::default(),
+                    icon: theme.text_color(),
+                    placeholder: theme.subtext0(),
+                    value: theme.text_color(),
+                    selection: theme.subtext1(),
+                })
+                .size(size)
+                .on_input(Message::SearchUpdated);
+
+            let prompt = self.prompt_type.to_string();
+            let prompt = text!("{prompt} > ").size(size);
+
+            align_center!(row![prompt, input])
+                .padding(padding::right(theme.spacing().md()))
+                .height(theme.spacing().xl2())
+        };
+
+        let results = { row![text!("food")].height(Length::Fill) };
+
+        let content = column![prompt, results].height(Length::Fill);
+
+        container(content)
+            .align_y(Vertical::Top)
             .style(|_| container::Style {
                 background: Some(theme.background().into()),
                 text_color: Some(theme.text_color()),
-                border: border::color(theme.overlay0())
-                    .width(theme.spacing().xxs())
-                    .rounded(theme.radius().md()),
+                border: border::color(theme.pink())
+                    .width(theme.spacing().xs())
+                    .rounded(theme.radius().sm()),
                 ..Default::default()
             })
-            .padding(theme.spacing().xs())
+            .padding(theme.spacing().lg())
             .width(Length::Fill)
             .height(Length::Fill)
             .into()
@@ -48,7 +121,7 @@ impl Feature for Launcher {
     fn layer(&self) -> Self::Settings {
         NewLayerShellSettings {
             layer: Layer::Overlay,
-            size: Some((400, 400)),
+            size: Some((800, 600)),
             anchor: Anchor::empty(),
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
             output_option: OutputOption::LastOutput,
