@@ -1,4 +1,10 @@
-use derive_more::Display;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ffi::OsStr,
+    path::PathBuf,
+};
+
+use derive_more::{Constructor, Deref, DerefMut, Display, From};
 use iced::{
     Border, Event, Length, Task,
     alignment::Vertical,
@@ -10,12 +16,25 @@ use iced::{
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
+use ini::ini;
+use tokio::fs;
 use tracing::info;
 
 use crate::{
     feature::{Comp, Feature, align_center},
     theme::CAT_THEME,
 };
+
+#[derive(Debug, Clone, Constructor)]
+struct Application {
+    name: String,
+    exec: String,
+    comment: Option<String>,
+    try_exec: Option<String>,
+}
+
+#[derive(Debug, Deref, DerefMut, From)]
+struct PathToAppSet(BTreeMap<PathBuf, Application>);
 
 #[derive(Clone, Debug, Display)]
 enum PromptType {
@@ -81,7 +100,7 @@ impl Comp for Launcher {
             let input = text_input("", &self.search)
                 .id("search-input")
                 .width(Length::Fill)
-                .padding(padding::horizontal(theme.spacing().sm()))
+                .padding(padding::horizontal(theme.spacing().xs()))
                 .style(|_, _| text_input::Style {
                     background: theme.background().into(),
                     border: Border::default(),
@@ -94,7 +113,7 @@ impl Comp for Launcher {
                 .on_input(Message::SearchUpdated);
 
             let prompt = self.prompt_type.to_string();
-            let prompt = text!("{prompt} > ").size(size);
+            let prompt = text!("{prompt} >").size(size);
 
             align_center!(row![prompt, input])
                 .padding(padding::right(theme.spacing().md()))
@@ -137,5 +156,84 @@ impl Feature for Launcher {
             exclusive_zone: None,
             margin: None,
         }
+    }
+}
+
+fn get_bin_dirs() -> anyhow::Result<BTreeSet<PathBuf>> {
+    let paths: BTreeSet<_> = std::env::var("PATH")?
+        .split(":")
+        .filter_map(|path_str| PathBuf::from(path_str).canonicalize().ok())
+        .collect();
+
+    Ok(paths)
+}
+
+fn get_data_dirs() -> anyhow::Result<BTreeSet<PathBuf>> {
+    let data_dir: BTreeSet<_> = std::env::var("XDG_DATA_DIRS")?
+        .split(":")
+        .filter_map(|path_str| {
+            PathBuf::from(format!("{path_str}/application"))
+                .canonicalize()
+                .ok()
+        })
+        .collect();
+
+    Ok(data_dir)
+}
+
+async fn get_apps() -> anyhow::Result<()> {
+    let paths = get_bin_dirs()?;
+    let data_dirs = get_data_dirs()?;
+
+    let mut apps = PathToAppSet::from(BTreeMap::new());
+
+    for data_dir in data_dirs.iter() {
+        let mut entries = fs::read_dir(data_dir).await?;
+        while let Some(entry) = entries.next_entry().await? {
+            let path = entry.path();
+            let path_str = path.to_str();
+            if path.extension() == Some(OsStr::new("application"))
+                && let Some(path_str) = path_str
+            {
+                let desktop = ini!(safe path_str).map_err(|s| anyhow::anyhow!(s))?;
+                let desktop = desktop["Desktop Entry"].clone();
+                let is_app = desktop["Type"]
+                    .as_ref()
+                    .is_some_and(|tpe| tpe == "Application");
+
+                let name = desktop["Name"].clone();
+                let exec = desktop["Exec"].clone();
+
+                let try_exec = desktop["TryExec"].clone();
+                let comment = desktop["Comment"].clone();
+                if is_app
+                    && let Some(name) = name
+                    && let Some(exec) = exec
+                    && verify_exec(&exec, try_exec.as_ref(), &paths).await
+                {
+                    apps.insert(path, Application::new(name, exec, comment, try_exec));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn verify_exec(exec: &String, try_exec: Option<&String>, paths: &BTreeSet<PathBuf>) -> bool {
+    let maybe_exec = try_exec
+        .unwrap_or(exec)
+        .split_whitespace()
+        .next()
+        .map(PathBuf::from);
+
+    if let Some(exec_path) = maybe_exec {
+        if exec_path.is_absolute() {
+            exec_path.exists()
+        } else {
+            paths.iter().any(move |path| path.join(&exec_path).exists())
+        }
+    } else {
+        false
     }
 }
