@@ -107,15 +107,19 @@ struct Daemon {
 }
 
 impl Daemon {
-    fn new(init: Init) -> Self {
-        Self {
-            quit_keybinds: init.quit_keybinds,
+    fn new(init: Init) -> (Self, Task<Message>) {
+        let (mon_serv, mon_serv_task) = MonitorsServ::new(());
+        (
+            Self {
+                quit_keybinds: init.quit_keybinds,
 
-            features: Features(HashMap::new()),
-            mon_serv: MonitorsServ::new(()),
-            tray_focused: false,
-            tray_close_handle: None,
-        }
+                features: Features(HashMap::new()),
+                mon_serv,
+                tray_focused: false,
+                tray_close_handle: None,
+            },
+            mon_serv_task.map(Message::NiriMon),
+        )
     }
 
     fn subscription(&self) -> Subscription<Message> {

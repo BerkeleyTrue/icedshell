@@ -53,10 +53,11 @@ impl Service for TrayService {
     type Message = Message;
     type Init = ();
 
-    fn new(_input: Self::Init) -> Self {
+    fn new(_input: Self::Init) -> (Self, Task<Self::Message>) {
         Self {
             items: TrayItems(BTreeMap::new()),
         }
+        .to_tuple()
     }
 
     fn update(&mut self, message: Self::Message) -> Task<Message> {

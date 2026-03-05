@@ -36,10 +36,11 @@ impl Service for AppServ {
     type Message = Message;
     type Init = ();
 
-    fn new(input: Self::Init) -> Self {
+    fn new(input: Self::Init) -> (Self, Task<Self::Message>) {
         Self {
             apps: AppNameToAppMap::from(BTreeMap::new()),
         }
+        .to_tuple()
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {

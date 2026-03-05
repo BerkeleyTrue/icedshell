@@ -31,8 +31,8 @@ impl CompWithProps for Clock {
     type Init = ();
     type Props<'a> = Color;
 
-    fn new(_init: Self::Init) -> Self {
-        Self { time: gen_time() }
+    fn new(_init: Self::Init) -> (Self, Task<Self::Message>) {
+        Self { time: gen_time() }.to_tuple()
     }
 
     fn subscription(&self) -> Subscription<Message> {

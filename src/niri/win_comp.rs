@@ -1,5 +1,5 @@
 use iced::{
-    Color, Element, Length, padding,
+    Color, Element, Length, Task, padding,
     widget::{container, row, space, text},
 };
 
@@ -35,10 +35,11 @@ impl CompWithProps for NiriWinComp {
     type Props<'a> = Props<'a>;
     type Init = Init;
     type Message = Message;
-    fn new(input: Self::Init) -> Self {
+    fn new(input: Self::Init) -> (Self, Task<Self::Message>) {
         Self {
             mon: input.monitor_id,
         }
+        .to_tuple()
     }
 
     fn view<'a>(

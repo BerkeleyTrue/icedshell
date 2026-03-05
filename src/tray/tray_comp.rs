@@ -35,8 +35,8 @@ impl CompWithProps for TrayComp {
     type Init = ();
     type Props<'a> = Props<'a>;
 
-    fn new(_input: Self::Init) -> Self {
-        Self {}
+    fn new(_input: Self::Init) -> (Self, Task<Self::Message>) {
+        Self {}.to_tuple()
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {

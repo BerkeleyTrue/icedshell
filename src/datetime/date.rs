@@ -47,11 +47,12 @@ impl CompWithProps for Date {
     type Init = ();
     type Props<'a> = Color;
 
-    fn new(_init: Self::Init) -> Self {
+    fn new(_init: Self::Init) -> (Self, Task<Self::Message>) {
         Self {
             date: gen_date(),
             week: gen_week(),
         }
+        .to_tuple()
     }
 
     fn subscription(&self) -> Subscription<Message> {

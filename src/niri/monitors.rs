@@ -24,8 +24,8 @@ impl MonitorsServ {
 impl Service for MonitorsServ {
     type Message = Message;
     type Init = ();
-    fn new(_input: Self::Init) -> Self {
-        Self { monitors: vec![] }
+    fn new(_input: Self::Init) -> (Self, Task<Self::Message>) {
+        Self { monitors: vec![] }.to_tuple()
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {

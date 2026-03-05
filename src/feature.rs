@@ -41,15 +41,20 @@ pub trait Comp: Sized {
     fn view(&self) -> Element<'_, Self::Message>;
 }
 
-pub trait CompWithProps {
+pub trait CompWithProps: Sized {
     type Message;
     type Init;
     type Props<'a>;
 
-    fn new(input: Self::Init) -> Self;
+    fn new(input: Self::Init) -> (Self, Task<Self::Message>);
 
     fn subscription(&self) -> Subscription<Self::Message> {
         Subscription::none()
+    }
+
+    /// helper: convert self to tuple with empty task
+    fn to_tuple(self) -> (Self, Task<Self::Message>) {
+        (self, Task::none())
     }
 
     #[allow(unused_variables)]
@@ -60,11 +65,16 @@ pub trait CompWithProps {
     fn view<'a>(&self, props: Self::Props<'a>) -> Element<'_, Self::Message>;
 }
 
-pub trait Service {
+pub trait Service: Sized {
     type Message;
     type Init;
 
-    fn new(input: Self::Init) -> Self;
+    fn new(input: Self::Init) -> (Self, Task<Self::Message>);
+
+    /// helper: convert self to tuple with empty task
+    fn to_tuple(self) -> (Self, Task<Self::Message>) {
+        (self, Task::none())
+    }
 
     fn subscription(&self) -> Subscription<Self::Message>;
 

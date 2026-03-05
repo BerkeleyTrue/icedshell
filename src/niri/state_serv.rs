@@ -237,8 +237,8 @@ impl Service for NiriStateServ {
     type Message = Message;
     type Init = ();
 
-    fn new(_input: Self::Init) -> Self {
-        Self::default()
+    fn new(_input: Self::Init) -> (Self, Task<Self::Message>) {
+        Self::default().to_tuple()
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {

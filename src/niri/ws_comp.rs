@@ -37,10 +37,11 @@ impl CompWithProps for NiriWsComp {
     type Init = Init;
     type Props<'a> = Props<'a>;
 
-    fn new(init: Self::Init) -> Self {
+    fn new(init: Self::Init) -> (Self, Task<Self::Message>) {
         Self {
             main_mon: init.main_mon,
         }
+        .to_tuple()
     }
     fn update(&mut self, _message: Message) -> Task<Message> {
         Task::none()

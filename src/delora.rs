@@ -74,26 +74,66 @@ impl Comp for DeloraMain {
         let height = theme.spacing().xl();
         let padding = theme.spacing().xs();
         let monitor_id = MonitorId(input.output_name.clone());
-        let (sys_info, sys_info_task) = sys_info::SysInfoComp::new(());
+        let (ws, ws_task) = {
+            let (ws, ws_task) = ws_comp::NiriWsComp::new(ws_comp::Init {
+                main_mon: monitor_id.clone(),
+            });
+            (ws, ws_task.map(Message::Ws))
+        };
+        let (win, win_comp_task) = {
+            let (win, win_comp_task) = win_comp::NiriWinComp::new(win_comp::Init { monitor_id });
+            (win, win_comp_task.map(Message::Win))
+        };
+        let (clock, clock_task) = {
+            let (clock, clock_task) = clock::Clock::new(());
+            (clock, clock_task.map(Message::Clock))
+        };
+        let (date, date_task) = {
+            let (date, date_task) = date::Date::new(());
+            (date, date_task.map(Message::Date))
+        };
+        let (niri_serv, niri_serv_task) = {
+            let (niri_serv, niri_serv_task) = state_serv::NiriStateServ::new(());
+            (niri_serv, niri_serv_task.map(Message::NiriService))
+        };
+        let (tray_serv, tray_serv_task) = {
+            let (tray_serv, tray_serv_task) = tray_serv::TrayService::new(());
+            (tray_serv, tray_serv_task.map(Message::TrayService))
+        };
+        let (tray, tray_task) = {
+            let (tray, tray_task) = tray_comp::TrayComp::new(());
+            (tray, tray_task.map(Message::Tray))
+        };
+        let (sys_info, sys_info_task) = {
+            let (sys_info, sys_info_task) = sys_info::SysInfoComp::new(());
+            (sys_info, sys_info_task.map(Message::SysInfo))
+        };
+        let inner_tasks = Task::batch([
+            win_comp_task,
+            ws_task,
+            clock_task,
+            date_task,
+            niri_serv_task,
+            tray_serv_task,
+            tray_task,
+            sys_info_task,
+        ]);
         {
             let (delora, task) = Self {
                 height,
                 padding,
-
-                ws: ws_comp::NiriWsComp::new(ws_comp::Init {
-                    main_mon: monitor_id.clone(),
-                }),
-                win: win_comp::NiriWinComp::new(win_comp::Init { monitor_id }),
-                clock: clock::Clock::new(()),
-                date: date::Date::new(()),
+                ws,
+                win,
+                clock,
+                date,
                 output_name: input.output_name,
-                niri_serv: state_serv::NiriStateServ::new(()),
-                tray_serv: tray_serv::TrayService::new(()),
-                tray: tray_comp::TrayComp::new(()),
+                niri_serv,
+                tray_serv,
+                tray,
                 sys_info,
             }
             .to_tuple();
-            (delora, sys_info_task.map(Message::SysInfo).chain(task))
+            (delora, inner_tasks.chain(task))
         }
     }
 
