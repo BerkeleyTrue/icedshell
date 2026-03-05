@@ -108,7 +108,7 @@ struct Daemon {
 
 impl Daemon {
     fn new(init: Init) -> (Self, Task<Message>) {
-        let (mon_serv, mon_serv_task) = MonitorsServ::new(());
+        let (mon_serv, mon_serv_task) = MonitorsServ::new((), Message::NiriMon);
         (
             Self {
                 quit_keybinds: init.quit_keybinds,
@@ -118,7 +118,7 @@ impl Daemon {
                 tray_focused: false,
                 tray_close_handle: None,
             },
-            mon_serv_task.map(Message::NiriMon),
+            mon_serv_task,
         )
     }
 
@@ -295,7 +295,7 @@ impl Daemon {
 // delora bar feature logic
 impl Daemon {
     fn open_delora_main(&mut self, output_name: String) -> Task<Message> {
-        let (main_bar, inner_task) = DeloraMain::new(delora::Init { output_name });
+        let (main_bar, inner_task) = DeloraMain::new(delora::Init { output_name }, |m| m);
         let (mut main_feat, main_layer_settings) = main_bar.open();
         let main_id = main_feat.id;
 
@@ -362,7 +362,7 @@ impl Daemon {
             })
             .unwrap_or(Task::none());
 
-        let (menu, inner_task) = tray_menu::MenuComp::new(tray_menu::Init { name, layout });
+        let (menu, inner_task) = tray_menu::MenuComp::new(tray_menu::Init { name, layout }, |m| m);
         let (menu_feat, layer_settings) = menu.open();
         let win_id = menu_feat.id;
         let inner_task = inner_task.map(move |m| Message::TrayMenu(win_id, m));
@@ -383,7 +383,7 @@ impl Daemon {
 // launcher window
 impl Daemon {
     fn open_launcher(&mut self) -> Task<Message> {
-        let (launcher, inner_task) = launcher::Launcher::new(());
+        let (launcher, inner_task) = launcher::Launcher::new((), |m| m);
         let (launcher_feat, layer_settings) = launcher.open();
         let win_id = launcher_feat.id;
         let inner_task = inner_task.map_feat(win_id, Message::Launcher);

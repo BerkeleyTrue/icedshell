@@ -7,7 +7,7 @@ use std::{
 
 use derive_more::{Constructor, Deref, DerefMut, From};
 use freedesktop_entry_parser::{Entry, parse_entry};
-use iced::{Subscription, Task};
+use iced::{Subscription, Task, advanced::graphics::futures::MaybeSend};
 use itertools::Itertools;
 use tokio::fs;
 
@@ -36,7 +36,10 @@ impl Service for AppServ {
     type Message = Message;
     type Init = ();
 
-    fn new(input: Self::Init) -> (Self, Task<Self::Message>) {
+    fn new<O: MaybeSend + 'static>(
+        _input: Self::Init,
+        _f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>) {
         Self {
             apps: AppNameToAppMap::from(BTreeMap::new()),
         }

@@ -1,5 +1,5 @@
 use derive_more::{Display, From};
-use iced::{Subscription, Task};
+use iced::{Subscription, Task, advanced::graphics::futures::MaybeSend};
 use niri_ipc::Event;
 use std::{
     collections::{BTreeMap, HashMap},
@@ -237,7 +237,10 @@ impl Service for NiriStateServ {
     type Message = Message;
     type Init = ();
 
-    fn new(_input: Self::Init) -> (Self, Task<Self::Message>) {
+    fn new<O: MaybeSend + 'static>(
+        _input: Self::Init,
+        _f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>) {
         Self::default().to_tuple()
     }
 

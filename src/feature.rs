@@ -20,13 +20,16 @@ where
 }
 
 pub trait Comp: Sized {
-    type Message;
+    type Message: MaybeSend + 'static;
     type Init;
 
-    fn new(input: Self::Init) -> (Self, Task<Self::Message>);
+    fn new<O: MaybeSend + 'static>(
+        input: Self::Init,
+        f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>);
 
     /// helper: convert self to tuple with empty task
-    fn to_tuple(self) -> (Self, Task<Self::Message>) {
+    fn to_tuple<O>(self) -> (Self, Task<O>) {
         (self, Task::none())
     }
 
@@ -70,13 +73,16 @@ pub trait CompWithProps: Sized {
 }
 
 pub trait Service: Sized {
-    type Message;
+    type Message: MaybeSend + 'static;
     type Init;
 
-    fn new(input: Self::Init) -> (Self, Task<Self::Message>);
+    fn new<O: MaybeSend + 'static>(
+        input: Self::Init,
+        f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>);
 
     /// helper: convert self to tuple with empty task
-    fn to_tuple(self) -> (Self, Task<Self::Message>) {
+    fn to_tuple<O>(self) -> (Self, Task<O>) {
         (self, Task::none())
     }
 

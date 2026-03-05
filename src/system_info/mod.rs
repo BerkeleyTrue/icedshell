@@ -1,6 +1,7 @@
 mod cpu_temp;
 use iced::{
     Subscription, Task,
+    advanced::graphics::futures::MaybeSend,
     alignment::Vertical,
     padding, time,
     widget::{container, row, text},
@@ -37,7 +38,10 @@ impl Comp for SysInfoComp {
     type Message = Message;
     type Init = ();
 
-    fn new(_input: Self::Init) -> (Self, Task<Self::Message>) {
+    fn new<O: MaybeSend + 'static>(
+        _input: Self::Init,
+        _f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>) {
         let system = System::new_with_specifics(
             RefreshKind::nothing()
                 .with_cpu(CpuRefreshKind::nothing().with_cpu_usage())

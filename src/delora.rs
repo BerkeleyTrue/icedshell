@@ -1,4 +1,6 @@
-use iced::{Color, Length, Subscription, Task, padding, widget::row};
+use iced::{
+    Color, Length, Subscription, Task, advanced::graphics::futures::MaybeSend, padding, widget::row,
+};
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
@@ -69,7 +71,10 @@ impl Comp for DeloraMain {
     type Message = Message;
     type Init = Init;
 
-    fn new(input: Self::Init) -> (Self, Task<Message>) {
+    fn new<O: MaybeSend + 'static>(
+        input: Self::Init,
+        f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>) {
         let theme = &CAT_THEME;
         let height = theme.spacing().xl();
         let padding = theme.spacing().xs();
@@ -84,20 +89,10 @@ impl Comp for DeloraMain {
             win_comp::NiriWinComp::new(win_comp::Init { monitor_id }, Message::Win);
         let (clock, clock_task) = clock::Clock::new((), Message::Clock);
         let (date, date_task) = date::Date::new((), Message::Date);
-        let (niri_serv, niri_serv_task) = {
-            let (niri_serv, niri_serv_task) = state_serv::NiriStateServ::new(());
-            (niri_serv, niri_serv_task.map(Message::NiriService))
-        };
-        let (tray_serv, tray_serv_task) = {
-            let (tray_serv, tray_serv_task) = tray_serv::TrayService::new(());
-            (tray_serv, tray_serv_task.map(Message::TrayService))
-        };
+        let (niri_serv, niri_serv_task) = state_serv::NiriStateServ::new((), Message::NiriService);
+        let (tray_serv, tray_serv_task) = tray_serv::TrayService::new((), Message::TrayService);
         let (tray, tray_task) = tray_comp::TrayComp::new((), Message::Tray);
-
-        let (sys_info, sys_info_task) = {
-            let (sys_info, sys_info_task) = sys_info::SysInfoComp::new(());
-            (sys_info, sys_info_task.map(Message::SysInfo))
-        };
+        let (sys_info, sys_info_task) = sys_info::SysInfoComp::new((), Message::SysInfo);
         let inner_tasks = Task::batch([
             win_comp_task,
             ws_task,
@@ -108,8 +103,8 @@ impl Comp for DeloraMain {
             tray_task,
             sys_info_task,
         ]);
-        {
-            let (delora, task) = Self {
+        (
+            Self {
                 height,
                 padding,
                 ws,
@@ -121,10 +116,9 @@ impl Comp for DeloraMain {
                 tray_serv,
                 tray,
                 sys_info,
-            }
-            .to_tuple();
-            (delora, inner_tasks.chain(task))
-        }
+            },
+            inner_tasks.map(f),
+        )
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {

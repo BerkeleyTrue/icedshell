@@ -3,6 +3,7 @@ mod app_serv;
 use derive_more::Display;
 use iced::{
     Border, Event, Length, Task,
+    advanced::graphics::futures::MaybeSend,
     alignment::Vertical,
     border, event,
     keyboard::{self, Key, key::Named},
@@ -39,7 +40,10 @@ impl Comp for Launcher {
     type Message = Message;
     type Init = ();
 
-    fn new(_input: Self::Init) -> (Self, Task<Self::Message>) {
+    fn new<O: MaybeSend + 'static>(
+        _input: Self::Init,
+        f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>) {
         (
             Self {
                 prompt_type: PromptType::Run,
@@ -49,7 +53,8 @@ impl Comp for Launcher {
                 tokio::time::sleep(tokio::time::Duration::from_millis(250)).await;
             })
             .discard()
-            .chain(focus::<Message>("search-input")),
+            .chain(focus::<Message>("search-input"))
+            .map(f),
         )
     }
 

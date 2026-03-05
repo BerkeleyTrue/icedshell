@@ -1,5 +1,6 @@
 use iced::{
     Color, Element, Length, Subscription, Task, padding,
+    advanced::graphics::futures::MaybeSend,
     widget::{container, row},
 };
 
@@ -27,12 +28,18 @@ impl Comp for App {
     type Message = Message;
     type Init = ();
 
-    fn new(_init: Self::Init) -> Self {
-        Self {
-            niri: niri::NiriWS::new(()),
-            clock: clock::Clock::new(()),
-            config: Config::default(),
-        }
+    fn new<O: MaybeSend + 'static>(
+        _init: Self::Init,
+        _f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>) {
+        (
+            Self {
+                niri: niri::NiriWS::new(()),
+                clock: clock::Clock::new(()),
+                config: Config::default(),
+            },
+            Task::none(),
+        )
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {

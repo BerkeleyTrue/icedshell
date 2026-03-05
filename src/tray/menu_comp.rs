@@ -1,5 +1,6 @@
 use iced::{
     Color, Element, Length, Task,
+    advanced::graphics::futures::MaybeSend,
     alignment::Vertical,
     border, padding,
     widget::{Column, Row, button, container, row, text, toggler},
@@ -153,7 +154,10 @@ impl Comp for MenuComp {
     type Message = Message;
     type Init = Init;
 
-    fn new(input: Self::Init) -> (Self, Task<Self::Message>) {
+    fn new<O: MaybeSend + 'static>(
+        input: Self::Init,
+        _f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>) {
         let layout = &input.layout;
         info!("layout: {layout:?}");
         Self {
