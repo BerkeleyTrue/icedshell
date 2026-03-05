@@ -16,11 +16,11 @@ use crate::feature::Service;
 
 #[derive(Debug, Clone, Constructor)]
 pub struct Application {
-    name: String,
-    exec: String,
-    comment: Option<String>,
-    try_exec: Option<String>,
-    icon: Option<String>,
+    pub name: String,
+    pub exec: String,
+    pub comment: Option<String>,
+    pub try_exec: Option<String>,
+    pub icon: Option<String>,
 }
 
 #[derive(Debug, Deref, DerefMut, From, Clone, Default)]
@@ -67,10 +67,23 @@ impl Service for AppServ {
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
             Message::LoadApps(apps) => {
+                info!("apps: {apps:?}");
                 self.apps = apps;
                 Task::none()
             }
         }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ListArgs {
+    pub skip: usize,
+    pub limit: usize,
+}
+
+impl AppServ {
+    pub fn list(&self, ListArgs { skip, limit }: ListArgs) -> impl Iterator<Item = &Application> {
+        self.apps.values().skip(skip).take(limit)
     }
 }
 

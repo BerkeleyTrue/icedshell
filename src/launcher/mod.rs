@@ -2,13 +2,13 @@ mod app_serv;
 
 use derive_more::Display;
 use iced::{
-    Border, Event, Length, Task,
+    Border, Element, Event, Length, Task,
     advanced::graphics::futures::MaybeSend,
     alignment::Vertical,
     border, event,
     keyboard::{self, Key, key::Named},
     padding,
-    widget::{column, container, operation::focus, row, text, text_input},
+    widget::{Column, column, container, operation::focus, row, text, text_input},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
@@ -17,7 +17,7 @@ use tracing::info;
 
 use crate::{
     feature::{Comp, Feature, Service, align_center},
-    launcher::app_serv::AppServ,
+    launcher::app_serv::{AppServ, Application, ListArgs},
     theme::CAT_THEME,
 };
 
@@ -116,7 +116,7 @@ impl Comp for Launcher {
                 .height(theme.spacing().xl2())
         };
 
-        let results = { row![text!("food")].height(Length::Fill) };
+        let results = { container(self.view_apps()).height(Length::Fill) };
 
         let content = column![prompt, results].height(Length::Fill);
 
@@ -133,6 +133,22 @@ impl Comp for Launcher {
             .padding(theme.spacing().lg())
             .width(Length::Fill)
             .height(Length::Fill)
+            .into()
+    }
+}
+
+impl Launcher {
+    fn view_apps(&self) -> Element<'static, Message> {
+        self.app_serv
+            .list(ListArgs {
+                limit: 10,
+                ..Default::default()
+            })
+            .map(|Application { name, .. }| {
+                let title = text!("{name}");
+                row![title]
+            })
+            .fold(Column::new(), |col, row| col.push(row))
             .into()
     }
 }
