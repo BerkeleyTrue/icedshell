@@ -295,8 +295,8 @@ impl Daemon {
 // delora bar feature logic
 impl Daemon {
     fn open_delora_main(&mut self, output_name: String) -> Task<Message> {
-        let (main_bar, inner_task) = DeloraMain::new(delora::Init { output_name }, |m| m);
-        let (mut main_feat, main_layer_settings) = main_bar.open();
+        let (mut main_feat, main_layer_settings, inner_task) =
+            DeloraMain::open(delora::Init { output_name }, Message::Delora);
         let main_id = main_feat.id;
 
         let remove = self
@@ -323,7 +323,7 @@ impl Daemon {
                 settings: main_layer_settings,
                 id: main_id,
             }))
-            .chain(inner_task.map_feat(main_id, Message::Delora))
+            .chain(inner_task)
     }
 }
 
@@ -362,10 +362,9 @@ impl Daemon {
             })
             .unwrap_or(Task::none());
 
-        let (menu, inner_task) = tray_menu::MenuComp::new(tray_menu::Init { name, layout }, |m| m);
-        let (menu_feat, layer_settings) = menu.open();
+        let (menu_feat, layer_settings, inner_task) =
+            tray_menu::MenuComp::open(tray_menu::Init { name, layout }, Message::TrayMenu);
         let win_id = menu_feat.id;
-        let inner_task = inner_task.map(move |m| Message::TrayMenu(win_id, m));
 
         self.features.insert(win_id, Feat::TrayMenu(menu_feat));
 
@@ -383,10 +382,9 @@ impl Daemon {
 // launcher window
 impl Daemon {
     fn open_launcher(&mut self) -> Task<Message> {
-        let (launcher, inner_task) = launcher::Launcher::new((), |m| m);
-        let (launcher_feat, layer_settings) = launcher.open();
+        let (launcher_feat, layer_settings, inner_task) =
+            launcher::Launcher::open((), Message::Launcher);
         let win_id = launcher_feat.id;
-        let inner_task = inner_task.map_feat(win_id, Message::Launcher);
 
         let remove = self
             .features

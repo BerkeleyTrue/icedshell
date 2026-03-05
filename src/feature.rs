@@ -92,27 +92,26 @@ pub trait Service: Sized {
     fn update(&mut self, message: Self::Message) -> Task<Self::Message>;
 }
 
-pub trait Feature: Sized {
+pub trait Feature: Sized + Comp {
     type Settings;
 
     fn layer(&self) -> Self::Settings;
 
-    // fn is_animating(&self) -> bool {
-    //     false
-    // }
-
-    /// open window, consuming self
-    fn open(self) -> (FeatWindow<Self>, Self::Settings) {
+    fn open<O: MaybeSend + 'static>(
+        input: Self::Init,
+        f: impl Fn(window::Id, Self::Message) -> O + MaybeSend + 'static,
+    ) -> (FeatWindow<Self>, Self::Settings, Task<O>) {
         let id = window::Id::unique();
         debug!("{id:}");
-        let settings = self.layer();
-
+        let (comp, task) = Self::new(input, move |m| f(id, m));
+        let settings = comp.layer();
         (
             FeatWindow {
                 id,
-                view: Box::new(self),
+                view: Box::new(comp),
             },
             settings,
+            task,
         )
     }
 }
