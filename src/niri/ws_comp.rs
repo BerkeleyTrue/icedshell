@@ -9,7 +9,9 @@ use crate::{
     widget_ext::ContainExt,
 };
 use iced::{
-    Element, Task, border, padding,
+    Element, Task,
+    advanced::graphics::futures::MaybeSend,
+    border, padding,
     widget::{container, row},
 };
 use lucide_icons::Icon;
@@ -37,7 +39,10 @@ impl CompWithProps for NiriWsComp {
     type Init = Init;
     type Props<'a> = Props<'a>;
 
-    fn new(init: Self::Init) -> (Self, Task<Self::Message>) {
+    fn new<O: MaybeSend + 'static>(
+        init: Self::Init,
+        _f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>) {
         Self {
             main_mon: init.main_mon,
         }

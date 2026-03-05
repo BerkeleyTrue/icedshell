@@ -1,6 +1,7 @@
 use derive_more::{Deref, DerefMut};
 use iced::{
     Element, Length, Subscription, Task,
+    advanced::graphics::futures::MaybeSend,
     widget::{Container, container, row},
     window,
 };
@@ -42,18 +43,21 @@ pub trait Comp: Sized {
 }
 
 pub trait CompWithProps: Sized {
-    type Message;
+    type Message: MaybeSend + 'static;
     type Init;
     type Props<'a>;
 
-    fn new(input: Self::Init) -> (Self, Task<Self::Message>);
+    fn new<O: MaybeSend + 'static>(
+        input: Self::Init,
+        f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>);
 
     fn subscription(&self) -> Subscription<Self::Message> {
         Subscription::none()
     }
 
     /// helper: convert self to tuple with empty task
-    fn to_tuple(self) -> (Self, Task<Self::Message>) {
+    fn to_tuple<O>(self) -> (Self, Task<O>) {
         (self, Task::none())
     }
 

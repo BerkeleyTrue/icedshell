@@ -74,24 +74,16 @@ impl Comp for DeloraMain {
         let height = theme.spacing().xl();
         let padding = theme.spacing().xs();
         let monitor_id = MonitorId(input.output_name.clone());
-        let (ws, ws_task) = {
-            let (ws, ws_task) = ws_comp::NiriWsComp::new(ws_comp::Init {
+        let (ws, ws_task) = ws_comp::NiriWsComp::new(
+            ws_comp::Init {
                 main_mon: monitor_id.clone(),
-            });
-            (ws, ws_task.map(Message::Ws))
-        };
-        let (win, win_comp_task) = {
-            let (win, win_comp_task) = win_comp::NiriWinComp::new(win_comp::Init { monitor_id });
-            (win, win_comp_task.map(Message::Win))
-        };
-        let (clock, clock_task) = {
-            let (clock, clock_task) = clock::Clock::new(());
-            (clock, clock_task.map(Message::Clock))
-        };
-        let (date, date_task) = {
-            let (date, date_task) = date::Date::new(());
-            (date, date_task.map(Message::Date))
-        };
+            },
+            Message::Ws,
+        );
+        let (win, win_comp_task) =
+            win_comp::NiriWinComp::new(win_comp::Init { monitor_id }, Message::Win);
+        let (clock, clock_task) = clock::Clock::new((), Message::Clock);
+        let (date, date_task) = date::Date::new((), Message::Date);
         let (niri_serv, niri_serv_task) = {
             let (niri_serv, niri_serv_task) = state_serv::NiriStateServ::new(());
             (niri_serv, niri_serv_task.map(Message::NiriService))
@@ -100,10 +92,8 @@ impl Comp for DeloraMain {
             let (tray_serv, tray_serv_task) = tray_serv::TrayService::new(());
             (tray_serv, tray_serv_task.map(Message::TrayService))
         };
-        let (tray, tray_task) = {
-            let (tray, tray_task) = tray_comp::TrayComp::new(());
-            (tray, tray_task.map(Message::Tray))
-        };
+        let (tray, tray_task) = tray_comp::TrayComp::new((), Message::Tray);
+
         let (sys_info, sys_info_task) = {
             let (sys_info, sys_info_task) = sys_info::SysInfoComp::new(());
             (sys_info, sys_info_task.map(Message::SysInfo))

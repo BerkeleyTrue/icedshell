@@ -1,5 +1,7 @@
 use iced::{
-    Color, Task, padding,
+    Color, Task,
+    advanced::graphics::futures::MaybeSend,
+    padding,
     widget::{button, row, text, tooltip},
 };
 use lucide_icons::Icon;
@@ -35,7 +37,10 @@ impl CompWithProps for TrayComp {
     type Init = ();
     type Props<'a> = Props<'a>;
 
-    fn new(_input: Self::Init) -> (Self, Task<Self::Message>) {
+    fn new<O: MaybeSend + 'static>(
+        _input: Self::Init,
+        _f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>) {
         Self {}.to_tuple()
     }
 

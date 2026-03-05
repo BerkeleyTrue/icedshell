@@ -1,5 +1,6 @@
 use iced::{
     Color, Element, Subscription, Task,
+    advanced::graphics::futures::MaybeSend,
     time::{every, milliseconds},
     widget::text,
 };
@@ -31,7 +32,10 @@ impl CompWithProps for Clock {
     type Init = ();
     type Props<'a> = Color;
 
-    fn new(_init: Self::Init) -> (Self, Task<Self::Message>) {
+    fn new<O: MaybeSend + 'static>(
+        _input: Self::Init,
+        _f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>) {
         Self { time: gen_time() }.to_tuple()
     }
 

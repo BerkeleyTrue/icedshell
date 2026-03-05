@@ -1,5 +1,7 @@
 use iced::{
-    Color, Element, Length, Task, padding,
+    Color, Element, Length, Task,
+    advanced::graphics::futures::MaybeSend,
+    padding,
     widget::{container, row, space, text},
 };
 
@@ -35,7 +37,11 @@ impl CompWithProps for NiriWinComp {
     type Props<'a> = Props<'a>;
     type Init = Init;
     type Message = Message;
-    fn new(input: Self::Init) -> (Self, Task<Self::Message>) {
+
+    fn new<O: MaybeSend + 'static>(
+        input: Self::Init,
+        _f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>) {
         Self {
             mon: input.monitor_id,
         }

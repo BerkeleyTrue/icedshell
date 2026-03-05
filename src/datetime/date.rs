@@ -1,5 +1,7 @@
 use iced::{
-    Color, Element, Subscription, Task, padding,
+    Color, Element, Subscription, Task,
+    advanced::graphics::futures::MaybeSend,
+    padding,
     time::{every, hours},
     widget::{row, text},
 };
@@ -47,7 +49,10 @@ impl CompWithProps for Date {
     type Init = ();
     type Props<'a> = Color;
 
-    fn new(_init: Self::Init) -> (Self, Task<Self::Message>) {
+    fn new<O: MaybeSend + 'static>(
+        _input: Self::Init,
+        _f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+    ) -> (Self, Task<O>) {
         Self {
             date: gen_date(),
             week: gen_week(),
