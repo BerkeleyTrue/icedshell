@@ -2,13 +2,13 @@ mod app_serv;
 
 use derive_more::Display;
 use iced::{
-    Border, Element, Event, Length, Task,
+    Border, Element, Event, Length, Padding, Task,
     advanced::graphics::futures::MaybeSend,
     alignment::Vertical,
     border, event,
     keyboard::{self, Key, key::Named},
     padding,
-    widget::{Column, column, container, operation::focus, row, text, text_input},
+    widget::{Column, Space, column, container, operation::focus, row, text, text_input},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
@@ -17,7 +17,7 @@ use tracing::info;
 
 use crate::{
     feature::{Comp, Feature, Service, align_center},
-    launcher::app_serv::{AppServ, Application, ListArgs},
+    launcher::app_serv::{AppDesc, AppServ, ListArgs},
     theme::CAT_THEME,
 };
 
@@ -139,14 +139,25 @@ impl Comp for Launcher {
 
 impl Launcher {
     fn view_apps(&self) -> Element<'static, Message> {
+        let theme = &CAT_THEME;
         self.app_serv
             .list(ListArgs {
                 limit: 10,
                 ..Default::default()
             })
-            .map(|Application { name, .. }| {
+            .map(|AppDesc { name, icon, .. }| {
                 let title = text!("{name}");
-                row![title]
+                let icon = icon
+                    .as_ref()
+                    .map(|fdo_icon| fdo_icon.elem(theme.spacing().xl()))
+                    .map(|icon| {
+                        container(icon)
+                            .padding(padding::right(theme.spacing().sm()))
+                            .center_y(Length::Fill)
+                            .into()
+                    })
+                    .unwrap_or(Element::from(Space::new()));
+                row![icon, title]
             })
             .fold(Column::new(), |col, row| col.push(row))
             .into()

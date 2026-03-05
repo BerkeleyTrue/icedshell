@@ -12,19 +12,22 @@ use itertools::Itertools;
 use tokio::fs;
 use tracing::info;
 
-use crate::feature::Service;
+use crate::{
+    fdo_icons::{self, FdIcon},
+    feature::Service,
+};
 
 #[derive(Debug, Clone, Constructor)]
-pub struct Application {
+pub struct AppDesc {
     pub name: String,
     pub exec: String,
     pub comment: Option<String>,
     pub try_exec: Option<String>,
-    pub icon: Option<String>,
+    pub icon: Option<FdIcon>,
 }
 
 #[derive(Debug, Deref, DerefMut, From, Clone, Default)]
-pub struct AppNameToAppMap(BTreeMap<String, Application>);
+pub struct AppNameToAppMap(BTreeMap<String, AppDesc>);
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -82,7 +85,7 @@ pub struct ListArgs {
 }
 
 impl AppServ {
-    pub fn list(&self, ListArgs { skip, limit }: ListArgs) -> impl Iterator<Item = &Application> {
+    pub fn list(&self, ListArgs { skip, limit }: ListArgs) -> impl Iterator<Item = &AppDesc> {
         self.apps.values().skip(skip).take(limit)
     }
 }
@@ -149,7 +152,11 @@ async fn get_apps() -> anyhow::Result<AppNameToAppMap> {
 
                 let try_exec = desktop.get_desk_entry("TryExec");
                 let comment = desktop.get_desk_entry("Comment");
-                let icon = desktop.get_desk_entry("Icon");
+                let icon = desktop.get_desk_entry("Icon").cloned();
+                let icon = tokio::task::spawn_blocking(move || {
+                    icon.and_then(|name| fdo_icons::find(&name))
+                })
+                .await?;
 
                 if is_visible_app
                     && let Some(name) = name
@@ -164,12 +171,12 @@ async fn get_apps() -> anyhow::Result<AppNameToAppMap> {
 
                     apps.insert(
                         file_name,
-                        Application::new(
+                        AppDesc::new(
                             name.to_owned(),
                             exec.to_owned(),
                             comment.cloned(),
                             try_exec.cloned(),
-                            icon.cloned(),
+                            icon,
                         ),
                     );
                 }
