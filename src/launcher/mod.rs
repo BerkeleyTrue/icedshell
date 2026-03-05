@@ -16,7 +16,8 @@ use iced_layershell::reexport::{
 use tracing::info;
 
 use crate::{
-    feature::{Comp, Feature, align_center},
+    feature::{Comp, Feature, Service, align_center},
+    launcher::app_serv::AppServ,
     theme::CAT_THEME,
 };
 
@@ -29,11 +30,13 @@ enum PromptType {
 pub enum Message {
     Close,
     SearchUpdated(String),
+    AppServ(app_serv::Message),
 }
 
 pub struct Launcher {
     search: String,
     prompt_type: PromptType,
+    app_serv: AppServ,
 }
 
 impl Comp for Launcher {
@@ -44,17 +47,21 @@ impl Comp for Launcher {
         _input: Self::Init,
         f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
     ) -> (Self, Task<O>) {
+        let (app_serv, app_serv_task) = AppServ::new((), Message::AppServ);
         (
             Self {
                 prompt_type: PromptType::Run,
                 search: "".to_string(),
+                app_serv,
             },
-            Task::future(async {
-                tokio::time::sleep(tokio::time::Duration::from_millis(250)).await;
-            })
-            .discard()
-            .chain(focus::<Message>("search-input"))
-            .map(f),
+            {
+                let outer_task = Task::future(async {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(250)).await;
+                })
+                .discard()
+                .chain(focus::<Message>("search-input"));
+                Task::batch([app_serv_task, outer_task]).map(f)
+            },
         )
     }
 
@@ -78,6 +85,7 @@ impl Comp for Launcher {
                 self.search = search;
                 Task::none()
             }
+            Message::AppServ(message) => self.app_serv.update(message).map(Message::AppServ),
         }
     }
 

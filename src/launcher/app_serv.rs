@@ -10,11 +10,12 @@ use freedesktop_entry_parser::{Entry, parse_entry};
 use iced::{Subscription, Task, advanced::graphics::futures::MaybeSend};
 use itertools::Itertools;
 use tokio::fs;
+use tracing::info;
 
 use crate::feature::Service;
 
 #[derive(Debug, Clone, Constructor)]
-struct Application {
+pub struct Application {
     name: String,
     exec: String,
     comment: Option<String>,
@@ -22,13 +23,15 @@ struct Application {
     icon: Option<String>,
 }
 
-#[derive(Debug, Deref, DerefMut, From)]
-struct AppNameToAppMap(BTreeMap<String, Application>);
+#[derive(Debug, Deref, DerefMut, From, Clone, Default)]
+pub struct AppNameToAppMap(BTreeMap<String, Application>);
 
 #[derive(Debug, Clone)]
-enum Message {}
+pub enum Message {
+    LoadApps(AppNameToAppMap),
+}
 
-struct AppServ {
+pub struct AppServ {
     apps: AppNameToAppMap,
 }
 
@@ -38,12 +41,23 @@ impl Service for AppServ {
 
     fn new<O: MaybeSend + 'static>(
         _input: Self::Init,
-        _f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
+        f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
     ) -> (Self, Task<O>) {
-        Self {
-            apps: AppNameToAppMap::from(BTreeMap::new()),
-        }
-        .to_tuple()
+        let init = Task::future(async {
+            get_apps()
+                .await
+                .map(Message::LoadApps)
+                .inspect_err(|err| {
+                    info!("Error loading apps: {err:?}");
+                })
+                .unwrap_or_else(|_| Message::LoadApps(AppNameToAppMap::default()))
+        });
+        (
+            Self {
+                apps: AppNameToAppMap::from(BTreeMap::new()),
+            },
+            init.map(f),
+        )
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
@@ -51,7 +65,12 @@ impl Service for AppServ {
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
-        Task::none()
+        match message {
+            Message::LoadApps(apps) => {
+                self.apps = apps;
+                Task::none()
+            }
+        }
     }
 }
 
