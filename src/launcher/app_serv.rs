@@ -10,6 +10,10 @@ use derive_more::{Constructor, Deref, DerefMut, From};
 use freedesktop_entry_parser::{Entry, parse_entry};
 use iced::{Subscription, Task, advanced::graphics::futures::MaybeSend};
 use itertools::Itertools;
+use nucleo_matcher::{
+    Config, Matcher, Utf32Str,
+    pattern::{CaseMatching, Normalization, Pattern},
+};
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tracing::info;
@@ -111,24 +115,53 @@ impl Service for AppServ {
 }
 
 #[derive(Debug, Default)]
-pub struct ListArgs {
+pub struct ListArgs<'a> {
+    pub query: Option<&'a String>,
     pub skip: usize,
     pub limit: usize,
 }
 
 impl AppServ {
-    pub fn list(
-        &self,
-        ListArgs { skip, limit }: ListArgs,
-    ) -> Box<dyn Iterator<Item = &AppDesc> + '_> {
+    pub fn list<'a>(
+        &'a self,
+        ListArgs { query, skip, limit }: ListArgs<'a>,
+    ) -> Box<dyn Iterator<Item = &'a AppDesc> + '_> {
         let mut apps: Vec<_> = self.apps.values().collect();
-        apps.sort_by_key(|app| cmp::Reverse(app.count));
+
+        if let Some(query) = query {
+            apps = Self::match_list(query, apps);
+        } else {
+            apps.sort_by_key(|app| cmp::Reverse(app.count));
+        }
 
         if apps.len() < skip {
             Box::new(apps.into_iter())
         } else {
             Box::new(apps.into_iter().skip(skip).take(limit))
         }
+    }
+
+    fn match_list<'a>(query: &'a str, items: Vec<&'a AppDesc>) -> Vec<&'a AppDesc> {
+        let pattern = Pattern::parse(query, CaseMatching::Ignore, Normalization::Smart);
+
+        if pattern.atoms.is_empty() {
+            return items;
+        }
+
+        let mut matcher = Matcher::new(Config::DEFAULT.match_paths());
+        let mut buff = Vec::new();
+
+        items
+            .into_iter()
+            .filter_map(|app| {
+                let haystack = Utf32Str::new(&app.name, &mut buff);
+                pattern
+                    .score(haystack, &mut matcher)
+                    .map(|score| (app, score))
+            })
+            .sorted_by_key(|(_, score)| cmp::Reverse(*score))
+            .map(|(app, _)| app)
+            .collect()
     }
 }
 

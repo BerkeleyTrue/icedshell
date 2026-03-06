@@ -171,6 +171,11 @@ impl Launcher {
         let theme = &CAT_THEME;
         self.app_serv
             .list(ListArgs {
+                query: if self.search.is_empty() {
+                    None
+                } else {
+                    Some(&self.search)
+                },
                 limit: self.num_of_items.max(5),
                 skip: self.page.mul(self.num_of_items),
             })
