@@ -1,5 +1,6 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    cmp,
+    collections::{BTreeMap, BTreeSet, HashMap},
     env::VarError,
     ffi::OsStr,
     path::PathBuf,
@@ -9,6 +10,7 @@ use derive_more::{Constructor, Deref, DerefMut, From};
 use freedesktop_entry_parser::{Entry, parse_entry};
 use iced::{Subscription, Task, advanced::graphics::futures::MaybeSend};
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tracing::info;
 
@@ -20,6 +22,7 @@ use crate::{
 #[derive(Debug, Clone, Constructor)]
 pub struct AppDesc {
     pub name: String,
+    pub count: usize,
     pub app_id: String,
     pub exec: String,
     pub comment: Option<String>,
@@ -33,9 +36,11 @@ pub struct AppNameToAppMap(BTreeMap<String, AppDesc>);
 #[derive(Debug, Clone)]
 pub enum Message {
     LoadApps(AppNameToAppMap),
+    LoadCache(CountCache),
 }
 
 pub struct AppServ {
+    count_cache: CountCache,
     apps: AppNameToAppMap,
 }
 
@@ -47,20 +52,30 @@ impl Service for AppServ {
         _input: Self::Init,
         f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
     ) -> (Self, Task<O>) {
-        let init = Task::future(async {
+        let init_apps = Task::future(async {
             get_apps()
                 .await
                 .map(Message::LoadApps)
                 .inspect_err(|err| {
                     info!("Error loading apps: {err:?}");
                 })
-                .unwrap_or_else(|_| Message::LoadApps(AppNameToAppMap::default()))
+                .unwrap_or(Message::LoadApps(AppNameToAppMap::default()))
+        });
+        let init_cache = Task::future(async {
+            CountCache::load()
+                .await
+                .inspect_err(|err| {
+                    info!("Error loading cache: {err:?}");
+                })
+                .map(Message::LoadCache)
+                .unwrap_or(Message::LoadCache(CountCache::default()))
         });
         (
             Self {
-                apps: AppNameToAppMap::from(BTreeMap::new()),
+                count_cache: CountCache::default(),
+                apps: AppNameToAppMap::default(),
             },
-            init.map(f),
+            Task::batch([init_apps, init_cache]).map(f),
         )
     }
 
@@ -72,6 +87,23 @@ impl Service for AppServ {
         match message {
             Message::LoadApps(apps) => {
                 self.apps = apps;
+                for (app_id, count) in self.count_cache.iter() {
+                    self.apps.entry(app_id.clone()).and_modify(move |app| {
+                        app.count = *count;
+                    });
+                }
+
+                Task::none()
+            }
+            Message::LoadCache(cache) => {
+                self.count_cache = cache;
+
+                for (app_id, count) in self.count_cache.iter() {
+                    self.apps.entry(app_id.clone()).and_modify(move |app| {
+                        app.count = *count;
+                    });
+                }
+
                 Task::none()
             }
         }
@@ -85,8 +117,18 @@ pub struct ListArgs {
 }
 
 impl AppServ {
-    pub fn list(&self, ListArgs { skip, limit }: ListArgs) -> impl Iterator<Item = &AppDesc> {
-        self.apps.values().skip(skip).take(limit)
+    pub fn list(
+        &self,
+        ListArgs { skip, limit }: ListArgs,
+    ) -> Box<dyn Iterator<Item = &AppDesc> + '_> {
+        let mut apps: Vec<_> = self.apps.values().collect();
+        apps.sort_by_key(|app| cmp::Reverse(app.count));
+
+        if apps.len() < skip {
+            Box::new(apps.into_iter())
+        } else {
+            Box::new(apps.into_iter().skip(skip).take(limit))
+        }
     }
 }
 
@@ -173,6 +215,7 @@ async fn get_apps() -> anyhow::Result<AppNameToAppMap> {
                         app_id.clone(),
                         AppDesc::new(
                             app_id,
+                            0,
                             name.to_owned(),
                             exec.to_owned(),
                             comment.cloned(),
@@ -215,5 +258,35 @@ impl EntryExt for Entry {
     fn get_desk_entry(&self, attr: impl AsRef<str>) -> Option<&String> {
         self.get("Desktop Entry", attr)
             .and_then(|entries| entries.first())
+    }
+}
+
+#[derive(Debug, Constructor, Deref, DerefMut, Default, Deserialize, Serialize, Clone)]
+pub struct CountCache(pub HashMap<String, usize>);
+
+impl CountCache {
+    fn get_path() -> PathBuf {
+        dirs::data_local_dir()
+            .unwrap_or(PathBuf::from("."))
+            .join("icedshell/launcher_counts.json")
+    }
+
+    async fn load() -> anyhow::Result<Self> {
+        let path = Self::get_path();
+        fs::read_to_string(path)
+            .await
+            .map_err(anyhow::Error::from)
+            .and_then(|file_str| serde_json::from_str(&file_str).map_err(anyhow::Error::from))
+    }
+
+    async fn save(&self) -> anyhow::Result<()> {
+        let path = Self::get_path();
+        let to_save = serde_json::to_string(self)?;
+        fs::write(path, &to_save).await?;
+        Ok(())
+    }
+
+    fn inc_count(&mut self, app_id: String) {
+        *self.entry(app_id).or_default() += 1;
     }
 }
