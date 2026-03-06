@@ -134,11 +134,7 @@ impl AppServ {
             apps.sort_by_key(|app| cmp::Reverse(app.count));
         }
 
-        if apps.len() < skip {
-            Box::new(apps.into_iter())
-        } else {
-            Box::new(apps.into_iter().skip(skip).take(limit))
-        }
+        Box::new(apps.into_iter().skip(skip).take(limit))
     }
 
     fn match_list<'a>(query: &'a str, items: Vec<&'a AppDesc>) -> Vec<&'a AppDesc> {
@@ -148,12 +144,13 @@ impl AppServ {
             return items;
         }
 
-        let mut matcher = Matcher::new(Config::DEFAULT.match_paths());
+        let mut matcher = Matcher::new(Config::DEFAULT);
         let mut buff = Vec::new();
 
         items
             .into_iter()
             .filter_map(|app| {
+                // TODO: score against comment, keywords, generic name
                 let haystack = Utf32Str::new(&app.name, &mut buff);
                 pattern
                     .score(haystack, &mut matcher)
