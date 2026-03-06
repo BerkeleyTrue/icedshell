@@ -1,8 +1,10 @@
 mod app_serv;
 
+use std::ops::Mul;
+
 use derive_more::Display;
 use iced::{
-    Border, Element, Event, Length, Padding, Task,
+    Border, Element, Event, Length, Task,
     advanced::graphics::futures::MaybeSend,
     alignment::Vertical,
     border, event,
@@ -19,6 +21,7 @@ use crate::{
     feature::{Comp, Feature, Service, align_center},
     launcher::app_serv::{AppDesc, AppServ, ListArgs},
     theme::CAT_THEME,
+    widget_ext::ContainExt,
 };
 
 #[derive(Clone, Debug, Display)]
@@ -31,12 +34,16 @@ pub enum Message {
     Close,
     SearchUpdated(String),
     AppServ(app_serv::Message),
+    PageBack,
+    PageForward,
 }
 
 pub struct Launcher {
     search: String,
     prompt_type: PromptType,
     app_serv: AppServ,
+    page: usize,
+    num_of_items: usize,
 }
 
 impl Comp for Launcher {
@@ -50,9 +57,11 @@ impl Comp for Launcher {
         let (app_serv, app_serv_task) = AppServ::new((), Message::AppServ);
         (
             Self {
+                app_serv,
+                page: 0,
                 prompt_type: PromptType::Run,
                 search: "".to_string(),
-                app_serv,
+                num_of_items: 10,
             },
             {
                 let outer_task = Task::future(async {
@@ -71,6 +80,14 @@ impl Comp for Launcher {
                 key: Key::Named(Named::Escape),
                 ..
             }) => Some(Message::Close),
+            Event::Keyboard(keyboard::Event::KeyPressed {
+                key: Key::Named(Named::ArrowLeft),
+                ..
+            }) => Some(Message::PageBack),
+            Event::Keyboard(keyboard::Event::KeyPressed {
+                key: Key::Named(Named::ArrowRight),
+                ..
+            }) => Some(Message::PageForward),
             _ => None,
         })
     }
@@ -83,6 +100,18 @@ impl Comp for Launcher {
             }
             Message::SearchUpdated(search) => {
                 self.search = search;
+                Task::none()
+            }
+            Message::PageForward => {
+                if self.search.is_empty() {
+                    self.page = self.page.saturating_add(1);
+                }
+                Task::none()
+            }
+            Message::PageBack => {
+                if self.search.is_empty() {
+                    self.page = self.page.saturating_sub(1);
+                }
                 Task::none()
             }
             Message::AppServ(message) => self.app_serv.update(message).map(Message::AppServ),
@@ -142,11 +171,11 @@ impl Launcher {
         let theme = &CAT_THEME;
         self.app_serv
             .list(ListArgs {
-                limit: 10,
-                ..Default::default()
+                limit: self.num_of_items.max(5),
+                skip: self.page.mul(self.num_of_items),
             })
             .map(|AppDesc { name, icon, .. }| {
-                let title = text!("{name}");
+                let title = align_center!(text!("{name}").size(theme.spacing().lg()));
                 let icon = icon
                     .as_ref()
                     .map(|fdo_icon| fdo_icon.elem(theme.spacing().xl()))
@@ -157,7 +186,9 @@ impl Launcher {
                             .into()
                     })
                     .unwrap_or(Element::from(Space::new()));
-                row![icon, title]
+                align_center!(row![icon, title])
+                    .padding(padding::horizontal(theme.spacing().md()))
+                    .width(Length::Fill)
             })
             .fold(Column::new(), |col, row| col.push(row))
             .into()

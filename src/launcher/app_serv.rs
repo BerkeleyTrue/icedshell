@@ -20,6 +20,7 @@ use crate::{
 #[derive(Debug, Clone, Constructor)]
 pub struct AppDesc {
     pub name: String,
+    pub app_id: String,
     pub exec: String,
     pub comment: Option<String>,
     pub try_exec: Option<String>,
@@ -70,7 +71,6 @@ impl Service for AppServ {
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
             Message::LoadApps(apps) => {
-                info!("apps: {apps:?}");
                 self.apps = apps;
                 Task::none()
             }
@@ -131,7 +131,7 @@ async fn get_apps() -> anyhow::Result<AppNameToAppMap> {
         let mut entries = fs::read_dir(data_dir).await?;
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
-            let file_name = path
+            let app_id = path
                 .file_stem()
                 .and_then(|filename| filename.to_str())
                 .map(|s| s.to_owned())
@@ -170,8 +170,9 @@ async fn get_apps() -> anyhow::Result<AppNameToAppMap> {
                         .join(" ");
 
                     apps.insert(
-                        file_name,
+                        app_id.clone(),
                         AppDesc::new(
+                            app_id,
                             name.to_owned(),
                             exec.to_owned(),
                             comment.cloned(),
