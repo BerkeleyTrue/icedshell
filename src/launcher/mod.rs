@@ -1,7 +1,5 @@
 mod app_serv;
 
-use std::ops::Mul;
-
 use derive_more::Display;
 use iced::{
     Border, Element, Event, Length, Task,
@@ -19,11 +17,11 @@ use tracing::info;
 
 use crate::{
     feature::{Comp, Feature, Service, align_center},
-    launcher::app_serv::{AppDesc, AppServ, ListArgs},
+    launcher::app_serv::{AppDesc, AppServ},
     theme::CAT_THEME,
-    widget_ext::ContainExt,
 };
 
+const NUM_OF_ITEMS: usize = 10;
 #[derive(Clone, Debug, Display)]
 enum PromptType {
     Run,
@@ -43,7 +41,6 @@ pub struct Launcher {
     prompt_type: PromptType,
     app_serv: AppServ,
     page: usize,
-    num_of_items: usize,
 }
 
 impl Comp for Launcher {
@@ -61,7 +58,6 @@ impl Comp for Launcher {
                 page: 0,
                 prompt_type: PromptType::Run,
                 search: "".to_string(),
-                num_of_items: 10,
             },
             {
                 let outer_task = Task::future(async {
@@ -100,19 +96,50 @@ impl Comp for Launcher {
             }
             Message::SearchUpdated(search) => {
                 self.search = search;
-                Task::none()
+                self.page = 0;
+                Task::done(Message::AppServ(app_serv::Message::Query(
+                    app_serv::Query::new(
+                        if self.search.is_empty() {
+                            None
+                        } else {
+                            Some(self.search.clone())
+                        },
+                        self.page,
+                        NUM_OF_ITEMS,
+                    ),
+                )))
             }
             Message::PageForward => {
                 if self.search.is_empty() {
                     self.page = self.page.saturating_add(1);
                 }
-                Task::none()
+                Task::done(Message::AppServ(app_serv::Message::Query(
+                    app_serv::Query::new(
+                        if self.search.is_empty() {
+                            None
+                        } else {
+                            Some(self.search.clone())
+                        },
+                        self.page,
+                        NUM_OF_ITEMS,
+                    ),
+                )))
             }
             Message::PageBack => {
                 if self.search.is_empty() {
                     self.page = self.page.saturating_sub(1);
                 }
-                Task::none()
+                Task::done(Message::AppServ(app_serv::Message::Query(
+                    app_serv::Query::new(
+                        if self.search.is_empty() {
+                            None
+                        } else {
+                            Some(self.search.clone())
+                        },
+                        self.page,
+                        NUM_OF_ITEMS,
+                    ),
+                )))
             }
             Message::AppServ(message) => self.app_serv.update(message).map(Message::AppServ),
         }
@@ -170,15 +197,8 @@ impl Launcher {
     fn view_apps(&self) -> Element<'static, Message> {
         let theme = &CAT_THEME;
         self.app_serv
-            .list(ListArgs {
-                query: if self.search.is_empty() {
-                    None
-                } else {
-                    Some(&self.search)
-                },
-                limit: self.num_of_items.max(5),
-                skip: self.page.mul(self.num_of_items),
-            })
+            .res
+            .iter()
             .map(|AppDesc { name, icon, .. }| {
                 let title = align_center!(text!("{name}").size(theme.spacing().lg()));
                 let icon = icon

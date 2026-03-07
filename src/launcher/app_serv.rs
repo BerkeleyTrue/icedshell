@@ -37,15 +37,25 @@ pub struct AppDesc {
 #[derive(Debug, Deref, DerefMut, From, Clone, Default)]
 pub struct AppNameToAppMap(BTreeMap<String, AppDesc>);
 
+#[derive(Debug, Clone, Constructor, PartialEq, Eq, Default)]
+pub struct Query {
+    query: Option<String>,
+    page: usize,
+    page_size: usize,
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
     LoadApps(AppNameToAppMap),
     LoadCache(CountCache),
+    Query(Query),
 }
 
 pub struct AppServ {
     count_cache: CountCache,
     apps: AppNameToAppMap,
+    last_query: Query,
+    pub res: Vec<AppDesc>,
 }
 
 impl Service for AppServ {
@@ -78,6 +88,8 @@ impl Service for AppServ {
             Self {
                 count_cache: CountCache::default(),
                 apps: AppNameToAppMap::default(),
+                res: Vec::new(),
+                last_query: Query::default(),
             },
             Task::batch([init_apps, init_cache]).map(f),
         )
@@ -97,7 +109,7 @@ impl Service for AppServ {
                     });
                 }
 
-                Task::none()
+                Task::done(Message::Query(Query::new(None, 0, 10)))
             }
             Message::LoadCache(cache) => {
                 self.count_cache = cache;
@@ -108,6 +120,12 @@ impl Service for AppServ {
                     });
                 }
 
+                Task::done(Message::Query(Query::new(None, 0, 10)))
+            }
+            Message::Query(query) => {
+                info!("query: {query:?}");
+                self.last_query = query.clone();
+                self.res = self.list(query.into());
                 Task::none()
             }
         }
@@ -115,17 +133,24 @@ impl Service for AppServ {
 }
 
 #[derive(Debug, Default)]
-pub struct ListArgs<'a> {
-    pub query: Option<&'a String>,
+pub struct ListArgs {
+    pub query: Option<String>,
     pub skip: usize,
     pub limit: usize,
 }
 
+impl From<Query> for ListArgs {
+    fn from(value: Query) -> Self {
+        Self {
+            query: value.query,
+            skip: value.page,
+            limit: value.page_size,
+        }
+    }
+}
+
 impl AppServ {
-    pub fn list<'a>(
-        &'a self,
-        ListArgs { query, skip, limit }: ListArgs<'a>,
-    ) -> Box<dyn Iterator<Item = &'a AppDesc> + '_> {
+    pub fn list(&self, ListArgs { query, skip, limit }: ListArgs) -> Vec<AppDesc> {
         let mut apps: Vec<_> = self.apps.values().collect();
 
         if let Some(query) = query {
@@ -134,11 +159,11 @@ impl AppServ {
             apps.sort_by_key(|app| cmp::Reverse(app.count));
         }
 
-        Box::new(apps.into_iter().skip(skip).take(limit))
+        apps.into_iter().skip(skip).take(limit).cloned().collect()
     }
 
-    fn match_list<'a>(query: &'a str, items: Vec<&'a AppDesc>) -> Vec<&'a AppDesc> {
-        let pattern = Pattern::parse(query, CaseMatching::Ignore, Normalization::Smart);
+    fn match_list(query: String, items: Vec<&AppDesc>) -> Vec<&AppDesc> {
+        let pattern = Pattern::parse(&query, CaseMatching::Ignore, Normalization::Smart);
 
         if pattern.atoms.is_empty() {
             return items;
@@ -301,6 +326,7 @@ impl CountCache {
             .join("icedshell/launcher_counts.json")
     }
 
+    // TODO: create dir if it doesn't exists
     async fn load() -> anyhow::Result<Self> {
         let path = Self::get_path();
         fs::read_to_string(path)
