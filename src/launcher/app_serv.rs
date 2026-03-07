@@ -3,6 +3,7 @@ use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     env::VarError,
     ffi::OsStr,
+    ops::Mul,
     path::{Path, PathBuf},
 };
 
@@ -29,9 +30,11 @@ pub struct AppDesc {
     pub count: usize,
     pub app_id: String,
     pub exec: String,
+    pub gen_name: Option<String>,
     pub comment: Option<String>,
     pub try_exec: Option<String>,
     pub icon: Option<FdIcon>,
+    pub categories: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deref, DerefMut, From, Clone, Default)]
@@ -174,11 +177,37 @@ impl AppServ {
         items
             .into_iter()
             .filter_map(|app| {
-                // TODO: score against comment, keywords, generic name
-                let haystack = Utf32Str::new(&app.name, &mut buff);
-                pattern
-                    .score(haystack, &mut matcher)
-                    .map(|score| (app, score))
+                let name_score = {
+                    let haystack = Utf32Str::new(&app.name, &mut buff);
+                    pattern
+                        .score(haystack, &mut matcher)
+                        .map(|score| score.mul(120))
+                };
+                let gen_name_score = {
+                    app.gen_name.as_ref().and_then(|name| {
+                        let haystack = Utf32Str::new(name, &mut buff);
+                        pattern
+                            .score(haystack, &mut matcher)
+                            .map(|score| score.mul(100))
+                    })
+                };
+                let cat_score = {
+                    app.categories.as_ref().and_then(|cats| {
+                        pattern
+                            .match_list(cats, &mut matcher)
+                            .iter()
+                            .max_by_key(|(_, score)| cmp::Reverse(*score))
+                            .map(|(_, score)| score.mul(100))
+                    })
+                };
+                name_score.or(gen_name_score).or(cat_score).map(|_| {
+                    let score = name_score
+                        .unwrap_or_default()
+                        .max(gen_name_score.unwrap_or_default())
+                        .max(cat_score.unwrap_or_default());
+
+                    (app, score)
+                })
             })
             .sorted_by_key(|(_, score)| cmp::Reverse(*score))
             .map(|(app, _)| app)
@@ -247,10 +276,10 @@ async fn get_apps() -> anyhow::Result<AppNameToAppMap> {
                 let is_visible_app = desktop
                     .get_desk_entry("Type")
                     .is_some_and(|typo| typo == "Application")
-                    && desktop.get_desk_entry("Hidden").is_none_or(|s| s != "True")
+                    && desktop.get_desk_entry("Hidden").is_none_or(|s| s != "true")
                     && desktop
                         .get_desk_entry("NoDisplay")
-                        .is_none_or(|s| s != "True");
+                        .is_none_or(|s| s != "true");
 
                 let name = desktop.get_desk_entry("Name");
                 let exec = desktop.get_desk_entry("Exec");
@@ -262,6 +291,12 @@ async fn get_apps() -> anyhow::Result<AppNameToAppMap> {
                     icon.and_then(|name| fdo_icons::find(&name))
                 })
                 .await?;
+                let gen_name = desktop.get_desk_entry("GenericName");
+                let categores = desktop.get_desk_entry("Categories").map(|cats| {
+                    cats.split(";")
+                        .map(|str| str.to_owned())
+                        .collect::<Vec<String>>()
+                });
 
                 if is_visible_app
                     && let Some(name) = name
@@ -281,9 +316,11 @@ async fn get_apps() -> anyhow::Result<AppNameToAppMap> {
                             0,
                             name.to_owned(),
                             exec.to_owned(),
+                            gen_name.cloned(),
                             comment.cloned(),
                             try_exec.cloned(),
                             icon,
+                            categores,
                         ),
                     );
                 }
