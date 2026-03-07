@@ -3,7 +3,7 @@ use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     env::VarError,
     ffi::OsStr,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use derive_more::{Constructor, Deref, DerefMut, From};
@@ -123,7 +123,6 @@ impl Service for AppServ {
                 Task::done(Message::Query(Query::new(None, 0, 10)))
             }
             Message::Query(query) => {
-                info!("query: {query:?}");
                 self.last_query = query.clone();
                 self.res = self.list(query.into());
                 Task::none()
@@ -326,10 +325,25 @@ impl CountCache {
             .join("icedshell/launcher_counts.json")
     }
 
-    // TODO: create dir if it doesn't exists
+    async fn ensure_dir(path: &Path) -> anyhow::Result<()> {
+        if let Some(basename) = path.parent() {
+            info!("basename: {basename:?}");
+            fs::create_dir_all(basename).await?;
+        }
+
+        Ok(())
+    }
+
     async fn load() -> anyhow::Result<Self> {
         let path = Self::get_path();
-        fs::read_to_string(path)
+
+        Self::ensure_dir(&path).await?;
+
+        if !fs::try_exists(&path).await? {
+            return Ok(Self::default());
+        };
+
+        fs::read_to_string(&path)
             .await
             .map_err(anyhow::Error::from)
             .and_then(|file_str| serde_json::from_str(&file_str).map_err(anyhow::Error::from))
@@ -337,8 +351,11 @@ impl CountCache {
 
     async fn save(&self) -> anyhow::Result<()> {
         let path = Self::get_path();
+        Self::ensure_dir(&path).await?;
+
         let to_save = serde_json::to_string(self)?;
-        fs::write(path, &to_save).await?;
+
+        fs::write(&path, &to_save).await?;
         Ok(())
     }
 
