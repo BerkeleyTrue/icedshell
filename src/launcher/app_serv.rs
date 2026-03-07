@@ -184,6 +184,15 @@ impl AppServ {
             .map(|(app, _)| app)
             .collect()
     }
+
+    pub fn exec(&self, app: &AppDesc) -> anyhow::Result<()> {
+        let exec = app.exec.to_owned();
+        tokio::process::Command::new(exec)
+            .process_group(0)
+            .spawn()?;
+
+        Ok(())
+    }
 }
 
 fn get_bin_dirs() -> anyhow::Result<BTreeSet<PathBuf>> {
