@@ -40,6 +40,7 @@ pub enum Message {
         bool,
     ),
     SearchUpdated(String),
+    OnSubmit(String),
     AppServ(app_serv::Message),
     LeftPressed(
         /// captured
@@ -173,6 +174,12 @@ impl Comp for Launcher {
                     ),
                 )))
             }
+            Message::OnSubmit(app_id) => {
+                let _ = self.app_serv.exec(&app_id).inspect_err(|err| {
+                    info!("Error exec: {err:?}");
+                });
+                Task::none()
+            }
             Message::LeftPressed(captured) => {
                 if !captured {
                     self.page_back()
@@ -237,6 +244,13 @@ impl Comp for Launcher {
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let theme = &CAT_THEME;
         let spacing = theme.spacing();
+        let cur_selected = self
+            .app_serv
+            .res
+            .get(self.selected)
+            .map(|app| app.app_id.clone())
+            .map(Message::OnSubmit);
+
         let prompt = {
             let size = spacing.lg();
             let input = text_input("", &self.search)
@@ -252,7 +266,8 @@ impl Comp for Launcher {
                     selection: theme.subtext1(),
                 })
                 .size(size)
-                .on_input(Message::SearchUpdated);
+                .on_input(Message::SearchUpdated)
+                .on_submit_maybe(cur_selected);
 
             let prompt_type = self.prompt_type.to_string();
             let mode = self.mode.to_string().to_uppercase();

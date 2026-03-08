@@ -214,11 +214,18 @@ impl AppServ {
             .collect()
     }
 
-    pub fn exec(&self, app: &AppDesc) -> anyhow::Result<()> {
-        let exec = app.exec.to_owned();
-        tokio::process::Command::new(exec)
-            .process_group(0)
-            .spawn()?;
+    pub fn exec(&self, app_id: &str) -> anyhow::Result<()> {
+        let app = self.apps.get(app_id);
+        if let Some(app) = app {
+            let exec = app.exec.to_owned();
+            let mut parts = exec.split_whitespace();
+            if let Some(cmd) = parts.next() {
+                tokio::process::Command::new(cmd)
+                    .args(parts)
+                    .process_group(0)
+                    .spawn()?;
+            }
+        }
 
         Ok(())
     }
@@ -373,7 +380,6 @@ impl CountCache {
 
     async fn ensure_dir(path: &Path) -> anyhow::Result<()> {
         if let Some(basename) = path.parent() {
-            info!("basename: {basename:?}");
             fs::create_dir_all(basename).await?;
         }
 
