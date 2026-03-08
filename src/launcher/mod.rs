@@ -27,13 +27,32 @@ enum PromptType {
     Run,
 }
 
+#[derive(Clone, Debug, Display)]
+enum Mode {
+    Normal,
+    Insert,
+}
+
 #[derive(Clone, Debug)]
 pub enum Message {
-    Close,
+    EscapePressed(
+        /// captured
+        bool,
+    ),
     SearchUpdated(String),
     AppServ(app_serv::Message),
-    PageBack,
-    PageForward,
+    LeftPressed(
+        /// captured
+        bool,
+    ),
+    RightPressed(
+        /// captured
+        bool,
+    ),
+    IKeyPressed(
+        /// captured
+        bool,
+    ),
 }
 
 pub struct Launcher {
@@ -41,6 +60,7 @@ pub struct Launcher {
     prompt_type: PromptType,
     app_serv: AppServ,
     page: usize,
+    mode: Mode,
 }
 
 impl Comp for Launcher {
@@ -58,6 +78,7 @@ impl Comp for Launcher {
                 page: 0,
                 prompt_type: PromptType::Run,
                 search: "".to_string(),
+                mode: Mode::Insert,
             },
             {
                 let outer_task = Task::future(async {
@@ -65,33 +86,46 @@ impl Comp for Launcher {
                 })
                 .discard()
                 .chain(focus::<Message>("search-input"));
+
                 Task::batch([app_serv_task, outer_task]).map(f)
             },
         )
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
-        event::listen_with(|event, _, _| match event {
-            Event::Keyboard(keyboard::Event::KeyPressed {
-                key: Key::Named(Named::Escape),
-                ..
-            }) => Some(Message::Close),
-            Event::Keyboard(keyboard::Event::KeyPressed {
-                key: Key::Named(Named::ArrowLeft),
-                ..
-            }) => Some(Message::PageBack),
-            Event::Keyboard(keyboard::Event::KeyPressed {
-                key: Key::Named(Named::ArrowRight),
-                ..
-            }) => Some(Message::PageForward),
-            _ => None,
+        event::listen_with(|event, status, _| {
+            let captured = matches!(status, event::Status::Captured);
+            match event {
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: Key::Named(Named::Escape),
+                    ..
+                }) => Some(Message::EscapePressed(captured)),
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: Key::Named(Named::ArrowLeft),
+                    ..
+                }) => Some(Message::LeftPressed(captured)),
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: Key::Named(Named::ArrowRight),
+                    ..
+                }) => Some(Message::RightPressed(captured)),
+                Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) => match key.as_ref() {
+                    Key::Character("i") => Some(Message::IKeyPressed(captured)),
+                    _ => None,
+                },
+                _ => None,
+            }
         })
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
-            Message::Close => {
-                info!("close window");
+            Message::EscapePressed(captured) => {
+                if captured {
+                    info!("escape: normal");
+                    self.mode = Mode::Normal;
+                } else {
+                    info!("close window");
+                }
                 Task::none()
             }
             Message::SearchUpdated(search) => {
@@ -109,37 +143,49 @@ impl Comp for Launcher {
                     ),
                 )))
             }
-            Message::PageForward => {
-                if self.search.is_empty() {
+            Message::RightPressed(captured) => {
+                if !captured {
                     self.page = self.page.saturating_add(1);
+                    Task::done(Message::AppServ(app_serv::Message::Query(
+                        app_serv::Query::new(
+                            if self.search.is_empty() {
+                                None
+                            } else {
+                                Some(self.search.clone())
+                            },
+                            self.page,
+                            NUM_OF_ITEMS,
+                        ),
+                    )))
+                } else {
+                    Task::none()
                 }
-                Task::done(Message::AppServ(app_serv::Message::Query(
-                    app_serv::Query::new(
-                        if self.search.is_empty() {
-                            None
-                        } else {
-                            Some(self.search.clone())
-                        },
-                        self.page,
-                        NUM_OF_ITEMS,
-                    ),
-                )))
             }
-            Message::PageBack => {
-                if self.search.is_empty() {
+            Message::LeftPressed(captured) => {
+                if !captured {
                     self.page = self.page.saturating_sub(1);
+                    Task::done(Message::AppServ(app_serv::Message::Query(
+                        app_serv::Query::new(
+                            if self.search.is_empty() {
+                                None
+                            } else {
+                                Some(self.search.clone())
+                            },
+                            self.page,
+                            NUM_OF_ITEMS,
+                        ),
+                    )))
+                } else {
+                    Task::none()
                 }
-                Task::done(Message::AppServ(app_serv::Message::Query(
-                    app_serv::Query::new(
-                        if self.search.is_empty() {
-                            None
-                        } else {
-                            Some(self.search.clone())
-                        },
-                        self.page,
-                        NUM_OF_ITEMS,
-                    ),
-                )))
+            }
+            Message::IKeyPressed(captured) => {
+                if !captured {
+                    self.mode = Mode::Insert;
+                    focus("search-input")
+                } else {
+                    Task::none()
+                }
             }
             Message::AppServ(message) => self.app_serv.update(message).map(Message::AppServ),
         }
@@ -168,6 +214,17 @@ impl Comp for Launcher {
             let prompt = text!("{prompt} >").size(size);
 
             align_center!(row![prompt, input])
+                .style(|_| container::Style {
+                    border: border::width(theme.spacing().xxs())
+                        .rounded(theme.radius().sm())
+                        .color({
+                            match self.mode {
+                                Mode::Normal => theme.blue(),
+                                Mode::Insert => theme.green(),
+                            }
+                        }),
+                    ..Default::default()
+                })
                 .padding(padding::right(theme.spacing().md()))
                 .height(theme.spacing().xl2())
         };
