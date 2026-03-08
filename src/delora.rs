@@ -78,7 +78,7 @@ impl Comp for DeloraMain {
         let theme = &CAT_THEME;
         let height = theme.spacing().xl();
         let padding = theme.spacing().xs();
-        let monitor_id = MonitorId(input.output_name.clone());
+        let monitor_id = MonitorId::from(&input.output_name);
         let (ws, ws_task) = ws_comp::NiriWsComp::new(
             ws_comp::Init {
                 main_mon: monitor_id.clone(),

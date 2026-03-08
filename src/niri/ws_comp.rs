@@ -57,11 +57,17 @@ impl CompWithProps for NiriWsComp {
             let monitor_id = ws
                 .monitor_id
                 .as_ref()
-                .map(|mon_id| mon_id.get())
-                .unwrap_or("NA".to_string());
+                .map(|mon_id| mon_id.inner())
+                .unwrap_or("NA");
 
-            let priority = if monitor_id == self.main_mon.0 { 0 } else { 1 };
-            let ws_map = mon_map.entry((priority, monitor_id)).or_default();
+            let priority = if monitor_id == self.main_mon.inner() {
+                0
+            } else {
+                1
+            };
+            let ws_map = mon_map
+                .entry((priority, monitor_id.to_owned()))
+                .or_default();
 
             ws_map.insert(ws.idx.get(), ws);
 

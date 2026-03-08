@@ -235,8 +235,11 @@ impl Daemon {
             Message::NiriMon(message) => {
                 let inner_task = self.mon_serv.update(message).map(Message::NiriMon);
                 let num_mon = self.mon_serv.len();
-                let mon_names: Vec<String> =
-                    self.mon_serv.iter().map(|mon| mon.0.clone()).collect();
+                let mon_names: Vec<String> = self
+                    .mon_serv
+                    .iter()
+                    .map(|mon| mon.inner().to_owned())
+                    .collect();
 
                 let mut tasks: Vec<_> = mon_names
                     .iter()
