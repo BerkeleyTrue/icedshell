@@ -22,6 +22,7 @@ use tracing::info;
 use crate::{
     fdo_icons::{self, FdIcon},
     feature::Service,
+    launcher::modi::{Modi, Query, Res},
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -40,13 +41,6 @@ pub struct AppDesc {
 #[derive(Debug, Deref, DerefMut, From, Clone, Default)]
 pub struct AppNameToAppMap(BTreeMap<String, AppDesc>);
 
-#[derive(Debug, Clone, Constructor, PartialEq, Eq, Default)]
-pub struct Query {
-    query: Option<String>,
-    page: usize,
-    page_size: usize,
-}
-
 #[derive(Debug, Clone)]
 pub enum Message {
     LoadApps(AppNameToAppMap),
@@ -58,7 +52,7 @@ pub struct AppServ {
     count_cache: CountCache,
     apps: AppNameToAppMap,
     last_query: Query,
-    pub res: Vec<AppDesc>,
+    res: Vec<Res<String>>,
 }
 
 impl Service for AppServ {
@@ -127,94 +121,43 @@ impl Service for AppServ {
             }
             Message::Query(query) => {
                 self.last_query = query.clone();
-                self.res = self.list(query.into());
-                Task::none()
+                self.query(query)
             }
         }
     }
 }
 
-#[derive(Debug, Default)]
-pub struct ListArgs {
-    pub query: Option<String>,
-    pub skip: usize,
-    pub limit: usize,
-}
+impl Modi for AppServ {
+    type Id = String;
+    type Message = Message;
 
-impl From<Query> for ListArgs {
-    fn from(value: Query) -> Self {
-        Self {
-            query: value.query,
-            skip: value.page,
-            limit: value.page_size,
-        }
+    fn len(&self) -> usize {
+        self.res.len()
     }
-}
 
-impl AppServ {
-    pub fn list(&self, ListArgs { query, skip, limit }: ListArgs) -> Vec<AppDesc> {
+    fn res(&self) -> &Vec<super::modi::Res<Self::Id>> {
+        &self.res
+    }
+
+    fn query(&mut self, Query { term, page, limit }: Query) -> Task<Self::Message> {
         let mut apps: Vec<_> = self.apps.values().collect();
 
-        if let Some(query) = query {
-            apps = Self::match_list(query, apps);
+        if let Some(term) = term {
+            apps = match_list(term, apps);
         } else {
             apps.sort_by_key(|app| cmp::Reverse(app.count));
         }
 
-        apps.into_iter().skip(skip).take(limit).cloned().collect()
-    }
-
-    fn match_list(query: String, items: Vec<&AppDesc>) -> Vec<&AppDesc> {
-        let pattern = Pattern::parse(&query, CaseMatching::Ignore, Normalization::Smart);
-
-        if pattern.atoms.is_empty() {
-            return items;
-        }
-
-        let mut matcher = Matcher::new(Config::DEFAULT);
-        let mut buff = Vec::new();
-
-        items
+        self.res = apps
             .into_iter()
-            .filter_map(|app| {
-                let name_score = {
-                    let haystack = Utf32Str::new(&app.name, &mut buff);
-                    pattern
-                        .score(haystack, &mut matcher)
-                        .map(|score| score.mul(120))
-                };
-                let gen_name_score = {
-                    app.gen_name.as_ref().and_then(|name| {
-                        let haystack = Utf32Str::new(name, &mut buff);
-                        pattern
-                            .score(haystack, &mut matcher)
-                            .map(|score| score.mul(100))
-                    })
-                };
-                let cat_score = {
-                    app.categories.as_ref().and_then(|cats| {
-                        pattern
-                            .match_list(cats, &mut matcher)
-                            .iter()
-                            .max_by_key(|(_, score)| cmp::Reverse(*score))
-                            .map(|(_, score)| score.mul(100))
-                    })
-                };
-                name_score.or(gen_name_score).or(cat_score).map(|_| {
-                    let score = name_score
-                        .unwrap_or_default()
-                        .max(gen_name_score.unwrap_or_default())
-                        .max(cat_score.unwrap_or_default());
-
-                    (app, score)
-                })
-            })
-            .sorted_by_key(|(_, score)| cmp::Reverse(*score))
-            .map(|(app, _)| app)
-            .collect()
+            .skip(page * limit)
+            .take(limit)
+            .map(Res::from)
+            .collect();
+        Task::none()
     }
 
-    pub fn exec(&self, app_id: &str) -> anyhow::Result<()> {
+    fn exec(&self, app_id: &Self::Id) -> anyhow::Result<()> {
         let app = self.apps.get(app_id);
         if let Some(app) = app {
             let exec = app.exec.to_owned();
@@ -231,6 +174,57 @@ impl AppServ {
     }
 }
 
+fn match_list(query: String, items: Vec<&AppDesc>) -> Vec<&AppDesc> {
+    let pattern = Pattern::parse(&query, CaseMatching::Ignore, Normalization::Smart);
+
+    if pattern.atoms.is_empty() {
+        return items;
+    }
+
+    let mut matcher = Matcher::new(Config::DEFAULT);
+    let mut buff = Vec::new();
+
+    items
+        .into_iter()
+        .filter_map(|app| {
+            let name_score = {
+                let haystack = Utf32Str::new(&app.name, &mut buff);
+                pattern
+                    .score(haystack, &mut matcher)
+                    .map(|score| score.mul(120))
+            };
+            let gen_name_score = {
+                app.gen_name.as_ref().and_then(|name| {
+                    let haystack = Utf32Str::new(name, &mut buff);
+                    pattern
+                        .score(haystack, &mut matcher)
+                        .map(|score| score.mul(100))
+                })
+            };
+            let cat_score = {
+                app.categories.as_ref().and_then(|cats| {
+                    pattern
+                        .match_list(cats, &mut matcher)
+                        .iter()
+                        .max_by_key(|(_, score)| cmp::Reverse(*score))
+                        .map(|(_, score)| score.mul(100))
+                })
+            };
+            name_score.or(gen_name_score).or(cat_score).map(|_| {
+                let score = name_score
+                    .unwrap_or_default()
+                    .max(gen_name_score.unwrap_or_default())
+                    .max(cat_score.unwrap_or_default());
+
+                (app, score)
+            })
+        })
+        .sorted_by_key(|(_, score)| cmp::Reverse(*score))
+        .map(|(app, _)| app)
+        .collect()
+}
+
+/// get the binary paths from &PATHS as a set
 fn get_bin_dirs() -> anyhow::Result<BTreeSet<PathBuf>> {
     let paths: BTreeSet<_> = std::env::var("PATH")?
         .split(":")
@@ -240,6 +234,7 @@ fn get_bin_dirs() -> anyhow::Result<BTreeSet<PathBuf>> {
     Ok(paths)
 }
 
+/// get the xdg data dirs as a vec
 fn get_data_dirs() -> anyhow::Result<Vec<PathBuf>> {
     let mut data_dir: Vec<_> = std::env::var("XDG_DATA_DIRS")
         .or_else(|err| match err {
@@ -262,6 +257,9 @@ fn get_data_dirs() -> anyhow::Result<Vec<PathBuf>> {
     Ok(data_dir)
 }
 
+/// get the app descriptors from app.desktop files in data dirs
+/// verify that the executable valid
+/// use the app.desktop filename as the app id
 async fn get_apps() -> anyhow::Result<AppNameToAppMap> {
     let paths = get_bin_dirs()?;
     let data_dirs = get_data_dirs()?;
@@ -337,6 +335,7 @@ async fn get_apps() -> anyhow::Result<AppNameToAppMap> {
     Ok(apps)
 }
 
+/// verify the executable from .desktop file is valid in $PATHS
 async fn verify_exec(exec: &String, try_exec: Option<&String>, paths: &BTreeSet<PathBuf>) -> bool {
     let maybe_exec = try_exec
         .unwrap_or(exec)
@@ -367,6 +366,7 @@ impl EntryExt for Entry {
     }
 }
 
+/// cache execution counts in local data dir
 #[derive(Debug, Constructor, Deref, DerefMut, Default, Deserialize, Serialize, Clone)]
 pub struct CountCache(pub HashMap<String, usize>);
 
@@ -412,5 +412,11 @@ impl CountCache {
 
     fn inc_count(&mut self, app_id: String) {
         *self.entry(app_id).or_default() += 1;
+    }
+}
+
+impl From<&AppDesc> for Res<String> {
+    fn from(value: &AppDesc) -> Self {
+        Res::new(value.app_id.clone(), value.icon.clone(), value.name.clone())
     }
 }

@@ -1,4 +1,5 @@
 mod app_serv;
+mod modi;
 
 use derive_more::Display;
 use iced::{
@@ -17,7 +18,10 @@ use tracing::info;
 
 use crate::{
     feature::{Comp, Feature, Service, align_center},
-    launcher::app_serv::{AppDesc, AppServ},
+    launcher::{
+        app_serv::AppServ,
+        modi::{Modi, Query, Res},
+    },
     theme::CAT_THEME,
 };
 
@@ -41,6 +45,7 @@ pub enum Message {
     ),
     SearchUpdated(String),
     OnSubmit(String),
+    ExecSuccess,
     AppServ(app_serv::Message),
     LeftPressed(
         /// captured
@@ -162,8 +167,8 @@ impl Comp for Launcher {
             Message::SearchUpdated(search) => {
                 self.search = search;
                 self.page = 0;
-                Task::done(Message::AppServ(app_serv::Message::Query(
-                    app_serv::Query::new(
+                self.app_serv
+                    .query(Query::new(
                         if self.search.is_empty() {
                             None
                         } else {
@@ -171,15 +176,18 @@ impl Comp for Launcher {
                         },
                         self.page,
                         NUM_OF_ITEMS,
-                    ),
-                )))
+                    ))
+                    .map(Message::AppServ)
             }
-            Message::OnSubmit(app_id) => {
-                let _ = self.app_serv.exec(&app_id).inspect_err(|err| {
+            Message::OnSubmit(app_id) => self
+                .app_serv
+                .exec(&app_id)
+                .inspect_err(|err| {
                     info!("Error exec: {err:?}");
-                });
-                Task::none()
-            }
+                })
+                .map(|_| Task::done(Message::ExecSuccess))
+                .unwrap_or(Task::none()),
+            Message::ExecSuccess => Task::none(),
             Message::LeftPressed(captured) => {
                 if !captured {
                     self.page_back()
@@ -199,7 +207,7 @@ impl Comp for Launcher {
                 Task::none()
             }
             Message::DownPressed(_captured) => {
-                self.selected = (self.selected + 1).min(self.app_serv.res.len() - 1);
+                self.selected = (self.selected + 1).min(self.app_serv.len() - 1);
                 Task::none()
             }
 
@@ -220,7 +228,7 @@ impl Comp for Launcher {
             }
             Message::JKeyPressed(captured) => {
                 if !captured {
-                    self.selected = (self.selected + 1).min(self.app_serv.res.len() - 1);
+                    self.selected = (self.selected + 1).min(self.app_serv.len() - 1);
                 }
                 Task::none()
             }
@@ -241,7 +249,7 @@ impl Comp for Launcher {
                 let inner_task = self.app_serv.update(message.clone()).map(Message::AppServ);
 
                 if matches!(message, app_serv::Message::Query(_)) {
-                    self.selected = self.selected.min(self.app_serv.res.len().saturating_sub(1));
+                    self.selected = self.selected.min(self.app_serv.len().saturating_sub(1));
                 }
 
                 inner_task
@@ -254,9 +262,9 @@ impl Comp for Launcher {
         let spacing = theme.spacing();
         let cur_selected = self
             .app_serv
-            .res
+            .res()
             .get(self.selected)
-            .map(|app| app.app_id.clone())
+            .map(|res| res.id.clone())
             .map(Message::OnSubmit);
 
         let prompt = {
@@ -321,48 +329,45 @@ impl Launcher {
         let spacing = theme.spacing();
         let selected = self
             .app_serv
-            .res
+            .res()
             .get(self.selected)
             .as_ref()
-            .map(|app| &app.app_id);
-        self.app_serv
-            .res
-            .iter()
-            .map(
-                move |AppDesc {
-                          app_id, name, icon, ..
-                      }| {
-                    let is_selected = selected.is_some_and(|id| id == app_id);
-                    let title = align_center!(text!("{name}").size(spacing.lg()));
-                    let icon = icon
-                        .as_ref()
-                        .map(|fdo_icon| fdo_icon.elem(spacing.xl()))
-                        .map(|icon| {
-                            container(icon)
-                                .padding(padding::right(spacing.sm()))
-                                .center_y(Length::Fill)
-                                .into()
-                        })
-                        .unwrap_or(Element::from(Space::new()));
+            .map(|res| &res.id);
 
-                    align_center!(row![icon, title])
-                        .padding(padding::horizontal(spacing.md()))
-                        .style(move |_| container::Style {
-                            border: border::width(spacing.xs())
-                                .rounded(theme.radius().lg())
-                                .color({
-                                    if is_selected {
-                                        theme.teal()
-                                    } else {
-                                        theme.trans()
-                                    }
-                                }),
-                            ..Default::default()
-                        })
-                        .height(spacing.xl3())
-                        .width(Length::Fill)
-                },
-            )
+        self.app_serv
+            .res()
+            .iter()
+            .map(move |Res { id, icon, content }| {
+                let is_selected = selected.is_some_and(|inner_id| inner_id == id);
+                let title = align_center!(text!("{content}").size(spacing.lg()));
+                let icon = icon
+                    .as_ref()
+                    .map(|fdo_icon| fdo_icon.elem(spacing.xl()))
+                    .map(|icon| {
+                        container(icon)
+                            .padding(padding::right(spacing.sm()))
+                            .center_y(Length::Fill)
+                            .into()
+                    })
+                    .unwrap_or(Element::from(Space::new()));
+
+                align_center!(row![icon, title])
+                    .padding(padding::horizontal(spacing.md()))
+                    .style(move |_| container::Style {
+                        border: border::width(spacing.xs())
+                            .rounded(theme.radius().lg())
+                            .color({
+                                if is_selected {
+                                    theme.teal()
+                                } else {
+                                    theme.trans()
+                                }
+                            }),
+                        ..Default::default()
+                    })
+                    .height(spacing.xl3())
+                    .width(Length::Fill)
+            })
             .fold(Column::new().spacing(spacing.xs()), |col, row| {
                 col.push(row)
             })
@@ -371,8 +376,8 @@ impl Launcher {
 
     fn page_forward(&mut self) -> Task<Message> {
         self.page += 1;
-        Task::done(Message::AppServ(app_serv::Message::Query(
-            app_serv::Query::new(
+        self.app_serv
+            .query(Query::new(
                 if self.search.is_empty() {
                     None
                 } else {
@@ -380,14 +385,14 @@ impl Launcher {
                 },
                 self.page,
                 NUM_OF_ITEMS,
-            ),
-        )))
+            ))
+            .map(Message::AppServ)
     }
 
     fn page_back(&mut self) -> Task<Message> {
         self.page = self.page.saturating_sub(1);
-        Task::done(Message::AppServ(app_serv::Message::Query(
-            app_serv::Query::new(
+        self.app_serv
+            .query(Query::new(
                 if self.search.is_empty() {
                     None
                 } else {
@@ -395,11 +400,12 @@ impl Launcher {
                 },
                 self.page,
                 NUM_OF_ITEMS,
-            ),
-        )))
+            ))
+            .map(Message::AppServ)
     }
 }
 
+// TODO: update layout through delora
 impl Feature for Launcher {
     type Settings = NewLayerShellSettings;
 
@@ -409,6 +415,9 @@ impl Feature for Launcher {
             size: Some((800, 600)),
             anchor: Anchor::empty(),
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
+            // NOTE: lastOutput doesn't work to since plugging in/out a monitor
+            // means last monitor is lost and fails to open silently
+            // and none, will sometimes open on random monitors
             output_option: OutputOption::None,
             namespace: Some("AppLauncher".into()),
             events_transparent: false,
