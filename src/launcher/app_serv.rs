@@ -312,9 +312,9 @@ async fn get_apps() -> anyhow::Result<AppNameToAppMap> {
                     apps.insert(
                         app_id.clone(),
                         AppDesc::new(
-                            app_id,
-                            0,
                             name.to_owned(),
+                            0,
+                            app_id,
                             exec.to_owned(),
                             gen_name.cloned(),
                             comment.cloned(),
