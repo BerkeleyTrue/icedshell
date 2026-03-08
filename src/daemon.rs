@@ -219,12 +219,12 @@ impl Daemon {
                         .update(message.clone())
                         .map_feat(win_id, Message::Launcher);
 
-                    let out_task = if let launcher::Message::EscapePressed(captured) = message
-                        && !captured
-                    {
-                        Task::done(Message::RemoveWindow(win_id))
-                    } else {
-                        Task::none()
+                    let out_task = match message {
+                        launcher::Message::EscapePressed(false)
+                        | launcher::Message::ExecSuccess => {
+                            Task::done(Message::RemoveWindow(win_id))
+                        }
+                        _ => Task::none(),
                     };
 
                     inner_task.chain(out_task)
