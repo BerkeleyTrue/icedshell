@@ -121,10 +121,9 @@ impl Comp for Launcher {
         match message {
             Message::EscapePressed(captured) => {
                 if captured {
-                    info!("escape: normal");
                     self.mode = Mode::Normal;
                 } else {
-                    info!("close window");
+                    info!("close launcher");
                 }
                 Task::none()
             }
@@ -193,12 +192,13 @@ impl Comp for Launcher {
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let theme = &CAT_THEME;
+        let spacing = theme.spacing();
         let prompt = {
-            let size = theme.spacing().lg();
+            let size = spacing.lg();
             let input = text_input("", &self.search)
                 .id("search-input")
                 .width(Length::Fill)
-                .padding(padding::horizontal(theme.spacing().xs()))
+                .padding(padding::horizontal(spacing.xs()))
                 .style(|_, _| text_input::Style {
                     background: theme.background().into(),
                     border: Border::default(),
@@ -210,26 +210,24 @@ impl Comp for Launcher {
                 .size(size)
                 .on_input(Message::SearchUpdated);
 
-            let prompt = self.prompt_type.to_string();
-            let prompt = text!("{prompt} >").size(size);
+            let prompt_type = self.prompt_type.to_string();
+            let mode = self.mode.to_string().to_uppercase();
+            let mode_color = match self.mode {
+                Mode::Normal => theme.blue(),
+                Mode::Insert => theme.green(),
+            };
+            let prompt = text!("{mode}|{prompt_type} >").size(size).color(mode_color);
 
             align_center!(row![prompt, input])
-                .style(|_| container::Style {
-                    border: border::width(theme.spacing().xxs())
-                        .rounded(theme.radius().sm())
-                        .color({
-                            match self.mode {
-                                Mode::Normal => theme.blue(),
-                                Mode::Insert => theme.green(),
-                            }
-                        }),
-                    ..Default::default()
-                })
-                .padding(padding::right(theme.spacing().md()))
-                .height(theme.spacing().xl2())
+                .padding(padding::right(spacing.md()))
+                .height(spacing.xl2())
         };
 
-        let results = { container(self.view_apps()).height(Length::Fill) };
+        let results = {
+            container(self.view_apps())
+                .height(Length::Fill)
+                .align_y(Vertical::Top)
+        };
 
         let content = column![prompt, results].height(Length::Fill);
 
@@ -239,11 +237,11 @@ impl Comp for Launcher {
                 background: Some(theme.background().into()),
                 text_color: Some(theme.text_color()),
                 border: border::color(theme.pink())
-                    .width(theme.spacing().xs())
+                    .width(spacing.xs())
                     .rounded(theme.radius().sm()),
                 ..Default::default()
             })
-            .padding(theme.spacing().lg())
+            .padding(spacing.lg())
             .width(Length::Fill)
             .height(Length::Fill)
             .into()
@@ -253,26 +251,31 @@ impl Comp for Launcher {
 impl Launcher {
     fn view_apps(&self) -> Element<'static, Message> {
         let theme = &CAT_THEME;
+        let spacing = theme.spacing();
         self.app_serv
             .res
             .iter()
             .map(|AppDesc { name, icon, .. }| {
-                let title = align_center!(text!("{name}").size(theme.spacing().lg()));
+                let title = align_center!(text!("{name}").size(spacing.lg()));
                 let icon = icon
                     .as_ref()
-                    .map(|fdo_icon| fdo_icon.elem(theme.spacing().xl()))
+                    .map(|fdo_icon| fdo_icon.elem(spacing.xl()))
                     .map(|icon| {
                         container(icon)
-                            .padding(padding::right(theme.spacing().sm()))
+                            .padding(padding::right(spacing.sm()))
                             .center_y(Length::Fill)
                             .into()
                     })
                     .unwrap_or(Element::from(Space::new()));
+
                 align_center!(row![icon, title])
-                    .padding(padding::horizontal(theme.spacing().md()))
+                    .padding(padding::horizontal(spacing.md()))
+                    .height(spacing.xl3())
                     .width(Length::Fill)
             })
-            .fold(Column::new(), |col, row| col.push(row))
+            .fold(Column::new().spacing(spacing.xs()), |col, row| {
+                col.push(row)
+            })
             .into()
     }
 }
