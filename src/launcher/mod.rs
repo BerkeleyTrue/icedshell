@@ -49,7 +49,33 @@ pub enum Message {
         /// captured
         bool,
     ),
+    UpPressed(
+        /// captured
+        bool,
+    ),
+    DownPressed(
+        /// captured
+        bool,
+    ),
+    // insert
     IKeyPressed(
+        /// captured
+        bool,
+    ),
+    // vim movements
+    HKeyPressed(
+        /// captured
+        bool,
+    ),
+    JKeyPressed(
+        /// captured
+        bool,
+    ),
+    KKeyPressed(
+        /// captured
+        bool,
+    ),
+    LKeyPressed(
         /// captured
         bool,
     ),
@@ -61,6 +87,7 @@ pub struct Launcher {
     app_serv: AppServ,
     page: usize,
     mode: Mode,
+    selected: usize,
 }
 
 impl Comp for Launcher {
@@ -79,6 +106,7 @@ impl Comp for Launcher {
                 prompt_type: PromptType::Run,
                 search: "".to_string(),
                 mode: Mode::Insert,
+                selected: 0,
             },
             {
                 let outer_task = Task::future(async {
@@ -97,19 +125,22 @@ impl Comp for Launcher {
             let captured = matches!(status, event::Status::Captured);
             match event {
                 Event::Keyboard(keyboard::Event::KeyPressed {
-                    key: Key::Named(Named::Escape),
+                    key: Key::Named(named),
                     ..
-                }) => Some(Message::EscapePressed(captured)),
-                Event::Keyboard(keyboard::Event::KeyPressed {
-                    key: Key::Named(Named::ArrowLeft),
-                    ..
-                }) => Some(Message::LeftPressed(captured)),
-                Event::Keyboard(keyboard::Event::KeyPressed {
-                    key: Key::Named(Named::ArrowRight),
-                    ..
-                }) => Some(Message::RightPressed(captured)),
+                }) => match named {
+                    Named::Escape => Some(Message::EscapePressed(captured)),
+                    Named::ArrowLeft => Some(Message::LeftPressed(captured)),
+                    Named::ArrowRight => Some(Message::RightPressed(captured)),
+                    Named::ArrowDown => Some(Message::DownPressed(captured)),
+                    Named::ArrowUp => Some(Message::UpPressed(captured)),
+                    _ => None,
+                },
                 Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) => match key.as_ref() {
                     Key::Character("i") => Some(Message::IKeyPressed(captured)),
+                    Key::Character("h") => Some(Message::HKeyPressed(captured)),
+                    Key::Character("j") => Some(Message::JKeyPressed(captured)),
+                    Key::Character("k") => Some(Message::KKeyPressed(captured)),
+                    Key::Character("l") => Some(Message::LKeyPressed(captured)),
                     _ => None,
                 },
                 _ => None,
@@ -142,46 +173,59 @@ impl Comp for Launcher {
                     ),
                 )))
             }
-            Message::RightPressed(captured) => {
-                if !captured {
-                    self.page = self.page.saturating_add(1);
-                    Task::done(Message::AppServ(app_serv::Message::Query(
-                        app_serv::Query::new(
-                            if self.search.is_empty() {
-                                None
-                            } else {
-                                Some(self.search.clone())
-                            },
-                            self.page,
-                            NUM_OF_ITEMS,
-                        ),
-                    )))
-                } else {
-                    Task::none()
-                }
-            }
             Message::LeftPressed(captured) => {
                 if !captured {
-                    self.page = self.page.saturating_sub(1);
-                    Task::done(Message::AppServ(app_serv::Message::Query(
-                        app_serv::Query::new(
-                            if self.search.is_empty() {
-                                None
-                            } else {
-                                Some(self.search.clone())
-                            },
-                            self.page,
-                            NUM_OF_ITEMS,
-                        ),
-                    )))
+                    self.page_back()
                 } else {
                     Task::none()
                 }
             }
+            Message::RightPressed(captured) => {
+                if !captured {
+                    self.page_forward()
+                } else {
+                    Task::none()
+                }
+            }
+            Message::UpPressed(_captured) => {
+                self.selected = self.selected.saturating_sub(1);
+                Task::none()
+            }
+            Message::DownPressed(_captured) => {
+                self.selected = (self.selected + 1).min(self.app_serv.res.len() - 1);
+                Task::none()
+            }
+
             Message::IKeyPressed(captured) => {
                 if !captured {
                     self.mode = Mode::Insert;
                     focus("search-input")
+                } else {
+                    Task::none()
+                }
+            }
+            Message::HKeyPressed(captured) => {
+                if !captured {
+                    self.page_back()
+                } else {
+                    Task::none()
+                }
+            }
+            Message::JKeyPressed(captured) => {
+                if !captured {
+                    self.selected = (self.selected + 1).min(self.app_serv.res.len() - 1);
+                }
+                Task::none()
+            }
+            Message::KKeyPressed(captured) => {
+                if !captured {
+                    self.selected = self.selected.saturating_sub(1);
+                }
+                Task::none()
+            }
+            Message::LKeyPressed(captured) => {
+                if !captured {
+                    self.page_forward()
                 } else {
                     Task::none()
                 }
@@ -252,31 +296,84 @@ impl Launcher {
     fn view_apps(&self) -> Element<'static, Message> {
         let theme = &CAT_THEME;
         let spacing = theme.spacing();
+        let selected = self
+            .app_serv
+            .res
+            .get(self.selected)
+            .as_ref()
+            .map(|app| &app.app_id);
         self.app_serv
             .res
             .iter()
-            .map(|AppDesc { name, icon, .. }| {
-                let title = align_center!(text!("{name}").size(spacing.lg()));
-                let icon = icon
-                    .as_ref()
-                    .map(|fdo_icon| fdo_icon.elem(spacing.xl()))
-                    .map(|icon| {
-                        container(icon)
-                            .padding(padding::right(spacing.sm()))
-                            .center_y(Length::Fill)
-                            .into()
-                    })
-                    .unwrap_or(Element::from(Space::new()));
+            .map(
+                move |AppDesc {
+                          app_id, name, icon, ..
+                      }| {
+                    let is_selected = selected.is_some_and(|id| id == app_id);
+                    let title = align_center!(text!("{name}").size(spacing.lg()));
+                    let icon = icon
+                        .as_ref()
+                        .map(|fdo_icon| fdo_icon.elem(spacing.xl()))
+                        .map(|icon| {
+                            container(icon)
+                                .padding(padding::right(spacing.sm()))
+                                .center_y(Length::Fill)
+                                .into()
+                        })
+                        .unwrap_or(Element::from(Space::new()));
 
-                align_center!(row![icon, title])
-                    .padding(padding::horizontal(spacing.md()))
-                    .height(spacing.xl3())
-                    .width(Length::Fill)
-            })
+                    align_center!(row![icon, title])
+                        .padding(padding::horizontal(spacing.md()))
+                        .style(move |_| container::Style {
+                            border: border::width(spacing.xs())
+                                .rounded(theme.radius().lg())
+                                .color({
+                                    if is_selected {
+                                        theme.teal()
+                                    } else {
+                                        theme.trans()
+                                    }
+                                }),
+                            ..Default::default()
+                        })
+                        .height(spacing.xl3())
+                        .width(Length::Fill)
+                },
+            )
             .fold(Column::new().spacing(spacing.xs()), |col, row| {
                 col.push(row)
             })
             .into()
+    }
+
+    fn page_forward(&mut self) -> Task<Message> {
+        self.page += 1;
+        Task::done(Message::AppServ(app_serv::Message::Query(
+            app_serv::Query::new(
+                if self.search.is_empty() {
+                    None
+                } else {
+                    Some(self.search.clone())
+                },
+                self.page,
+                NUM_OF_ITEMS,
+            ),
+        )))
+    }
+
+    fn page_back(&mut self) -> Task<Message> {
+        self.page = self.page.saturating_sub(1);
+        Task::done(Message::AppServ(app_serv::Message::Query(
+            app_serv::Query::new(
+                if self.search.is_empty() {
+                    None
+                } else {
+                    Some(self.search.clone())
+                },
+                self.page,
+                NUM_OF_ITEMS,
+            ),
+        )))
     }
 }
 
