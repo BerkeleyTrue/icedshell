@@ -237,7 +237,15 @@ impl Comp for Launcher {
                     Task::none()
                 }
             }
-            Message::AppServ(message) => self.app_serv.update(message).map(Message::AppServ),
+            Message::AppServ(message) => {
+                let inner_task = self.app_serv.update(message.clone()).map(Message::AppServ);
+
+                if matches!(message, app_serv::Message::Query(_)) {
+                    self.selected = self.selected.min(self.app_serv.res.len().saturating_sub(1));
+                }
+
+                inner_task
+            }
         }
     }
 

@@ -24,6 +24,7 @@ use crate::{
     feature::Service,
 };
 
+#[allow(clippy::too_many_arguments)]
 #[derive(Debug, Clone, Constructor)]
 pub struct AppDesc {
     pub name: String,
@@ -32,7 +33,6 @@ pub struct AppDesc {
     pub exec: String,
     pub gen_name: Option<String>,
     pub comment: Option<String>,
-    pub try_exec: Option<String>,
     pub icon: Option<FdIcon>,
     pub categories: Option<Vec<String>>,
 }
@@ -325,7 +325,6 @@ async fn get_apps() -> anyhow::Result<AppNameToAppMap> {
                             exec.to_owned(),
                             gen_name.cloned(),
                             comment.cloned(),
-                            try_exec.cloned(),
                             icon,
                             categores,
                         ),
