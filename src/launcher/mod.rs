@@ -289,7 +289,7 @@ impl Feature for Launcher {
             size: Some((800, 600)),
             anchor: Anchor::empty(),
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            output_option: OutputOption::LastOutput,
+            output_option: OutputOption::None,
             namespace: Some("AppLauncher".into()),
             events_transparent: false,
             exclusive_zone: None,
