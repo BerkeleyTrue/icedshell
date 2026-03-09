@@ -13,11 +13,12 @@ use iced::{
     window::Id,
 };
 use iced_layershell::{
-    reexport::KeyboardInteractivity,
+    reexport::{KeyboardInteractivity, NewLayerShellSettings, OutputOption},
     settings::{LayerShellSettings, StartMode},
     to_layer_message,
 };
-use tracing::{error as log_err, info};
+#[allow(unused_imports)]
+use tracing::{debug, error as log_err, info};
 
 use crate::{
     AppCommand, Cli,
@@ -243,7 +244,7 @@ impl Daemon {
 
                 let mut tasks: Vec<_> = mon_names
                     .iter()
-                    .map(move |mon| match (num_mon, mon.as_ref()) {
+                    .map(move |mon| match (num_mon, mon.as_str()) {
                         (2, "HDMI-A-1") => self.open_delora_main("HDMI-A-1".into()),
                         (1, "DP-3") => self.open_delora_main("DP-3".into()),
                         (_, _) => Task::none(),
@@ -278,10 +279,6 @@ impl Daemon {
 
             Message::Socket(req) => match req {
                 socket::Request::Launcher => self.open_launcher(),
-                // _ => {
-                //     info!("request: {req:?}");
-                //     Task::none()
-                // }
             },
             _ => Task::none(),
         }
@@ -361,7 +358,7 @@ impl Daemon {
             .find(|(_, feat)| matches!(feat, Feat::TrayMenu(_)))
             .map(|(win_id, _)| *win_id)
             .map(|win_id| {
-                info!("Removing old tray menu windows");
+                debug!("Removing old tray menu windows");
                 self.features.remove(&win_id);
                 Task::done(Message::RemoveWindow(win_id))
             })
@@ -373,7 +370,7 @@ impl Daemon {
 
         self.features.insert(win_id, Feat::TrayMenu(menu_feat));
 
-        info!("opening tray menu window");
+        debug!("opening tray menu window");
 
         remove
             .chain(Task::done(Message::NewMenu {
@@ -411,7 +408,14 @@ impl Daemon {
 
         remove
             .chain(Task::done(Message::NewLayerShell {
-                settings: layer_settings,
+                settings: NewLayerShellSettings {
+                    output_option: self
+                        .mon_serv
+                        .cur_monitor()
+                        .map(|monitor_id| OutputOption::OutputName(monitor_id.inner().to_owned()))
+                        .unwrap_or(OutputOption::None),
+                    ..layer_settings
+                },
                 id: win_id,
             }))
             .chain(inner_task)
