@@ -13,7 +13,7 @@ use iced::{
     window::Id,
 };
 use iced_layershell::{
-    reexport::{KeyboardInteractivity, NewLayerShellSettings, OutputOption},
+    reexport::KeyboardInteractivity,
     settings::{LayerShellSettings, StartMode},
     to_layer_message,
 };
@@ -384,8 +384,12 @@ impl Daemon {
 // launcher window
 impl Daemon {
     fn open_launcher(&mut self) -> Task<Message> {
-        let (launcher_feat, layer_settings, inner_task) =
-            launcher::Launcher::open((), Message::Launcher);
+        let (launcher_feat, settings, inner_task) = launcher::Launcher::open(
+            launcher::Init {
+                output: self.mon_serv.cur_monitor().cloned(),
+            },
+            Message::Launcher,
+        );
         let win_id = launcher_feat.id;
 
         let remove = self
@@ -408,14 +412,7 @@ impl Daemon {
 
         remove
             .chain(Task::done(Message::NewLayerShell {
-                settings: NewLayerShellSettings {
-                    output_option: self
-                        .mon_serv
-                        .cur_monitor()
-                        .map(|monitor_id| OutputOption::OutputName(monitor_id.inner().to_owned()))
-                        .unwrap_or(OutputOption::None),
-                    ..layer_settings
-                },
+                settings,
                 id: win_id,
             }))
             .chain(inner_task)

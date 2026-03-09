@@ -17,6 +17,7 @@ use iced_layershell::reexport::{
 use tracing::info;
 
 use crate::{
+    config::MonitorId,
     feature::{Comp, Feature, Service, align_center},
     launcher::{
         app_serv::AppServ,
@@ -87,6 +88,10 @@ pub enum Message {
     ),
 }
 
+pub struct Init {
+    pub output: Option<MonitorId>,
+}
+
 pub struct Launcher {
     search: String,
     prompt_type: PromptType,
@@ -94,14 +99,15 @@ pub struct Launcher {
     page: usize,
     mode: Mode,
     selected: usize,
+    monitor: Option<MonitorId>,
 }
 
 impl Comp for Launcher {
     type Message = Message;
-    type Init = ();
+    type Init = Init;
 
     fn new<O: MaybeSend + 'static>(
-        _input: Self::Init,
+        input: Self::Init,
         f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
     ) -> (Self, Task<O>) {
         let (app_serv, app_serv_task) = AppServ::new((), Message::AppServ);
@@ -113,6 +119,7 @@ impl Comp for Launcher {
                 search: "".to_string(),
                 mode: Mode::Insert,
                 selected: 0,
+                monitor: input.output,
             },
             {
                 let outer_task = Task::future(async {
@@ -418,7 +425,11 @@ impl Feature for Launcher {
             // NOTE: lastOutput doesn't work to since plugging in/out a monitor
             // means last monitor is lost and fails to open silently
             // and none, will sometimes open on random monitors
-            output_option: OutputOption::None,
+            output_option: self
+                .monitor
+                .as_ref()
+                .map(|monitor| OutputOption::OutputName(monitor.inner().to_owned()))
+                .unwrap_or(OutputOption::None),
             namespace: Some("AppLauncher".into()),
             events_transparent: false,
             exclusive_zone: None,
