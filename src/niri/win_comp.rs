@@ -8,7 +8,6 @@ use iced::{
 use crate::{
     config::MonitorId,
     feature::CompWithProps,
-    fira_fonts::TextExt,
     niri::state_serv,
     theme::CAT_THEME,
     widget::{
@@ -16,6 +15,7 @@ use crate::{
         container_ext::ContainExt,
         divider::{Angled, Direction, Heading},
         fdo_icons,
+        text_ext::TextExt,
     },
 };
 

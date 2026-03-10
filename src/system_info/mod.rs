@@ -12,12 +12,12 @@ use tracing::info;
 
 use crate::{
     feature::Comp,
-    fira_fonts::TextExt,
     theme::CAT_THEME,
     widget::{
         align_center,
         container_ext::ContainExt,
         divider::{self, Angled, Semi},
+        text_ext::TextExt,
     },
 };
 

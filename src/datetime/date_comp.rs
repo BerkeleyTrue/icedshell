@@ -10,12 +10,12 @@ use time_macros::format_description;
 
 use crate::{
     feature::CompWithProps,
-    fira_fonts::TextExt,
     theme::CAT_THEME,
     widget::{
         align_center,
         container_ext::ContainExt,
         divider::{Direction, Semi},
+        text_ext::TextExt,
     },
 };
 
