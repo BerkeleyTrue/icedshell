@@ -11,8 +11,10 @@ use crate::{
     feature::{CompWithProps, align_center},
     theme::CAT_THEME,
     tray::{dbus::TrayLayout, service::TrayService},
-    widget::divider::{Angled, Direction, Heading},
-    widget_ext::ContainExt,
+    widget::{
+        container_ext::ContainExt,
+        divider::{Angled, Direction, Heading},
+    },
 };
 
 #[derive(Debug, Clone)]

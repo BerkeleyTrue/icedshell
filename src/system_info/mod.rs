@@ -14,8 +14,10 @@ use crate::{
     feature::{Comp, align_center},
     fira_fonts::TextExt,
     theme::CAT_THEME,
-    widget::divider::{self, Angled, Semi},
-    widget_ext::ContainExt,
+    widget::{
+        container_ext::ContainExt,
+        divider::{self, Angled, Semi},
+    },
 };
 
 const BYTES_IN_GIG: u64 = 1_073_741_824;

@@ -5,8 +5,10 @@ use crate::{
     feature::{CompWithProps, align_center},
     niri::state_serv,
     theme::CAT_THEME,
-    widget::divider::{Angled, Direction, Heading},
-    widget_ext::ContainExt,
+    widget::{
+        container_ext::ContainExt,
+        divider::{Angled, Direction, Heading},
+    },
 };
 use iced::{
     Element, Task,

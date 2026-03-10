@@ -12,7 +12,6 @@ mod system_info;
 mod theme;
 mod tray;
 mod widget;
-mod widget_ext;
 
 use crate::daemon::{Init, start};
 use clap::{Parser, Subcommand};

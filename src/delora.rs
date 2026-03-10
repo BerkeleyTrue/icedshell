@@ -16,8 +16,10 @@ use crate::{
     system_info as sys_info,
     theme::CAT_THEME,
     tray::{TrayLayout, TrayMenuItemId, service as tray_serv, tray_comp},
-    widget::divider::{Angled, Direction, Heading, Semi},
-    widget_ext::ContainExt,
+    widget::{
+        container_ext::ContainExt,
+        divider::{Angled, Direction, Heading, Semi},
+    },
 };
 
 #[derive(Debug, Clone)]

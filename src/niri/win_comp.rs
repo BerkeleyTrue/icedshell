@@ -12,8 +12,10 @@ use crate::{
     fira_fonts::TextExt,
     niri::state_serv,
     theme::CAT_THEME,
-    widget::divider::{Angled, Direction, Heading},
-    widget_ext::ContainExt,
+    widget::{
+        container_ext::ContainExt,
+        divider::{Angled, Direction, Heading},
+    },
 };
 
 #[derive(Debug, Clone)]

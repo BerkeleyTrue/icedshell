@@ -27,7 +27,7 @@ use crate::{
         modi::{Modi, Query, Res},
     },
     theme::CAT_THEME,
-    widget_ext::ContainExt,
+    widget::container_ext::ContainExt,
 };
 
 const NUM_OF_ITEMS: usize = 10;

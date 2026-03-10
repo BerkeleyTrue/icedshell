@@ -12,8 +12,10 @@ use crate::{
     feature::{CompWithProps, align_center},
     fira_fonts::TextExt,
     theme::CAT_THEME,
-    widget::divider::{Direction, Semi},
-    widget_ext::ContainExt,
+    widget::{
+        container_ext::ContainExt,
+        divider::{Direction, Semi},
+    },
 };
 
 const FORMAT_DATE: &[BorrowedFormatItem] =
