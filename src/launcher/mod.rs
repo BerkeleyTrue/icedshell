@@ -372,6 +372,17 @@ impl Launcher {
                         })
                         .unwrap_or(Element::from(Space::new()));
 
+                    let maybe_tooltip = tooltip.as_ref().map(|tooltip| {
+                        container(text!("{tooltip}").size(spacing.md()))
+                            .padding(padding::horizontal(spacing.sm()).vertical(spacing.xs()))
+                            .style(|_| container::Style {
+                                background: Some(theme.background().into()),
+                                border: border::rounded(theme.radius().md())
+                                    .width(spacing.xxs())
+                                    .color(theme.peach()),
+                                ..Default::default()
+                            })
+                    });
                     align_center!(row![icon, content])
                         .padding(padding::horizontal(spacing.md()))
                         .style(move |_| container::Style {
@@ -388,10 +399,7 @@ impl Launcher {
                         })
                         .height(spacing.xl3())
                         .width(Length::Fill)
-                        .maybe_tooltip(
-                            Position::FollowCursor,
-                            tooltip.as_ref().map(|tooltip| text!("{tooltip}")),
-                        )
+                        .maybe_tooltip(Position::Left, maybe_tooltip)
                 },
             )
             .fold(Column::new().spacing(spacing.xs()), |col, row| {
