@@ -157,7 +157,7 @@ impl Modi for AppServ {
         Task::none()
     }
 
-    fn exec(&self, app_id: &Self::Id) -> anyhow::Result<()> {
+    fn exec(&mut self, app_id: &Self::Id) -> anyhow::Result<Task<Self::Message>> {
         let app = self.apps.get(app_id);
         if let Some(app) = app {
             let exec = app.exec.to_owned();
@@ -167,10 +167,18 @@ impl Modi for AppServ {
                     .args(parts)
                     .process_group(0)
                     .spawn()?;
+                self.count_cache.on_app_exec(app_id);
+
+                return self
+                    .count_cache
+                    .jsonify()
+                    .map(CountCache::save)
+                    .map(Task::future)
+                    .map(Task::discard);
             }
         }
 
-        Ok(())
+        Ok(Task::none())
     }
 }
 
@@ -400,18 +408,20 @@ impl CountCache {
             .and_then(|file_str| serde_json::from_str(&file_str).map_err(anyhow::Error::from))
     }
 
-    async fn save(&self) -> anyhow::Result<()> {
+    fn jsonify(&self) -> anyhow::Result<String> {
+        Ok(serde_json::to_string(self)?)
+    }
+
+    async fn save(json_str: String) -> anyhow::Result<()> {
         let path = Self::get_path();
         Self::ensure_dir(&path).await?;
 
-        let to_save = serde_json::to_string(self)?;
-
-        fs::write(&path, &to_save).await?;
+        fs::write(&path, &json_str).await?;
         Ok(())
     }
 
-    fn inc_count(&mut self, app_id: String) {
-        *self.entry(app_id).or_default() += 1;
+    fn on_app_exec(&mut self, app_id: &str) {
+        *self.entry(app_id.to_owned()).or_default() += 1;
     }
 }
 

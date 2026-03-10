@@ -192,7 +192,11 @@ impl Comp for Launcher {
                 .inspect_err(|err| {
                     info!("Error exec: {err:?}");
                 })
-                .map(|_| Task::done(Message::ExecSuccess))
+                .map(|inner_task| {
+                    inner_task
+                        .map(Message::AppServ)
+                        .chain(Task::done(Message::ExecSuccess))
+                })
                 .unwrap_or(Task::none()),
             Message::ExecSuccess => Task::none(),
             Message::LeftPressed(captured) => {

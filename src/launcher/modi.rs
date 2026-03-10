@@ -33,5 +33,6 @@ pub trait Modi {
     fn query(&mut self, query: Query) -> Task<Self::Message>;
 
     /// execute on selected results
-    fn exec(&self, id: &Self::Id) -> anyhow::Result<()>;
+    /// update internal state such as exec count or history
+    fn exec(&mut self, id: &Self::Id) -> anyhow::Result<Task<Self::Message>>;
 }
