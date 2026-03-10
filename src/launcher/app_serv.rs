@@ -427,6 +427,11 @@ impl CountCache {
 
 impl From<&AppDesc> for Res<String> {
     fn from(value: &AppDesc) -> Self {
-        Res::new(value.app_id.clone(), value.icon.clone(), value.name.clone())
+        Res::new(
+            value.app_id.clone(),
+            value.icon.clone(),
+            value.name.clone(),
+            value.comment.clone(),
+        )
     }
 }

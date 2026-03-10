@@ -9,7 +9,10 @@ use iced::{
     border, event,
     keyboard::{self, Key, key::Named},
     padding,
-    widget::{Column, Space, column, container, operation::focus, row, text, text_input},
+    widget::{
+        Column, Space, column, container, operation::focus, row, text, text_input,
+        tooltip::Position,
+    },
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
@@ -24,6 +27,7 @@ use crate::{
         modi::{Modi, Query, Res},
     },
     theme::CAT_THEME,
+    widget_ext::ContainExt,
 };
 
 const NUM_OF_ITEMS: usize = 10;
@@ -348,37 +352,48 @@ impl Launcher {
         self.app_serv
             .res()
             .iter()
-            .map(move |Res { id, icon, content }| {
-                let is_selected = selected.is_some_and(|inner_id| inner_id == id);
-                let title = align_center!(text!("{content}").size(spacing.lg()));
-                let icon = icon
-                    .as_ref()
-                    .map(|fdo_icon| fdo_icon.elem(spacing.xl()))
-                    .map(|icon| {
-                        container(icon)
-                            .padding(padding::right(spacing.sm()))
-                            .center_y(Length::Fill)
-                            .into()
-                    })
-                    .unwrap_or(Element::from(Space::new()));
+            .map(
+                move |Res {
+                          id,
+                          icon,
+                          content,
+                          tooltip,
+                      }| {
+                    let is_selected = selected.is_some_and(|inner_id| inner_id == id);
+                    let content = align_center!(text!("{content}").size(spacing.lg()));
+                    let icon = icon
+                        .as_ref()
+                        .map(|fdo_icon| fdo_icon.elem(spacing.xl()))
+                        .map(|icon| {
+                            container(icon)
+                                .padding(padding::right(spacing.sm()))
+                                .center_y(Length::Fill)
+                                .into()
+                        })
+                        .unwrap_or(Element::from(Space::new()));
 
-                align_center!(row![icon, title])
-                    .padding(padding::horizontal(spacing.md()))
-                    .style(move |_| container::Style {
-                        border: border::width(spacing.xs())
-                            .rounded(theme.radius().lg())
-                            .color({
-                                if is_selected {
-                                    theme.teal()
-                                } else {
-                                    theme.trans()
-                                }
-                            }),
-                        ..Default::default()
-                    })
-                    .height(spacing.xl3())
-                    .width(Length::Fill)
-            })
+                    align_center!(row![icon, content])
+                        .padding(padding::horizontal(spacing.md()))
+                        .style(move |_| container::Style {
+                            border: border::width(spacing.xs())
+                                .rounded(theme.radius().lg())
+                                .color({
+                                    if is_selected {
+                                        theme.teal()
+                                    } else {
+                                        theme.trans()
+                                    }
+                                }),
+                            ..Default::default()
+                        })
+                        .height(spacing.xl3())
+                        .width(Length::Fill)
+                        .maybe_tooltip(
+                            Position::FollowCursor,
+                            tooltip.as_ref().map(|tooltip| text!("{tooltip}")),
+                        )
+                },
+            )
             .fold(Column::new().spacing(spacing.xs()), |col, row| {
                 col.push(row)
             })

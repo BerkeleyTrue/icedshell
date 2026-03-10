@@ -8,6 +8,7 @@ pub struct Res<T> {
     pub id: T,
     pub icon: Option<FdIcon>,
     pub content: String,
+    pub tooltip: Option<String>,
 }
 
 #[derive(Debug, Clone, Constructor, PartialEq, Eq, Default)]

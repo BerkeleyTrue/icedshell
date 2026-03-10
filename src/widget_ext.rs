@@ -1,7 +1,7 @@
 #![allow(unused_variables, dead_code)]
 use iced::{
-    Color, Theme, border,
-    widget::{Container, container},
+    Color, Element, Theme, border,
+    widget::{Container, Tooltip, container, tooltip},
 };
 
 use crate::theme::CAT_THEME;
@@ -17,6 +17,16 @@ pub fn debug_border(_: &Theme) -> container::Style {
 pub trait ContainExt<'a, Message: 'a> {
     fn debug_border(self) -> Self;
     fn background(self, color: Color) -> Self;
+    fn tooltip(
+        self,
+        position: tooltip::Position,
+        content: impl Into<Element<'a, Message>>,
+    ) -> Tooltip<'a, Message>;
+    fn maybe_tooltip(
+        self,
+        position: tooltip::Position,
+        content: Option<impl Into<Element<'a, Message>>>,
+    ) -> Element<'a, Message>;
 }
 
 impl<'a, Message: 'a> ContainExt<'a, Message> for Container<'a, Message> {
@@ -28,5 +38,25 @@ impl<'a, Message: 'a> ContainExt<'a, Message> for Container<'a, Message> {
             background: Some(color.into()),
             ..Default::default()
         })
+    }
+
+    fn tooltip(
+        self,
+        position: tooltip::Position,
+        content: impl Into<Element<'a, Message>>,
+    ) -> Tooltip<'a, Message> {
+        tooltip(self, content, position)
+    }
+
+    fn maybe_tooltip(
+        self,
+        position: tooltip::Position,
+        content: Option<impl Into<Element<'a, Message>>>,
+    ) -> Element<'a, Message> {
+        if let Some(content) = content {
+            tooltip(self, content, position).into()
+        } else {
+            self.into()
+        }
     }
 }
