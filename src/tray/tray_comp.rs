@@ -8,10 +8,10 @@ use lucide_icons::Icon;
 use tracing::debug;
 
 use crate::{
-    divider::{Angled, Direction, Heading},
     feature::{CompWithProps, align_center},
     theme::CAT_THEME,
     tray::{dbus::TrayLayout, service::TrayService},
+    widget::divider::{Angled, Direction, Heading},
     widget_ext::ContainExt,
 };
 

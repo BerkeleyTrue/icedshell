@@ -7,12 +7,12 @@ use iced::{
 
 use crate::{
     config::MonitorId,
-    divider::{Angled, Direction, Heading},
     fdo_icons,
     feature::{CompWithProps, align_center},
     fira_fonts::TextExt,
     niri::state_serv,
     theme::CAT_THEME,
+    widget::divider::{Angled, Direction, Heading},
     widget_ext::ContainExt,
 };
 

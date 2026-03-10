@@ -2,7 +2,6 @@ mod config;
 mod daemon;
 mod datetime;
 mod delora;
-mod divider;
 mod fdo_icons;
 mod feature;
 mod fira_fonts;
@@ -12,6 +11,7 @@ mod socket;
 mod system_info;
 mod theme;
 mod tray;
+mod widget;
 mod widget_ext;
 
 use crate::daemon::{Init, start};

@@ -9,10 +9,10 @@ use time::{OffsetDateTime, format_description::BorrowedFormatItem};
 use time_macros::format_description;
 
 use crate::{
-    divider::{Direction, Semi},
     feature::{CompWithProps, align_center},
     fira_fonts::TextExt,
     theme::CAT_THEME,
+    widget::divider::{Direction, Semi},
     widget_ext::ContainExt,
 };
 
