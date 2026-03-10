@@ -7,7 +7,7 @@ use iced_layershell::reexport::{
 
 use crate::{
     config::MonitorId,
-    datetime::{clock, date},
+    datetime::{clock_comp, date_comp},
     divider::{Angled, Direction, Heading, Semi},
     feature::{
         Comp, CompWithProps, Feature, Service, align_center, bar_widgets, center_widgets,
@@ -22,8 +22,8 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Clock(clock::Message),
-    Date(date::Message),
+    Clock(clock_comp::Message),
+    Date(date_comp::Message),
 
     Ws(ws_comp::Message),
     Win(win_comp::Message),
@@ -51,8 +51,8 @@ pub struct DeloraMain {
 
     ws: ws_comp::NiriWsComp,
     win: win_comp::NiriWinComp,
-    clock: clock::Clock,
-    date: date::Date,
+    clock: clock_comp::Clock,
+    date: date_comp::Date,
     output_name: String,
     niri_serv: state_serv::NiriStateServ,
     tray_serv: tray_serv::TrayService,
@@ -87,8 +87,8 @@ impl Comp for DeloraMain {
         );
         let (win, win_comp_task) =
             win_comp::NiriWinComp::new(win_comp::Init { monitor_id }, Message::Win);
-        let (clock, clock_task) = clock::Clock::new((), Message::Clock);
-        let (date, date_task) = date::Date::new((), Message::Date);
+        let (clock, clock_task) = clock_comp::Clock::new((), Message::Clock);
+        let (date, date_task) = date_comp::Date::new((), Message::Date);
         let (niri_serv, niri_serv_task) = state_serv::NiriStateServ::new((), Message::NiriService);
         let (tray_serv, tray_serv_task) = tray_serv::TrayService::new((), Message::TrayService);
         let (tray, tray_task) = tray_comp::TrayComp::new((), Message::Tray);
