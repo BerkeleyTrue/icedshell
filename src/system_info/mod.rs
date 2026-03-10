@@ -22,9 +22,8 @@ const BYTES_IN_GIG: u64 = 1_073_741_824;
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    SystemLoad(f64),
-    CpuTemp(f32),
-    RefreshTick,
+    OnCpuTempUpdated(f32),
+    OnTick,
 }
 
 pub struct SysInfoComp {
@@ -59,37 +58,30 @@ impl Comp for SysInfoComp {
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
-        let load_sub = time::every(time::Duration::from_millis(750))
-            .map(|_| Message::SystemLoad(System::load_average().one));
-
         let avg_temp_sub = Subscription::run_with(cpu_temp::ListenData(1000), cpu_temp::listen)
             .filter_map(|res| match res {
-                Ok(temp) => Some(Message::CpuTemp(temp)),
+                Ok(temp) => Some(Message::OnCpuTempUpdated(temp)),
                 Err(err) => {
                     info!("Error getting temp {err:?}");
                     None
                 }
             });
 
-        let refresh_sub =
-            time::every(time::Duration::from_millis(750)).map(|_| Message::RefreshTick);
+        let refresh_sub = time::every(time::Duration::from_millis(750)).map(|_| Message::OnTick);
 
-        Subscription::batch([load_sub, avg_temp_sub, refresh_sub])
+        Subscription::batch([avg_temp_sub, refresh_sub])
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
-            Message::SystemLoad(load) => {
-                self.load = load;
-                Task::none()
-            }
-            Message::CpuTemp(cpu_temp) => {
+            Message::OnCpuTempUpdated(cpu_temp) => {
                 self.cpu_temp = cpu_temp;
                 Task::none()
             }
-            Message::RefreshTick => {
+            Message::OnTick => {
                 self.system.refresh_memory();
                 self.system.refresh_cpu_usage();
+                self.load = System::load_average().one;
                 Task::none()
             }
         }
