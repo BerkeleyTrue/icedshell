@@ -8,11 +8,12 @@ use iced::{
 use crate::{
     config::MonitorId,
     fdo_icons,
-    feature::{CompWithProps, align_center},
+    feature::CompWithProps,
     fira_fonts::TextExt,
     niri::state_serv,
     theme::CAT_THEME,
     widget::{
+        align_center,
         container_ext::ContainExt,
         divider::{Angled, Direction, Heading},
     },

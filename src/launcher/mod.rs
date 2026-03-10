@@ -21,13 +21,13 @@ use tracing::info;
 
 use crate::{
     config::MonitorId,
-    feature::{Comp, Feature, Service, align_center},
+    feature::{Comp, Feature, Service},
     launcher::{
         app_serv::AppServ,
         modi::{Modi, Query, Res},
     },
     theme::CAT_THEME,
-    widget::container_ext::ContainExt,
+    widget::{align_center, container_ext::ContainExt},
 };
 
 const NUM_OF_ITEMS: usize = 10;

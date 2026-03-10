@@ -2,10 +2,11 @@ use std::collections::BTreeMap;
 
 use crate::{
     config::MonitorId,
-    feature::{CompWithProps, align_center},
+    feature::CompWithProps,
     niri::state_serv,
     theme::CAT_THEME,
     widget::{
+        align_center,
         container_ext::ContainExt,
         divider::{Angled, Direction, Heading},
     },

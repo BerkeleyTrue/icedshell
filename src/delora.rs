@@ -8,17 +8,16 @@ use iced_layershell::reexport::{
 use crate::{
     config::MonitorId,
     datetime::{clock_comp, date_comp},
-    feature::{
-        Comp, CompWithProps, Feature, Service, align_center, bar_widgets, center_widgets,
-        left_widgets, right_widgets,
-    },
+    feature::{Comp, CompWithProps, Feature, Service},
     niri::{state_serv, win_comp, ws_comp},
     system_info as sys_info,
     theme::CAT_THEME,
     tray::{TrayLayout, TrayMenuItemId, service as tray_serv, tray_comp},
     widget::{
+        align_center, bar_widgets, center_widgets,
         container_ext::ContainExt,
         divider::{Angled, Direction, Heading, Semi},
+        left_widgets, right_widgets,
     },
 };
 

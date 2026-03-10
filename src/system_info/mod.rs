@@ -11,10 +11,11 @@ use sysinfo::{CpuRefreshKind, DiskRefreshKind, Disks, MemoryRefreshKind, Refresh
 use tracing::info;
 
 use crate::{
-    feature::{Comp, align_center},
+    feature::Comp,
     fira_fonts::TextExt,
     theme::CAT_THEME,
     widget::{
+        align_center,
         container_ext::ContainExt,
         divider::{self, Angled, Semi},
     },
