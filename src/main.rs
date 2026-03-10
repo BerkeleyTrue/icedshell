@@ -1,7 +1,7 @@
+mod bars;
 mod config;
 mod daemon;
 mod datetime;
-mod delora;
 mod feature;
 mod fira_fonts;
 mod launcher;

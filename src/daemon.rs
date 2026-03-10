@@ -22,7 +22,7 @@ use tracing::{debug, error as log_err, info};
 
 use crate::{
     AppCommand, Cli,
-    delora::{self, DeloraMain},
+    bars::delora_main::{self, DeloraMain},
     feature::{Comp, FeatWindow, Feature, Service},
     launcher,
     niri::{self, monitors::MonitorsServ},
@@ -79,7 +79,7 @@ struct Features(HashMap<Id, Feat>);
 pub enum Message {
     NiriMon(niri::monitors::Message),
 
-    Delora(Id, delora::Message),
+    Delora(Id, delora_main::Message),
     TrayMenu(Id, tray_menu::Message),
     TrayMenuItemClicked(
         /// sni item name
@@ -186,7 +186,7 @@ impl Daemon {
                         .map(move |m| Message::Delora(win_id, m));
 
                     let open_task = match message {
-                        delora::Message::OpenTrayMenu(name, layout) => {
+                        delora_main::Message::OpenTrayMenu(name, layout) => {
                             self.open_tray_menu(name, layout)
                         }
                         _ => Task::none(),
@@ -298,7 +298,7 @@ impl Daemon {
 impl Daemon {
     fn open_delora_main(&mut self, output_name: String) -> Task<Message> {
         let (mut main_feat, main_layer_settings, inner_task) =
-            DeloraMain::open(delora::Init { output_name }, Message::Delora);
+            DeloraMain::open(delora_main::Init { output_name }, Message::Delora);
         let main_id = main_feat.id;
 
         let remove = self
