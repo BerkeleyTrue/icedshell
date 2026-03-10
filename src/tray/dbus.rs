@@ -13,7 +13,7 @@ use zbus::{
     zvariant::{self, OwnedObjectPath, OwnedValue, Type},
 };
 
-use crate::fdo_icons::FdIcon;
+use crate::widget::fdo_icons::FdIcon;
 
 const NAME: WellKnownName =
     WellKnownName::from_static_str_unchecked("org.kde.StatusNotifierWatcher");

@@ -2,7 +2,6 @@ mod config;
 mod daemon;
 mod datetime;
 mod delora;
-mod fdo_icons;
 mod feature;
 mod fira_fonts;
 mod launcher;

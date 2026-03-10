@@ -1,7 +1,7 @@
 use derive_more::Constructor;
 use iced::Task;
 
-use crate::fdo_icons::FdIcon;
+use crate::widget::fdo_icons::FdIcon;
 
 #[derive(Debug, Clone, Constructor)]
 pub struct Res<T> {

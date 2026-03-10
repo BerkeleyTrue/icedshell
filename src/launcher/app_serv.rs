@@ -20,9 +20,9 @@ use tokio::fs;
 use tracing::info;
 
 use crate::{
-    fdo_icons::{self, FdIcon},
     feature::Service,
     launcher::modi::{Modi, Query, Res},
+    widget::fdo_icons::{self, FdIcon},
 };
 
 #[allow(clippy::too_many_arguments)]

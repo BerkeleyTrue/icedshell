@@ -5,7 +5,6 @@ use iced::futures::{
 use tracing::debug;
 
 use crate::{
-    fdo_icons::{self, FdIcon},
     tray::{
         TrayMenuItemId,
         dbus::{
@@ -13,6 +12,7 @@ use crate::{
             StatusNotifierWatcherProxy, TrayLayout, icons_to_fd_icon,
         },
     },
+    widget::fdo_icons::{self, FdIcon},
 };
 
 #[derive(Debug, Clone)]

@@ -1,11 +1,11 @@
 use crate::{
-    fdo_icons::FdIcon,
     feature::Service,
     tray::{
         TrayMenuItemId,
         dbus::TrayLayout,
         eventstream::{SNItem, SNItemEvent, TrayEvent, listen},
     },
+    widget::fdo_icons::FdIcon,
 };
 use iced::{Subscription, Task, advanced::graphics::futures::MaybeSend};
 use std::{
