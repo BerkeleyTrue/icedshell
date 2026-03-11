@@ -115,25 +115,25 @@ impl CompWithProps for NiriWinComp {
         .background(color)
         .padding(padding::horizontal(theme.spacing().sm()));
 
-        let mid_div = align_center!(Angled::new(
+        let mid_div = Angled::new(
             color,
+            second_color,
             Direction::Right,
             Heading::South,
             theme.spacing().xl(),
-        ))
-        .background(second_color);
+        );
 
         let count_cont = align_center!(text!("{current_win_idx}/{num_of_win}"))
             .background(second_color)
             .padding(padding::horizontal(theme.spacing().sm()));
 
-        let end_div = align_center!(Angled::new(
+        let end_div = Angled::new(
             second_color,
+            next_color,
             Direction::Right,
             Heading::North,
             theme.spacing().xl(),
-        ))
-        .background(next_color);
+        );
 
         row![title_cont, mid_div, count_cont, end_div].into()
     }

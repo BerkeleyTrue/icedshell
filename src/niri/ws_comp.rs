@@ -121,6 +121,7 @@ impl CompWithProps for NiriWsComp {
 
         let div = Angled::new(
             theme.background(),
+            theme.trans(),
             Direction::Right,
             Heading::South,
             theme.spacing().xl(),

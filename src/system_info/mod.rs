@@ -94,13 +94,13 @@ impl Comp for SysInfoComp {
         let theme = &CAT_THEME;
 
         let cpu = {
-            let div = align_center!(Angled::new(
+            let div = Angled::new(
                 theme.mauve(),
+                theme.trans(),
                 divider::Direction::Left,
                 divider::Heading::North,
                 theme.spacing().xl(),
-            ))
-            .background(theme.trans());
+            );
 
             let temp_icon = Icon::Thermometer
                 .widget()
@@ -132,13 +132,13 @@ impl Comp for SysInfoComp {
         };
 
         let avg_load = {
-            let div = align_center!(Angled::new(
+            let div = Angled::new(
                 theme.peach(),
+                theme.mauve(),
                 divider::Direction::Left,
                 divider::Heading::North,
                 theme.spacing().xl(),
-            ))
-            .background(theme.mauve());
+            );
 
             let icon = Icon::BicepsFlexed
                 .widget()
@@ -162,13 +162,13 @@ impl Comp for SysInfoComp {
         };
 
         let mem = {
-            let div = align_center!(Angled::new(
+            let div = Angled::new(
                 theme.blue(),
+                theme.peach(),
                 divider::Direction::Left,
                 divider::Heading::North,
                 theme.spacing().xl(),
-            ))
-            .background(theme.peach());
+            );
 
             let icon = Icon::MemoryStick
                 .widget()
@@ -194,12 +194,12 @@ impl Comp for SysInfoComp {
         };
 
         let disk_usage = {
-            let div = align_center!(Semi::new(
+            let div = Semi::new(
                 theme.blue(),
+                theme.trans(),
                 divider::Direction::Right,
                 theme.spacing().xl(),
-            ))
-            .background(theme.trans());
+            );
 
             let icon = Icon::HardDrive
                 .widget()

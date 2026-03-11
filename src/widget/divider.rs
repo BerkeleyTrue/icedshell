@@ -6,34 +6,46 @@ use iced::{
     widget::{
         Canvas,
         canvas::{Cache, Geometry, Path, Program, path::Arc},
+        container,
     },
 };
 
+use crate::widget::container_ext::ContainExt;
+
 // The state for your triangle
+#[derive(Debug)]
 pub struct Angled {
     color: Color,
+    background: Color,
     cache: Cache,
     direction: Direction,
     heading: Heading,
     height: f32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Direction {
     Left,
     Right,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Heading {
     North,
     South,
 }
 
 impl Angled {
-    pub fn new(color: Color, direction: Direction, heading: Heading, height: f32) -> Self {
+    pub fn new(
+        color: Color,
+        background: Color,
+        direction: Direction,
+        heading: Heading,
+        height: f32,
+    ) -> Self {
         Self {
             color,
+            background,
             cache: Cache::new(),
             direction,
             heading,
@@ -93,24 +105,29 @@ impl<'a, Message: 'a> From<Angled> for Element<'a, Message> {
     fn from(divider: Angled) -> Self {
         let height = divider.height;
         let width = (height / 1.75).round_ties_even();
-        Canvas::new(divider)
+        let bg_color = divider.background;
+
+        let div = Canvas::new(divider)
             .height(Length::Fixed(height))
-            .width(Length::Fixed(width))
-            .into()
+            .width(Length::Fixed(width));
+
+        container(div).background(bg_color).into()
     }
 }
 
 pub struct Semi {
     color: Color,
+    background: Color,
     cache: Cache,
     direction: Direction,
     height: f32,
 }
 
 impl Semi {
-    pub fn new(color: Color, direction: Direction, height: f32) -> Self {
+    pub fn new(color: Color, background: Color, direction: Direction, height: f32) -> Self {
         Self {
             color,
+            background,
             cache: Cache::new(),
             direction,
             height,
@@ -166,6 +183,9 @@ impl<'a, Message: 'a> From<Semi> for Element<'a, Message> {
     fn from(semi: Semi) -> Self {
         let height = semi.height;
         let width = height / 2.0;
-        Canvas::new(semi).height(height).width(width).into()
+        let background = semi.background;
+        let div = Canvas::new(semi).height(height).width(width);
+
+        container(div).background(background).into()
     }
 }

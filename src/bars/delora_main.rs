@@ -175,18 +175,23 @@ impl Comp for DeloraMain {
                 .map(self::Message::Ws),
         );
 
-        let div = align_center!(Angled::new(
+        let div = Angled::new(
             theme.lavender(),
+            theme.background(),
             Direction::Right,
             Heading::South,
             theme.spacing().xl(),
-        ))
-        .background(theme.background());
+        );
 
         let clock_view = align_center!(self.clock.view(theme.background()).map(Message::Clock))
             .padding(padding::right(theme.spacing().sm()));
 
-        let win_div = Semi::new(theme.rosewater(), Direction::Left, theme.spacing().xl());
+        let win_div = Semi::new(
+            theme.rosewater(),
+            theme.trans(),
+            Direction::Left,
+            theme.spacing().xl(),
+        );
 
         let win = align_center!(
             self.win

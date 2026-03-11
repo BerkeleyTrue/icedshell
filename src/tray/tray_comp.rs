@@ -105,13 +105,13 @@ impl CompWithProps for TrayComp {
             }
         });
 
-        let end_div = align_center!(Angled::new(
+        let end_div = Angled::new(
             theme.surface2(),
+            props.next_color,
             Direction::Right,
             Heading::North,
             theme.spacing().xl(),
-        ))
-        .background(props.next_color);
+        );
 
         let content = align_center!(row(items).spacing(theme.spacing().xs()))
             .background(theme.surface2())

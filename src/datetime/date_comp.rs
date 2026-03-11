@@ -83,7 +83,12 @@ impl CompWithProps for Date {
         let time = align_center!(text(&self.date).color(color).bold())
             .padding(padding::right(theme.spacing().sm()));
 
-        let div = Semi::new(theme.lavender(), Direction::Left, theme.spacing().xl());
+        let div = Semi::new(
+            theme.lavender(),
+            theme.trans(),
+            Direction::Left,
+            theme.spacing().xl(),
+        );
 
         let date = align_center!(text(&self.week).color(color))
             .background(theme.lavender())
