@@ -4,9 +4,9 @@ use iced::{Subscription, Task, advanced::graphics::futures::MaybeSend};
 use itertools::Itertools;
 
 use crate::{
-    config::MonitorId,
     feature::Service,
     niri::stream::{self, NiriEvent},
+    types::MonitorId,
 };
 
 #[derive(Debug, Clone)]

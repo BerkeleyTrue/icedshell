@@ -1,5 +1,4 @@
 mod bars;
-mod config;
 mod daemon;
 mod datetime;
 mod feature;
@@ -10,6 +9,7 @@ mod socket;
 mod system_info;
 mod theme;
 mod tray;
+mod types;
 mod widget;
 
 use crate::daemon::{Init, start};

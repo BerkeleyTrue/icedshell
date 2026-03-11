@@ -9,9 +9,9 @@ use std::{
 use tracing::info;
 
 use crate::{
-    config::MonitorId,
     feature::Service,
     niri::stream::{self, NiriStreamError},
+    types::MonitorId,
 };
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq, From, PartialOrd, Ord)]

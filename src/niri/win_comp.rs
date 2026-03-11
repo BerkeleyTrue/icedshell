@@ -6,10 +6,10 @@ use iced::{
 };
 
 use crate::{
-    config::MonitorId,
     feature::CompWithProps,
     niri::state_serv,
     theme::CAT_THEME,
+    types::MonitorId,
     widget::{
         align_center,
         container_ext::ContainExt,

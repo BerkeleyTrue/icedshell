@@ -20,13 +20,13 @@ use iced_layershell::reexport::{
 use tracing::info;
 
 use crate::{
-    config::MonitorId,
     feature::{Comp, Feature, Service},
     launcher::{
         app_serv::AppServ,
         modi::{Modi, Query, Res},
     },
     theme::CAT_THEME,
+    types::MonitorId,
     widget::{align_center, container_ext::ContainExt},
 };
 
