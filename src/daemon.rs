@@ -22,11 +22,11 @@ use tracing::{debug, error as log_err, info};
 
 use crate::{
     AppCommand, Cli,
-    bars::delora_main::{self, DeloraMain},
-    feature::{Comp, FeatWindow, Feature, Service},
+    bars::delora_main,
+    feature::{Comp, CompWithProps, FeatWindow, Feature, Service},
     launcher,
     niri::{self, monitors::MonitorsServ},
-    socket,
+    osd, socket,
     theme::{self as mytheme},
     tray::{TrayLayout, TrayMenuItemId, menu_comp as tray_menu},
 };
@@ -66,9 +66,10 @@ impl From<Cli> for Init {
 }
 
 enum Feat {
-    Delora(FeatWindow<DeloraMain>),
+    Delora(FeatWindow<delora_main::DeloraMain>),
     TrayMenu(FeatWindow<tray_menu::MenuComp>),
     Launcher(FeatWindow<launcher::Launcher>),
+    Osd(FeatWindow<osd::Osd>),
 }
 
 #[derive(Deref, DerefMut)]
@@ -93,6 +94,8 @@ pub enum Message {
 
     OpenLauncher,
     Launcher(Id, launcher::Message),
+
+    Osd(Id, osd::Message),
 
     Socket(socket::Request),
 
@@ -168,6 +171,10 @@ impl Daemon {
                         .subscription()
                         .with(win_id)
                         .map(|(win_id, m)| Message::Launcher(win_id, m)),
+                    Feat::Osd(osd) => osd
+                        .subscription()
+                        .with(win_id)
+                        .map(|(win_id, m)| Message::Osd(win_id, m)),
                 }
             })
             .collect();
@@ -289,6 +296,7 @@ impl Daemon {
             Some(Feat::Delora(delora)) => delora.view().map_feat(win_id, Message::Delora),
             Some(Feat::TrayMenu(menu_feat)) => menu_feat.view().map_feat(win_id, Message::TrayMenu),
             Some(Feat::Launcher(launcher)) => launcher.view().map_feat(win_id, Message::Launcher),
+            Some(Feat::Osd(osd)) => osd.view().map_feat(win_id, Message::Osd),
             None => container(space()).into(),
         }
     }
@@ -298,7 +306,7 @@ impl Daemon {
 impl Daemon {
     fn open_delora_main(&mut self, output_name: String) -> Task<Message> {
         let (mut main_feat, main_layer_settings, inner_task) =
-            DeloraMain::open(delora_main::Init { output_name }, Message::Delora);
+            delora_main::DeloraMain::open(delora_main::Init { output_name }, Message::Delora);
         let main_id = main_feat.id;
 
         let remove = self
@@ -425,6 +433,39 @@ impl Daemon {
             },
             move |_| Message::RemoveWindow(id),
         )
+    }
+}
+
+/// osd logic
+impl Daemon {
+    fn open_osd(&mut self) -> Task<Message> {
+        let (osd_feat, settings, inner_task) = osd::Osd::open((), Message::Osd);
+        let win_id = osd_feat.id;
+
+        let remove = self
+            .features
+            .iter()
+            .find(|(_, feat)| matches!(feat, Feat::Osd(_)))
+            .and_then(|(win_id, old_win)| {
+                if let Feat::Osd(_) = old_win {
+                    return Some(*win_id);
+                }
+                None
+            })
+            .map(|win_id| {
+                self.features.remove(&win_id);
+                Task::done(Message::RemoveWindow(win_id))
+            })
+            .unwrap_or(Task::none());
+
+        self.features.insert(win_id, Feat::Osd(osd_feat));
+
+        remove
+            .chain(Task::done(Message::NewLayerShell {
+                settings,
+                id: win_id,
+            }))
+            .chain(inner_task)
     }
 }
 

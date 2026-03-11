@@ -5,6 +5,7 @@ mod feature;
 mod fira_fonts;
 mod launcher;
 mod niri;
+mod osd;
 mod socket;
 mod system_info;
 mod theme;
