@@ -66,6 +66,10 @@ impl DeloraMain {
         self.niri_serv = old_bar.niri_serv.clone();
         self.tray_serv = old_bar.tray_serv.clone();
     }
+
+    pub fn is_on_output(&self, output_name: &str) -> bool {
+        self.output_name == output_name
+    }
 }
 
 impl Comp for DeloraMain {

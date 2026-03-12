@@ -23,7 +23,7 @@ use tracing::{debug, error as log_err, info};
 use crate::{
     AppCommand, Cli,
     bars::delora_main,
-    feature::{Comp, CompWithProps, FeatWindow, Feature, Service},
+    feature::{Comp, FeatWindow, Feature, Service},
     launcher,
     niri::{self, monitors::MonitorsServ},
     osd, socket,
@@ -304,22 +304,39 @@ impl Daemon {
 
 // delora bar feature logic
 impl Daemon {
+    /// find old bar,
+    /// if so and bar is on output, noop
+    /// if so and bar is on wrong output, close and open new one
+    /// - clone services
+    /// - replace old bar with new bar
     fn open_delora_main(&mut self, output_name: String) -> Task<Message> {
+        let old_feat = self
+            .features
+            .iter()
+            .find(|(_, feat)| matches!(feat, Feat::Delora(_)))
+            // release features first
+            .map(|(win_id, _)| *win_id)
+            .and_then(|win_id| self.features.get(&win_id))
+            .and_then(|old_feat| match old_feat {
+                Feat::Delora(old_feat) => Some(old_feat),
+                _ => None,
+            });
+
+        if let Some(old_feat) = old_feat
+            && old_feat.is_on_output(&output_name)
+        {
+            return Task::none();
+        }
+
         let (mut main_feat, main_layer_settings, inner_task) =
             delora_main::DeloraMain::open(delora_main::Init { output_name }, Message::Delora);
         let main_id = main_feat.id;
 
-        let remove = self
-            .features
-            .iter()
-            .find(|(_, feat)| matches!(feat, Feat::Delora(_)))
-            .and_then(|(win_id, old_win)| {
-                if let Feat::Delora(old_win) = old_win {
-                    main_feat.view.clone_servs(old_win);
-                    return Some(*win_id);
-                }
-                None
+        let remove = old_feat
+            .inspect(|old_feat| {
+                main_feat.view.clone_servs(old_feat);
             })
+            .map(|old_feat| old_feat.id)
             .map(|win_id| {
                 self.features.remove(&win_id);
                 Task::done(Message::RemoveWindow(win_id))
