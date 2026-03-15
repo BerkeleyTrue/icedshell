@@ -240,6 +240,18 @@ impl Daemon {
                     Task::none()
                 }
             }
+            Message::Osd(win_id, message) => {
+                if let Some(Feat::Osd(osd)) = self.features.get_mut(&win_id) {
+                    let inner = osd.update(message.clone()).map_feat(win_id, Message::Osd);
+                    let outer = match message {
+                        osd::Message::Timeout => Task::done(Message::RemoveWindow(win_id)),
+                        _ => Task::none(),
+                    };
+                    inner.chain(outer)
+                } else {
+                    Task::none()
+                }
+            }
             Message::NiriMon(message) => {
                 let inner_task = self.mon_serv.update(message).map(Message::NiriMon);
                 let num_mon = self.mon_serv.len();
@@ -286,6 +298,7 @@ impl Daemon {
 
             Message::Socket(req) => match req {
                 socket::Request::Launcher => self.open_launcher(),
+                socket::Request::Osd => self.open_osd(),
             },
             _ => Task::none(),
         }

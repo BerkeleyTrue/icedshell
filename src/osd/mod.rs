@@ -12,6 +12,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum Message {
     Tick,
+    Timeout,
 }
 
 pub struct Osd {}
@@ -22,9 +23,14 @@ impl Comp for Osd {
 
     fn new<O: iced::advanced::graphics::futures::MaybeSend + 'static>(
         _input: Self::Init,
-        _f: impl Fn(Self::Message) -> O + iced::advanced::graphics::futures::MaybeSend + 'static,
+        f: impl Fn(Self::Message) -> O + iced::advanced::graphics::futures::MaybeSend + 'static,
     ) -> (Self, iced::Task<O>) {
-        Self {}.to_tuple()
+        let timeout = Task::perform(
+            tokio::time::sleep(tokio::time::Duration::from_secs(5)),
+            |_| Message::Timeout,
+        )
+        .map(f);
+        (Self {}, timeout)
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
@@ -34,6 +40,7 @@ impl Comp for Osd {
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
             Message::Tick => Task::none(),
+            Message::Timeout => Task::none(),
         }
     }
 

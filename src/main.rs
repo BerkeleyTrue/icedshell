@@ -38,6 +38,7 @@ enum AppCommand {
         quit_keybindings: bool,
     },
     Launcher,
+    Osd,
     // PowerMenu,
     // Notify
 }
@@ -88,6 +89,13 @@ fn main() -> anyhow::Result<()> {
         }
         AppCommand::Launcher => {
             match socket::connect_and_launch() {
+                Ok(res) => info!("Res: {res:?}"),
+                Err(err) => log_err!("request err: {err:?}"),
+            };
+            Ok(())
+        }
+        AppCommand::Osd => {
+            match socket::connect_and_osd() {
                 Ok(res) => info!("Res: {res:?}"),
                 Err(err) => log_err!("request err: {err:?}"),
             };

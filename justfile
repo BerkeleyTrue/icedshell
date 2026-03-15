@@ -20,11 +20,11 @@ run:
 
 [group('build')]
 launcher:
-  if [ -n "{{nixgl}}" ]; then \
-    {{nixgl}} cargo run -- -v launcher; \
-  else \
-    cargo run -- -v launcher; \
-  fi
+  cargo run -- -v launcher;
+
+[group('build')]
+osd:
+  cargo run -- -v osd;
 
 [group('build')]
 watch:

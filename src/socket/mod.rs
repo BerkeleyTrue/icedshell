@@ -16,6 +16,7 @@ use tracing::info;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Request {
     Launcher,
+    Osd,
 }
 
 #[derive(Deref, DerefMut, From)]
@@ -23,7 +24,7 @@ pub struct IcedSocket(pub BoxStream<'static, anyhow::Result<Request>>);
 
 impl Request {
     fn to_string_line(&self) -> anyhow::Result<String> {
-        Ok(serde_json::to_string(&Request::Launcher)? + "\n")
+        Ok(serde_json::to_string(&self)? + "\n")
     }
 
     fn from_string_line(line: &str) -> anyhow::Result<Self> {
@@ -40,6 +41,19 @@ pub fn connect_and_launch() -> anyhow::Result<()> {
         let path = get_path()?;
         let mut stream = UnixStream::connect(path).await?;
         let req = Request::Launcher.to_string_line()?;
+
+        stream.writable().await?;
+        stream.write_all(req.as_bytes()).await?;
+        stream.shutdown().await?;
+        Ok(())
+    })
+}
+
+pub fn connect_and_osd() -> anyhow::Result<()> {
+    tokio::runtime::Runtime::new()?.block_on(async {
+        let path = get_path()?;
+        let mut stream = UnixStream::connect(path).await?;
+        let req = Request::Osd.to_string_line()?;
 
         stream.writable().await?;
         stream.write_all(req.as_bytes()).await?;
