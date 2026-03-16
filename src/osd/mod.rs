@@ -1,8 +1,14 @@
+use std::time::Instant;
+
 use iced::{
-    Length, Task, time,
+    Animation, Length, Task,
+    animation::Easing,
+    border,
     widget::{container, text},
+    window,
 };
 use iced_layershell::reexport::{self as layer, OutputOption};
+use tracing::info;
 
 use crate::{
     feature::{Comp, Feature},
@@ -17,12 +23,14 @@ pub struct Init {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Tick,
+    Tick(Instant),
     Timeout,
 }
 
 pub struct Osd {
     monitor: Option<MonitorId>,
+    now: Instant,
+    fade_out: Animation<bool>,
 }
 
 impl Comp for Osd {
@@ -41,25 +49,42 @@ impl Comp for Osd {
         (
             Self {
                 monitor: input.monitor,
+                now: std::time::Instant::now(),
+                fade_out: Animation::new(false).easing(Easing::EaseOut).very_slow(),
             },
             timeout,
         )
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
-        time::every(time::Duration::from_millis(500)).map(|_| Message::Tick)
+        window::frames().map(Message::Tick)
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
-            Message::Tick => Task::none(),
+            Message::Tick(now) => {
+                self.now = now;
+                Task::none()
+            }
             Message::Timeout => Task::none(),
         }
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        let _theme = &CAT_THEME;
-        container(text!("Hello World")).width(Length::Fill).into()
+        let theme = &CAT_THEME;
+        let spacing = theme.spacing();
+        let opacity = self.fade_out.interpolate(1.0, 0.0, self.now);
+        info!("opactity: {opacity}");
+        container(text!("Hello World"))
+            .style(move |_| container::Style {
+                background: Some(theme.background().scale_alpha(opacity).into()),
+                border: border::color(theme.teal())
+                    .width(spacing.xxs())
+                    .rounded(theme.radius().md()),
+                ..Default::default()
+            })
+            .width(Length::Fill)
+            .into()
     }
 }
 
