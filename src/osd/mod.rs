@@ -2,12 +2,18 @@ use iced::{
     Length, Task, time,
     widget::{container, text},
 };
-use iced_layershell::reexport::{self as layer};
+use iced_layershell::reexport::{self as layer, OutputOption};
 
 use crate::{
     feature::{Comp, Feature},
     theme::CAT_THEME,
+    types::MonitorId,
 };
+
+#[derive(Debug, Clone)]
+pub struct Init {
+    pub monitor: Option<MonitorId>,
+}
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -15,14 +21,16 @@ pub enum Message {
     Timeout,
 }
 
-pub struct Osd {}
+pub struct Osd {
+    monitor: Option<MonitorId>,
+}
 
 impl Comp for Osd {
     type Message = Message;
-    type Init = ();
+    type Init = Init;
 
     fn new<O: iced::advanced::graphics::futures::MaybeSend + 'static>(
-        _input: Self::Init,
+        input: Self::Init,
         f: impl Fn(Self::Message) -> O + iced::advanced::graphics::futures::MaybeSend + 'static,
     ) -> (Self, iced::Task<O>) {
         let timeout = Task::perform(
@@ -30,7 +38,12 @@ impl Comp for Osd {
             |_| Message::Timeout,
         )
         .map(f);
-        (Self {}, timeout)
+        (
+            Self {
+                monitor: input.monitor,
+            },
+            timeout,
+        )
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
@@ -59,7 +72,11 @@ impl Feature for Osd {
             anchor: layer::Anchor::empty(),
             margin: None,
             keyboard_interactivity: layer::KeyboardInteractivity::None,
-            output_option: layer::OutputOption::None,
+            output_option: self
+                .monitor
+                .as_ref()
+                .map(|monitor| OutputOption::OutputName(monitor.inner().to_owned()))
+                .unwrap_or(OutputOption::None),
             exclusive_zone: None,
             events_transparent: false,
             namespace: Some("IcedOsd".to_owned()),

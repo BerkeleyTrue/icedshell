@@ -469,7 +469,12 @@ impl Daemon {
 /// osd logic
 impl Daemon {
     fn open_osd(&mut self) -> Task<Message> {
-        let (osd_feat, settings, inner_task) = osd::Osd::open((), Message::Osd);
+        let (osd_feat, settings, inner_task) = osd::Osd::open(
+            osd::Init {
+                monitor: self.mon_serv.cur_monitor().cloned(),
+            },
+            Message::Osd,
+        );
         let win_id = osd_feat.id;
 
         let remove = self
