@@ -1,14 +1,8 @@
-use std::time::Instant;
-
 use iced::{
-    Animation, Length, Task,
-    animation::Easing,
-    border,
+    Length, Task, border,
     widget::{container, text},
-    window,
 };
 use iced_layershell::reexport::{self as layer, OutputOption};
-use tracing::info;
 
 use crate::{
     feature::{Comp, Feature},
@@ -23,14 +17,11 @@ pub struct Init {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Tick(Instant),
     Timeout,
 }
 
 pub struct Osd {
     monitor: Option<MonitorId>,
-    now: Instant,
-    fade_out: Animation<bool>,
 }
 
 impl Comp for Osd {
@@ -42,30 +33,24 @@ impl Comp for Osd {
         f: impl Fn(Self::Message) -> O + iced::advanced::graphics::futures::MaybeSend + 'static,
     ) -> (Self, iced::Task<O>) {
         let timeout = Task::perform(
-            tokio::time::sleep(tokio::time::Duration::from_secs(5)),
+            tokio::time::sleep(tokio::time::Duration::from_millis(650)),
             |_| Message::Timeout,
         )
         .map(f);
         (
             Self {
                 monitor: input.monitor,
-                now: std::time::Instant::now(),
-                fade_out: Animation::new(false).easing(Easing::EaseOut).very_slow(),
             },
             timeout,
         )
     }
 
-    fn subscription(&self) -> iced::Subscription<Self::Message> {
-        window::frames().map(Message::Tick)
-    }
+    // fn subscription(&self) -> iced::Subscription<Self::Message> {
+    //     Subscription::none()
+    // }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
-            Message::Tick(now) => {
-                self.now = now;
-                Task::none()
-            }
             Message::Timeout => Task::none(),
         }
     }
@@ -73,11 +58,9 @@ impl Comp for Osd {
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let theme = &CAT_THEME;
         let spacing = theme.spacing();
-        let opacity = self.fade_out.interpolate(1.0, 0.0, self.now);
-        info!("opactity: {opacity}");
-        container(text!("Hello World"))
+        container(text!("Hello World").color(theme.text_color()))
             .style(move |_| container::Style {
-                background: Some(theme.background().scale_alpha(opacity).into()),
+                background: Some(theme.background().into()),
                 border: border::color(theme.teal())
                     .width(spacing.xxs())
                     .rounded(theme.radius().md()),
