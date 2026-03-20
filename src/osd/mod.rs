@@ -2,6 +2,7 @@ use iced::{
     Length, Task, border,
     widget::{container, text},
 };
+use iced_font_awesome::fa_icon_solid;
 use iced_layershell::reexport::{self as layer, OutputOption};
 
 use crate::{
@@ -16,12 +17,26 @@ pub struct Init {
 }
 
 #[derive(Debug, Clone)]
+pub enum VolumeLevel {
+    Inc,
+    Dec,
+    Mut,
+    // Max,
+}
+
+#[derive(Debug, Clone)]
+pub enum Modi {
+    Volume(VolumeLevel),
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
     Timeout,
 }
 
 pub struct Osd {
     monitor: Option<MonitorId>,
+    modi: Modi,
 }
 
 impl Comp for Osd {
@@ -40,6 +55,7 @@ impl Comp for Osd {
         (
             Self {
                 monitor: input.monitor,
+                modi: Modi::Volume(VolumeLevel::Inc),
             },
             timeout,
         )
@@ -58,7 +74,17 @@ impl Comp for Osd {
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let theme = &CAT_THEME;
         let spacing = theme.spacing();
-        container(text!("Hello World").color(theme.text_color()))
+        let icon = match self.modi {
+            Modi::Volume(VolumeLevel::Inc) => fa_icon_solid("volume-low"),
+            Modi::Volume(VolumeLevel::Dec) => fa_icon_solid("volume-high"),
+            Modi::Volume(VolumeLevel::Mut) => fa_icon_solid("volume-off"),
+        };
+
+        let icon = icon.size(spacing.xl2()).style(|_| text::Style {
+            color: Some(theme.red()),
+        });
+
+        container(icon)
             .style(move |_| container::Style {
                 background: Some(theme.background().into()),
                 border: border::color(theme.teal())
@@ -66,7 +92,8 @@ impl Comp for Osd {
                     .rounded(theme.radius().md()),
                 ..Default::default()
             })
-            .width(Length::Fill)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
             .into()
     }
 }
@@ -75,7 +102,7 @@ impl Feature for Osd {
     type Settings = layer::NewLayerShellSettings;
     fn layer(&self) -> Self::Settings {
         Self::Settings {
-            size: Some((300, 300)),
+            size: Some((100, 100)),
             layer: layer::Layer::Overlay,
             anchor: layer::Anchor::empty(),
             margin: None,
