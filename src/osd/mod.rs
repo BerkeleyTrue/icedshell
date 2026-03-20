@@ -1,7 +1,4 @@
-use iced::{
-    Length, Task, border,
-    widget::{container, text},
-};
+use iced::{Length, Task, border, widget::container};
 use iced_font_awesome::fa_icon_solid;
 use iced_layershell::reexport::{self as layer, OutputOption};
 
@@ -62,7 +59,7 @@ impl Comp for Osd {
     }
 
     // fn subscription(&self) -> iced::Subscription<Self::Message> {
-    //     Subscription::none()
+    //     window::frames().map(Message::Tick)
     // }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
@@ -80,16 +77,12 @@ impl Comp for Osd {
             Modi::Volume(VolumeLevel::Mut) => fa_icon_solid("volume-off"),
         };
 
-        let icon = icon.size(spacing.xl2()).style(|_| text::Style {
-            color: Some(theme.red()),
-        });
+        let icon = icon.size(spacing.xl3()).color(theme.subtext0());
 
         container(icon)
             .style(move |_| container::Style {
-                background: Some(theme.background().into()),
-                border: border::color(theme.teal())
-                    .width(spacing.xxs())
-                    .rounded(theme.radius().md()),
+                background: Some(theme.crust().into()),
+                border: border::rounded(theme.radius().lg()),
                 ..Default::default()
             })
             .center_x(Length::Fill)
