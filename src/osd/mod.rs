@@ -1,7 +1,7 @@
 use clap::{Args, Subcommand};
 use derive_more::Display;
 use iced::{Length, Task, border, widget::container};
-use iced_font_awesome::fa_icon_solid;
+use iced_font_awesome::{fa_icon, fa_icon_solid};
 use iced_layershell::reexport::{self as layer, OutputOption};
 use serde::{Deserialize, Serialize};
 
@@ -22,12 +22,18 @@ pub enum VolumeLevel {
     Inc,
     Dec,
     Mut,
-    // Max,
+}
+
+#[derive(Debug, Clone, Display, Subcommand, Serialize, Deserialize)]
+pub enum BrightLevel {
+    Inc,
+    Dec,
 }
 
 #[derive(Debug, Clone)]
 pub enum Modi {
     Volume(VolumeLevel),
+    Brightness(BrightLevel),
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +56,7 @@ impl Comp for Osd {
     ) -> (Self, iced::Task<O>) {
         let modi = match input.command {
             OsdCommand::Volume(VolArgs { command }) => Modi::Volume(command),
+            OsdCommand::Bright(BrightArgs { command }) => Modi::Brightness(command),
         };
         let timeout = Task::perform(
             tokio::time::sleep(tokio::time::Duration::from_millis(650)),
@@ -82,6 +89,9 @@ impl Comp for Osd {
             Modi::Volume(VolumeLevel::Inc) => fa_icon_solid("volume-high"),
             Modi::Volume(VolumeLevel::Dec) => fa_icon_solid("volume-low"),
             Modi::Volume(VolumeLevel::Mut) => fa_icon_solid("volume-xmark"),
+
+            Modi::Brightness(BrightLevel::Inc) => fa_icon_solid("lightbulb"),
+            Modi::Brightness(BrightLevel::Dec) => fa_icon("lightbulb"),
         };
 
         let icon = icon.size(spacing.xl3()).color(theme.subtext0());
@@ -128,10 +138,17 @@ pub struct OsdArgs {
 #[derive(Debug, Subcommand, Clone, Display, Serialize, Deserialize)]
 pub enum OsdCommand {
     Volume(VolArgs),
+    Bright(BrightArgs),
 }
 
 #[derive(Debug, Args, Clone, Display, Serialize, Deserialize)]
 pub struct VolArgs {
     #[command(subcommand)]
     pub command: VolumeLevel,
+}
+
+#[derive(Debug, Args, Clone, Display, Serialize, Deserialize)]
+pub struct BrightArgs {
+    #[command(subcommand)]
+    pub command: BrightLevel,
 }
