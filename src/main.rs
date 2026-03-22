@@ -43,7 +43,7 @@ enum AppCommand {
     },
     Launcher,
     Osd(OsdArgs),
-    // PowerMenu,
+    PowerMenu,
     // Notify
 }
 
@@ -101,6 +101,13 @@ fn main() -> anyhow::Result<()> {
         AppCommand::Osd(arg) => {
             info!("args: {arg:?}");
             match socket::connect_and_osd(arg.command) {
+                Ok(res) => info!("Res: {res:?}"),
+                Err(err) => log_err!("request err: {err:?}"),
+            };
+            Ok(())
+        }
+        AppCommand::PowerMenu => {
+            match socket::connect_and_powermenu() {
                 Ok(res) => info!("Res: {res:?}"),
                 Err(err) => log_err!("request err: {err:?}"),
             };

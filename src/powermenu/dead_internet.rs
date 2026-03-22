@@ -60,11 +60,8 @@ impl DeadInternet {
     pub fn view(&self) -> Element<'_, Message> {
         let mut children = vec![Image::new(&self.poster).into()];
 
-        match self.handle.as_ref() {
-            Some(handle) => {
-                children.push(AtlasFrame::new(handle, 4, 910.0, 512.0, self.index).into())
-            }
-            None => (),
+        if let Some(handle) = self.handle.as_ref() {
+            children.push(AtlasFrame::new(handle, 4, 910.0, 512.0, self.index).into())
         }
 
         stack(children).into()

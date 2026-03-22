@@ -76,5 +76,3 @@ pub const LINEAR_BACKGROUND_FOCUS: Background = Background::Gradient(Gradient::L
         None,
     ],
 }));
-
-pub const REM: u32 = 14;

@@ -19,6 +19,7 @@ use crate::osd::OsdCommand;
 pub enum Request {
     Launcher,
     Osd(OsdCommand),
+    PowerMenu,
 }
 
 #[derive(Deref, DerefMut, From)]
@@ -56,6 +57,19 @@ pub fn connect_and_osd(args: OsdCommand) -> anyhow::Result<()> {
         let path = get_path()?;
         let mut stream = UnixStream::connect(path).await?;
         let req = Request::Osd(args).to_string_line()?;
+
+        stream.writable().await?;
+        stream.write_all(req.as_bytes()).await?;
+        stream.shutdown().await?;
+        Ok(())
+    })
+}
+
+pub fn connect_and_powermenu() -> anyhow::Result<()> {
+    tokio::runtime::Runtime::new()?.block_on(async {
+        let path = get_path()?;
+        let mut stream = UnixStream::connect(path).await?;
+        let req = Request::PowerMenu.to_string_line()?;
 
         stream.writable().await?;
         stream.write_all(req.as_bytes()).await?;

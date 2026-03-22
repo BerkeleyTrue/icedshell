@@ -261,9 +261,16 @@ impl Daemon {
             }
             Message::PowerMenu(win_id, message) => {
                 if let Some(Feat::PowerMenu(powermenu)) = self.features.get_mut(&win_id) {
-                    powermenu
+                    let inner = powermenu
                         .update(message.clone())
-                        .map_feat(win_id, Message::PowerMenu)
+                        .map_feat(win_id, Message::PowerMenu);
+
+                    let outer = match message {
+                        powermenu::Message::QuitApp => Task::done(Message::RemoveWindow(win_id)),
+                        _ => Task::none(),
+                    };
+
+                    inner.chain(outer)
                 } else {
                     Task::none()
                 }
@@ -314,6 +321,7 @@ impl Daemon {
             Message::Socket(req) => match req {
                 socket::Request::Launcher => self.open_launcher(),
                 socket::Request::Osd(args) => self.open_osd(args),
+                socket::Request::PowerMenu => self.open_powermenu(),
             },
 
             Message::Quit => exit(),

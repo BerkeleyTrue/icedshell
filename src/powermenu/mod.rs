@@ -6,7 +6,7 @@ use crate::{
     feature::{Comp, Feature},
     powermenu::{
         button::{Icon, PowerButton},
-        palette::LINEAR_BACKGROUND,
+        palette::{LINEAR_BACKGROUND, PALETTE},
     },
     types::MonitorId,
 };
@@ -14,9 +14,9 @@ use crate::{
 use iced::{
     Border, Color, Element, Event,
     Length::{self, Fill},
-    Padding, Shadow, Subscription, Task, Theme, Vector,
+    Padding, Shadow, Subscription, Task, Vector,
     advanced::graphics::futures::MaybeSend,
-    event, exit,
+    event,
     keyboard::{self, Key, key::Named},
     padding,
     widget::{column, container, row, space, stack, text},
@@ -132,7 +132,7 @@ impl Comp for PowerMenu {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::QuitApp => exit(),
+            Message::QuitApp => Task::none(),
 
             Message::FocusNext => {
                 self.focused_btn.next();
@@ -230,6 +230,7 @@ impl Comp for PowerMenu {
     }
 
     fn view(&self) -> Element<'_, Message> {
+        let palette = &PALETTE;
         let dead_internet = self.dead_internet.view().map(Message::DeadInternet);
         let buttons = row(self
             .buttons
@@ -245,32 +246,25 @@ impl Comp for PowerMenu {
             .user
             .as_ref()
             .map(|user| {
-                let inner_box = container(text(user.clone()))
-                    .padding(10)
-                    .style(|theme: &Theme| {
-                        let palette = theme.palette();
-
-                        container::Style {
+                let inner_box =
+                    container(text(user.clone()))
+                        .padding(10)
+                        .style(|_| container::Style {
                             background: Some(LINEAR_BACKGROUND),
                             border: Border::default()
                                 .rounded(1.0)
                                 .color(palette.background)
                                 .width(2.0),
                             ..Default::default()
-                        }
-                    });
+                        });
                 let outer_box = container(inner_box)
-                    .style(|theme: &Theme| {
-                        let palette = theme.palette();
-
-                        container::Style {
-                            border: Border::default()
-                                .rounded(1.0)
-                                .color(palette.text)
-                                .width(2.0),
-                            text_color: Some(palette.background),
-                            ..Default::default()
-                        }
+                    .style(|_| container::Style {
+                        border: Border::default()
+                            .rounded(1.0)
+                            .color(palette.text)
+                            .width(2.0),
+                        text_color: Some(palette.background),
+                        ..Default::default()
                     })
                     .padding(1);
                 container(outer_box).width(Fill)
@@ -284,22 +278,18 @@ impl Comp for PowerMenu {
         let main_layout = container(content)
             .width(Length::Fill)
             .height(Length::Fill)
-            .style(|theme: &Theme| {
-                let palette = theme.palette();
-
-                container::Style {
-                    background: None,
-                    border: Border::default()
-                        .color(palette.text)
-                        .rounded(2.0)
-                        .width(2.0),
-                    shadow: Shadow {
-                        blur_radius: 8.0,
-                        color: Color::from_rgba(0.0, 0.0, 0.0, 0.75),
-                        offset: Vector::new(3.0, 3.0),
-                    },
-                    ..Default::default()
-                }
+            .style(|_| container::Style {
+                background: None,
+                border: Border::default()
+                    .color(palette.text)
+                    .rounded(2.0)
+                    .width(2.0),
+                shadow: Shadow {
+                    blur_radius: 8.0,
+                    color: Color::from_rgba(0.0, 0.0, 0.0, 0.75),
+                    offset: Vector::new(3.0, 3.0),
+                },
+                ..Default::default()
             })
             .padding(8);
 
@@ -321,7 +311,7 @@ impl PowerMenu {
                 .map_err(|err| format!("Error running command: {err:?}"))
                 .unwrap();
         }
-        exit()
+        Task::done(Message::QuitApp)
     }
 }
 
