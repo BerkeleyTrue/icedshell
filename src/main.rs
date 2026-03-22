@@ -6,6 +6,7 @@ mod fira_fonts;
 mod launcher;
 mod niri;
 mod osd;
+mod powermenu;
 mod socket;
 mod system_info;
 mod theme;

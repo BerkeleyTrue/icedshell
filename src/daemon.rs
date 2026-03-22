@@ -26,7 +26,7 @@ use crate::{
     feature::{Comp, FeatWindow, Feature, Service},
     launcher,
     niri::{self, monitors::MonitorsServ},
-    osd, socket,
+    osd, powermenu, socket,
     theme::{self as mytheme},
     tray::{TrayLayout, TrayMenuItemId, menu_comp as tray_menu},
 };
@@ -70,6 +70,7 @@ enum Feat {
     TrayMenu(FeatWindow<tray_menu::MenuComp>),
     Launcher(FeatWindow<launcher::Launcher>),
     Osd(FeatWindow<osd::Osd>),
+    PowerMenu(FeatWindow<powermenu::PowerMenu>),
 }
 
 #[derive(Deref, DerefMut)]
@@ -96,6 +97,8 @@ pub enum Message {
     Launcher(Id, launcher::Message),
 
     Osd(Id, osd::Message),
+
+    PowerMenu(Id, powermenu::Message),
 
     Socket(socket::Request),
 
@@ -175,6 +178,10 @@ impl Daemon {
                         .subscription()
                         .with(win_id)
                         .map(|(win_id, m)| Message::Osd(win_id, m)),
+                    Feat::PowerMenu(powermenu) => powermenu
+                        .subscription()
+                        .with(win_id)
+                        .map(|(win_id, m)| Message::PowerMenu(win_id, m)),
                 }
             })
             .collect();
@@ -252,6 +259,15 @@ impl Daemon {
                     Task::none()
                 }
             }
+            Message::PowerMenu(win_id, message) => {
+                if let Some(Feat::PowerMenu(powermenu)) = self.features.get_mut(&win_id) {
+                    powermenu
+                        .update(message.clone())
+                        .map_feat(win_id, Message::PowerMenu)
+                } else {
+                    Task::none()
+                }
+            }
             Message::NiriMon(message) => {
                 let inner_task = self.mon_serv.update(message).map(Message::NiriMon);
                 let num_mon = self.mon_serv.len();
@@ -294,12 +310,14 @@ impl Daemon {
                     .map_feat(win_id, Message::Delora),
                 _ => Task::none(),
             },
-            Message::Quit => exit(),
 
             Message::Socket(req) => match req {
                 socket::Request::Launcher => self.open_launcher(),
                 socket::Request::Osd(args) => self.open_osd(args),
             },
+
+            Message::Quit => exit(),
+
             _ => Task::none(),
         }
     }
@@ -310,6 +328,9 @@ impl Daemon {
             Some(Feat::TrayMenu(menu_feat)) => menu_feat.view().map_feat(win_id, Message::TrayMenu),
             Some(Feat::Launcher(launcher)) => launcher.view().map_feat(win_id, Message::Launcher),
             Some(Feat::Osd(osd)) => osd.view().map_feat(win_id, Message::Osd),
+            Some(Feat::PowerMenu(powermenu)) => {
+                powermenu.view().map_feat(win_id, Message::PowerMenu)
+            }
             None => container(space()).into(),
         }
     }
@@ -495,6 +516,47 @@ impl Daemon {
             .unwrap_or(Task::none());
 
         self.features.insert(win_id, Feat::Osd(osd_feat));
+
+        remove
+            .chain(Task::done(Message::NewLayerShell {
+                settings,
+                id: win_id,
+            }))
+            .chain(inner_task)
+    }
+}
+
+/// powermenu logic
+impl Daemon {
+    fn open_powermenu(&mut self) -> Task<Message> {
+        let (powermenu_feat, settings, inner_task) = powermenu::PowerMenu::open(
+            powermenu::Init {
+                monitor: self.mon_serv.cur_monitor().cloned(),
+                dryrun: true,
+                no_focus: true,
+            },
+            Message::PowerMenu,
+        );
+        let win_id = powermenu_feat.id;
+
+        let remove = self
+            .features
+            .iter()
+            .find(|(_, feat)| matches!(feat, Feat::PowerMenu(_)))
+            .and_then(|(win_id, old_win)| {
+                if let Feat::PowerMenu(_) = old_win {
+                    return Some(*win_id);
+                }
+                None
+            })
+            .map(|win_id| {
+                self.features.remove(&win_id);
+                Task::done(Message::RemoveWindow(win_id))
+            })
+            .unwrap_or(Task::none());
+
+        self.features
+            .insert(win_id, Feat::PowerMenu(powermenu_feat));
 
         remove
             .chain(Task::done(Message::NewLayerShell {
