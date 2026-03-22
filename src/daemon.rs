@@ -245,7 +245,7 @@ impl Daemon {
                     let inner = osd.update(message.clone()).map_feat(win_id, Message::Osd);
                     let outer = match message {
                         osd::Message::Timeout => Task::done(Message::RemoveWindow(win_id)),
-                        _ => Task::none(),
+                        // _ => Task::none(),
                     };
                     inner.chain(outer)
                 } else {
@@ -298,7 +298,7 @@ impl Daemon {
 
             Message::Socket(req) => match req {
                 socket::Request::Launcher => self.open_launcher(),
-                socket::Request::Osd => self.open_osd(),
+                socket::Request::Osd(args) => self.open_osd(args),
             },
             _ => Task::none(),
         }
@@ -468,10 +468,11 @@ impl Daemon {
 
 /// osd logic
 impl Daemon {
-    fn open_osd(&mut self) -> Task<Message> {
+    fn open_osd(&mut self, args: osd::OsdCommand) -> Task<Message> {
         let (osd_feat, settings, inner_task) = osd::Osd::open(
             osd::Init {
                 monitor: self.mon_serv.cur_monitor().cloned(),
+                command: args,
             },
             Message::Osd,
         );

@@ -13,10 +13,12 @@ use tokio::{
 use tokio_stream::wrappers::{LinesStream, UnixListenerStream};
 use tracing::info;
 
+use crate::osd::OsdCommand;
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Request {
     Launcher,
-    Osd,
+    Osd(OsdCommand),
 }
 
 #[derive(Deref, DerefMut, From)]
@@ -49,11 +51,11 @@ pub fn connect_and_launch() -> anyhow::Result<()> {
     })
 }
 
-pub fn connect_and_osd() -> anyhow::Result<()> {
+pub fn connect_and_osd(args: OsdCommand) -> anyhow::Result<()> {
     tokio::runtime::Runtime::new()?.block_on(async {
         let path = get_path()?;
         let mut stream = UnixStream::connect(path).await?;
-        let req = Request::Osd.to_string_line()?;
+        let req = Request::Osd(args).to_string_line()?;
 
         stream.writable().await?;
         stream.write_all(req.as_bytes()).await?;

@@ -13,7 +13,10 @@ mod tray;
 mod types;
 mod widget;
 
-use crate::daemon::{Init, start};
+use crate::{
+    daemon::{Init, start},
+    osd::OsdArgs,
+};
 use clap::{Parser, Subcommand};
 use derive_more::Display;
 use iced_layershell::Settings;
@@ -38,7 +41,7 @@ enum AppCommand {
         quit_keybindings: bool,
     },
     Launcher,
-    Osd,
+    Osd(OsdArgs),
     // PowerMenu,
     // Notify
 }
@@ -94,8 +97,9 @@ fn main() -> anyhow::Result<()> {
             };
             Ok(())
         }
-        AppCommand::Osd => {
-            match socket::connect_and_osd() {
+        AppCommand::Osd(arg) => {
+            info!("args: {arg:?}");
+            match socket::connect_and_osd(arg.command) {
                 Ok(res) => info!("Res: {res:?}"),
                 Err(err) => log_err!("request err: {err:?}"),
             };

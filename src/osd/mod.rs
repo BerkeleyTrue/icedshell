@@ -1,6 +1,9 @@
+use clap::{Args, Subcommand};
+use derive_more::Display;
 use iced::{Length, Task, border, widget::container};
 use iced_font_awesome::fa_icon_solid;
 use iced_layershell::reexport::{self as layer, OutputOption};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     feature::{Comp, Feature},
@@ -11,9 +14,10 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Init {
     pub monitor: Option<MonitorId>,
+    pub command: OsdCommand,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Display, Subcommand, Serialize, Deserialize)]
 pub enum VolumeLevel {
     Inc,
     Dec,
@@ -44,6 +48,9 @@ impl Comp for Osd {
         input: Self::Init,
         f: impl Fn(Self::Message) -> O + iced::advanced::graphics::futures::MaybeSend + 'static,
     ) -> (Self, iced::Task<O>) {
+        let modi = match input.command {
+            OsdCommand::Volume(VolArgs { command }) => Modi::Volume(command),
+        };
         let timeout = Task::perform(
             tokio::time::sleep(tokio::time::Duration::from_millis(650)),
             |_| Message::Timeout,
@@ -52,7 +59,7 @@ impl Comp for Osd {
         (
             Self {
                 monitor: input.monitor,
-                modi: Modi::Volume(VolumeLevel::Inc),
+                modi,
             },
             timeout,
         )
@@ -72,9 +79,9 @@ impl Comp for Osd {
         let theme = &CAT_THEME;
         let spacing = theme.spacing();
         let icon = match self.modi {
-            Modi::Volume(VolumeLevel::Inc) => fa_icon_solid("volume-low"),
-            Modi::Volume(VolumeLevel::Dec) => fa_icon_solid("volume-high"),
-            Modi::Volume(VolumeLevel::Mut) => fa_icon_solid("volume-off"),
+            Modi::Volume(VolumeLevel::Inc) => fa_icon_solid("volume-high"),
+            Modi::Volume(VolumeLevel::Dec) => fa_icon_solid("volume-low"),
+            Modi::Volume(VolumeLevel::Mut) => fa_icon_solid("volume-xmark"),
         };
 
         let icon = icon.size(spacing.xl3()).color(theme.subtext0());
@@ -110,4 +117,21 @@ impl Feature for Osd {
             namespace: Some("IcedOsd".to_owned()),
         }
     }
+}
+
+#[derive(Debug, Args, Clone, Display)]
+pub struct OsdArgs {
+    #[command(subcommand)]
+    pub command: OsdCommand,
+}
+
+#[derive(Debug, Subcommand, Clone, Display, Serialize, Deserialize)]
+pub enum OsdCommand {
+    Volume(VolArgs),
+}
+
+#[derive(Debug, Args, Clone, Display, Serialize, Deserialize)]
+pub struct VolArgs {
+    #[command(subcommand)]
+    pub command: VolumeLevel,
 }
