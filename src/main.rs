@@ -92,7 +92,7 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         AppCommand::Launcher => {
-            match socket::connect_and_launch() {
+            match socket::send_launcher_req() {
                 Ok(res) => info!("Res: {res:?}"),
                 Err(err) => log_err!("request err: {err:?}"),
             };
@@ -100,14 +100,14 @@ fn main() -> anyhow::Result<()> {
         }
         AppCommand::Osd(arg) => {
             info!("args: {arg:?}");
-            match socket::connect_and_osd(arg.command) {
+            match socket::send_osd_req(arg.command) {
                 Ok(res) => info!("Res: {res:?}"),
                 Err(err) => log_err!("request err: {err:?}"),
             };
             Ok(())
         }
         AppCommand::PowerMenu => {
-            match socket::connect_and_powermenu() {
+            match socket::send_powermenu_req() {
                 Ok(res) => info!("Res: {res:?}"),
                 Err(err) => log_err!("request err: {err:?}"),
             };

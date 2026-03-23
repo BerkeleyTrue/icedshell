@@ -39,11 +39,10 @@ pub fn get_path() -> anyhow::Result<PathBuf> {
     Ok(PathBuf::from(std::env::var("XDG_RUNTIME_DIR")?).join("icedshell.sock"))
 }
 
-pub fn connect_and_launch() -> anyhow::Result<()> {
+fn connect_and_send(req: &str) -> anyhow::Result<()> {
     tokio::runtime::Runtime::new()?.block_on(async {
         let path = get_path()?;
         let mut stream = UnixStream::connect(path).await?;
-        let req = Request::Launcher.to_string_line()?;
 
         stream.writable().await?;
         stream.write_all(req.as_bytes()).await?;
@@ -52,30 +51,19 @@ pub fn connect_and_launch() -> anyhow::Result<()> {
     })
 }
 
-pub fn connect_and_osd(args: OsdCommand) -> anyhow::Result<()> {
-    tokio::runtime::Runtime::new()?.block_on(async {
-        let path = get_path()?;
-        let mut stream = UnixStream::connect(path).await?;
-        let req = Request::Osd(args).to_string_line()?;
-
-        stream.writable().await?;
-        stream.write_all(req.as_bytes()).await?;
-        stream.shutdown().await?;
-        Ok(())
-    })
+pub fn send_launcher_req() -> anyhow::Result<()> {
+    let req = Request::Launcher.to_string_line()?;
+    connect_and_send(&req)
 }
 
-pub fn connect_and_powermenu() -> anyhow::Result<()> {
-    tokio::runtime::Runtime::new()?.block_on(async {
-        let path = get_path()?;
-        let mut stream = UnixStream::connect(path).await?;
-        let req = Request::PowerMenu.to_string_line()?;
+pub fn send_osd_req(args: OsdCommand) -> anyhow::Result<()> {
+    let req = Request::Osd(args).to_string_line()?;
+    connect_and_send(&req)
+}
 
-        stream.writable().await?;
-        stream.write_all(req.as_bytes()).await?;
-        stream.shutdown().await?;
-        Ok(())
-    })
+pub fn send_powermenu_req() -> anyhow::Result<()> {
+    let req = Request::PowerMenu.to_string_line()?;
+    connect_and_send(&req)
 }
 
 pub fn listen() -> IcedSocket {
