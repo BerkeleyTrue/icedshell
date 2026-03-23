@@ -72,7 +72,7 @@ where
         iced::widget::image::draw(
             renderer,
             layout,
-            &self.handle,
+            self.handle,
             Some(crop),
             iced::border::Radius::from(0.0),
             iced::ContentFit::Contain,
