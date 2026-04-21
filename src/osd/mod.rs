@@ -1,6 +1,9 @@
 use clap::{Args, Subcommand};
 use derive_more::Display;
-use iced::{Length, Task, border, widget::container};
+use iced::{
+    Length, Task, border,
+    widget::{container, row, text},
+};
 use iced_font_awesome::{fa_icon, fa_icon_solid};
 use iced_layershell::reexport::{self as layer, OutputOption};
 use serde::{Deserialize, Serialize};
@@ -32,8 +35,8 @@ pub enum BrightLevel {
 
 #[derive(Debug, Clone)]
 pub enum Modi {
-    Volume(VolumeLevel),
-    Brightness(BrightLevel),
+    Volume(VolumeLevel, Option<usize>),
+    Brightness(BrightLevel, Option<usize>),
 }
 
 #[derive(Debug, Clone)]
@@ -55,8 +58,8 @@ impl Comp for Osd {
         f: impl Fn(Self::Message) -> O + iced::advanced::graphics::futures::MaybeSend + 'static,
     ) -> (Self, iced::Task<O>) {
         let modi = match input.command {
-            OsdCommand::Volume(VolArgs { command }) => Modi::Volume(command),
-            OsdCommand::Bright(BrightArgs { command }) => Modi::Brightness(command),
+            OsdCommand::Volume(VolArgs { command, val }) => Modi::Volume(command, val),
+            OsdCommand::Bright(BrightArgs { command, val }) => Modi::Brightness(command, val),
         };
         let timeout = Task::perform(
             tokio::time::sleep(tokio::time::Duration::from_millis(650)),
@@ -72,10 +75,6 @@ impl Comp for Osd {
         )
     }
 
-    // fn subscription(&self) -> iced::Subscription<Self::Message> {
-    //     window::frames().map(Message::Tick)
-    // }
-
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
             Message::Timeout => Task::none(),
@@ -86,17 +85,29 @@ impl Comp for Osd {
         let theme = &CAT_THEME;
         let spacing = theme.spacing();
         let icon = match self.modi {
-            Modi::Volume(VolumeLevel::Inc) => fa_icon_solid("volume-high"),
-            Modi::Volume(VolumeLevel::Dec) => fa_icon_solid("volume-low"),
-            Modi::Volume(VolumeLevel::Mut) => fa_icon_solid("volume-xmark"),
+            Modi::Volume(VolumeLevel::Inc, _) => fa_icon_solid("volume-high"),
+            Modi::Volume(VolumeLevel::Dec, _) => fa_icon_solid("volume-low"),
+            Modi::Volume(VolumeLevel::Mut, _) => fa_icon_solid("volume-xmark"),
 
-            Modi::Brightness(BrightLevel::Inc) => fa_icon_solid("lightbulb"),
-            Modi::Brightness(BrightLevel::Dec) => fa_icon("lightbulb"),
+            Modi::Brightness(BrightLevel::Inc, _) => fa_icon_solid("lightbulb"),
+            Modi::Brightness(BrightLevel::Dec, _) => fa_icon("lightbulb"),
         };
+        let val = match self.modi {
+            Modi::Volume(_, val) => val,
+            Modi::Brightness(_, val) => val,
+        }
+        .map(|val| val.clamp(0, 100));
+
+        let val = val.map(|val| text!("{}", val).size(spacing.xl3()).color(theme.subtext0()));
 
         let icon = icon.size(spacing.xl3()).color(theme.subtext0());
 
-        container(icon)
+        let txt = match (icon, val) {
+            (icon, Some(val)) => row!(icon, val).spacing(spacing.md()),
+            (icon, None) => row!(icon),
+        };
+
+        container(txt)
             .style(move |_| container::Style {
                 background: Some(theme.crust().into()),
                 border: border::rounded(theme.radius().lg()),
@@ -112,7 +123,7 @@ impl Feature for Osd {
     type Settings = layer::NewLayerShellSettings;
     fn layer(&self) -> Self::Settings {
         Self::Settings {
-            size: Some((100, 100)),
+            size: Some((200, 100)),
             layer: layer::Layer::Overlay,
             anchor: layer::Anchor::empty(),
             margin: None,
@@ -142,13 +153,17 @@ pub enum OsdCommand {
 }
 
 #[derive(Debug, Args, Clone, Display, Serialize, Deserialize)]
+#[display("{command}({val:?})")]
 pub struct VolArgs {
     #[command(subcommand)]
     pub command: VolumeLevel,
+    pub val: Option<usize>,
 }
 
 #[derive(Debug, Args, Clone, Display, Serialize, Deserialize)]
+#[display("{command}({val:?})")]
 pub struct BrightArgs {
     #[command(subcommand)]
     pub command: BrightLevel,
+    pub val: Option<usize>,
 }
