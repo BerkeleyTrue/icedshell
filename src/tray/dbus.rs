@@ -1,6 +1,6 @@
 use derive_more::{Deref, DerefMut, Display, From};
 use iced::{advanced::image, futures::StreamExt};
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
 use tracing::{info, trace, warn};
 use zbus::{
     Connection, Result,
@@ -85,6 +85,9 @@ impl StatusNotifierWatcher {
                         }
                     }
                     _ = interval.tick() => {
+                        if let Err(e) = Self::prune_stale_items(&internal_connection, &internal_interface).await {
+                            info!("Failed to prune stale tray items: {e}");
+                        }
                         if let Err(e) = Self::discover_items(&internal_connection, &internal_interface).await {
                             info!("Failed to discover tray items: {e}");
                         }
@@ -99,6 +102,39 @@ impl StatusNotifierWatcher {
         }
 
         Ok(connection)
+    }
+
+    async fn prune_stale_items(
+        conn: &Connection,
+        interface: &zbus::object_server::InterfaceRef<StatusNotifierWatcher>,
+    ) -> anyhow::Result<()> {
+        let dbus_proxy = DBusProxy::new(conn).await?;
+        let active_names: HashSet<String> = dbus_proxy
+            .list_names()
+            .await?
+            .into_iter()
+            .map(|n| n.to_string())
+            .collect();
+
+        let mut watcher = interface.get_mut().await;
+        let emitter = SignalEmitter::new(conn, OBJECT_PATH).unwrap();
+
+        let mut i = 0;
+
+        while i < watcher.items.len() {
+            let (unique_name, service) = &watcher.items[i];
+            if !active_names.contains(unique_name.as_str()) {
+                let service = service.clone();
+                watcher.items.remove(i);
+                StatusNotifierWatcher::status_notifier_item_unregistered(&emitter, &service)
+                    .await
+                    .unwrap();
+            } else {
+                i += 1;
+            }
+        }
+
+        Ok(())
     }
 
     async fn discover_items(

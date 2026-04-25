@@ -2,7 +2,9 @@ use iced::futures::{
     Stream, StreamExt,
     stream::{self, BoxStream, select, select_all},
 };
+use std::time::Duration;
 use tracing::debug;
+use zbus::proxy::CacheProperties;
 
 use crate::{
     tray::{
@@ -145,7 +147,41 @@ impl SNItem {
                 })
                 .unwrap_or(stream::empty().boxed());
 
-        select_all([icon_change_stream, layout_updated_stream]).boxed()
+        let conn = self.item_proxy.inner().connection().clone();
+        let destination = self.item_proxy.inner().destination().to_string();
+        let path = self.item_proxy.inner().path().to_string();
+
+        let periodic_icon_refresh = stream::unfold(
+            (conn, destination, path, self.name.clone()),
+            |(conn, destination, path, name)| async move {
+                tokio::time::sleep(Duration::from_secs(10)).await;
+
+                let event: Option<SNItemEvent> = async {
+                    let proxy = StatusNotifierItemProxy::builder(&conn)
+                        .destination(destination.clone())?
+                        .path(path.clone())?
+                        .cache_properties(CacheProperties::No)
+                        .build()
+                        .await?;
+                    Ok::<_, zbus::Error>(SNItem::get_icon(&proxy).await)
+                }
+                .await
+                .ok()
+                .flatten()
+                .map(|icon| SNItemEvent::IconChanged(name.clone(), icon));
+
+                Some((event, (conn, destination, path, name)))
+            },
+        )
+        .filter_map(async |x| x)
+        .boxed();
+
+        select_all([
+            icon_change_stream,
+            layout_updated_stream,
+            periodic_icon_refresh,
+        ])
+        .boxed()
     }
 
     async fn get_icon(item_proxy: &StatusNotifierItemProxy<'static>) -> Option<FdIcon> {
