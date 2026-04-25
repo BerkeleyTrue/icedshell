@@ -298,6 +298,24 @@ pub trait StatusNotifierItem {
 
     #[zbus(property)]
     fn tool_tip(&self) -> zbus::Result<(String, Vec<Icon>, String, String)>;
+
+    #[zbus(signal)]
+    fn new_icon(&self) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    fn new_icon_name(&self) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    fn new_attention_icon(&self) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    fn new_overlay_icon(&self) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    fn new_tool_tip(&self) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    fn new_status(&self, status: String) -> zbus::Result<()>;
 }
 
 #[derive(Clone, Copy, Debug, Type, Deref, DerefMut, From, PartialEq, Eq, Display)]
