@@ -224,7 +224,7 @@ impl Comp for DeloraMain {
             right: sys_view
         )
         .background(Color::TRANSPARENT)
-        .padding(padding::left(theme.spacing().md()).bottom(self.padding))
+        .padding(padding::left(theme.spacing().md()).top(self.padding))
         .center_y(Length::Fill)
         .into()
     }
@@ -237,7 +237,7 @@ impl Feature for DeloraMain {
         NewLayerShellSettings {
             layer: Layer::Top,
             size: Some((0, (self.height + self.padding) as u32)),
-            anchor: Anchor::Left | Anchor::Bottom | Anchor::Right,
+            anchor: Anchor::Left | Anchor::Top | Anchor::Right,
             keyboard_interactivity: KeyboardInteractivity::None,
             exclusive_zone: Some((self.height + self.padding) as i32),
             output_option: OutputOption::OutputName(output_name),
