@@ -203,6 +203,7 @@ impl Daemon {
                         delora_main::Message::OpenTrayMenu(name, layout) => {
                             self.open_tray_menu(name, layout)
                         }
+                        delora_main::Message::PowerButtonOnClicked => self.open_powermenu(),
                         _ => Task::none(),
                     };
                     task.chain(open_task)

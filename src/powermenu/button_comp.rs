@@ -1,21 +1,24 @@
 use iced::{
     Length, Task, padding,
-    widget::{container, row},
+    widget::{
+        Button,
+        button::{self, Status},
+        container, row,
+    },
 };
 
 use crate::{
     feature::Comp,
     theme::CAT_THEME,
-    widget::{
-        container_ext::ContainExt,
-        divider::{self, Angled},
-    },
+    widget::divider::{self, Angled},
 };
 
 pub struct PowerButton {}
 
 #[derive(Debug, Clone)]
-pub enum Message {}
+pub enum Message {
+    OnClick,
+}
 
 impl Comp for PowerButton {
     type Message = Message;
@@ -31,9 +34,10 @@ impl Comp for PowerButton {
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let theme = &CAT_THEME;
         let spacing = theme.spacing();
+        let main_clr = theme.surface2();
 
         let cap = Angled::new(
-            theme.overlay1(),
+            main_clr,
             theme.trans(),
             divider::Direction::Left,
             divider::Heading::South,
@@ -48,8 +52,17 @@ impl Comp for PowerButton {
 
         let icon = container(icon)
             .center_y(Length::Fill)
-            .padding(padding::horizontal(spacing.md()))
-            .background(theme.overlay1());
+            .padding(padding::horizontal(spacing.sm()));
+
+        let icon = Button::new(icon)
+            .style(move |_, status| button::Style {
+                background: match status {
+                    Status::Hovered | Status::Pressed => Some(theme.overlay2().into()),
+                    _ => Some(main_clr.into()),
+                },
+                ..Default::default()
+            })
+            .on_press(Message::OnClick);
 
         row![cap, icon].into()
     }

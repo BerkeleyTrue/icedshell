@@ -39,6 +39,7 @@ pub enum Message {
         /// menu layout
         TrayLayout,
     ),
+    PowerButtonOnClicked,
 
     SysInfo(sys_info::Message),
     PowerBtn(button_comp::Message),
@@ -157,7 +158,15 @@ impl Comp for DeloraMain {
             }
             Message::OpenTrayMenu(_, _) => Task::none(),
             Message::SysInfo(message) => self.sys_info.update(message).map(Message::SysInfo),
-            Message::PowerBtn(message) => self.power_btn.update(message).map(Message::PowerBtn),
+            Message::PowerBtn(message) => {
+                let inner_task = self.power_btn.update(message).map(Message::PowerBtn);
+                let out_task = match message {
+                    button_comp::Message::OnClick => Task::done(Message::PowerButtonOnClicked),
+                    // _ => Task::none(),
+                };
+                inner_task.chain(out_task)
+            }
+            Message::PowerButtonOnClicked => Task::none(),
         }
     }
 
