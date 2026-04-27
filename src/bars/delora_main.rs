@@ -15,10 +15,9 @@ use crate::{
     tray::{TrayLayout, TrayMenuItemId, service as tray_serv, tray_comp},
     types::MonitorId,
     widget::{
-        align_center, bar_widgets, center_widgets,
+        align_center, bar_widgets,
         container_ext::ContainExt,
         divider::{Angled, Direction, Heading, Semi},
-        left_widgets, right_widgets,
     },
 };
 

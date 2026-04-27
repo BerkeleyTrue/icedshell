@@ -68,26 +68,43 @@ macro_rules! bar_widgets {
     );
     (left: $($x:expr),* $(,)? $(;)?) => (
         iced::widget::container(row![
-            left_widgets![$($x),*],
+            $crate::widget::left_widgets![$($x),*],
         ])
     );
     (center: $($y:expr),* $(,)? $(;)?) => (
         iced::widget::container(row![
-            center_widgets![$($y),*],
+            $crate::widget::center_widgets![$($y),*],
         ])
     );
     (right: $($z:expr),* $(,)? $(;)?) => (
         iced::widget::container(row![
-            right_widgets![$($z),*],
+            $crate::widget::right_widgets![$($z),*],
+        ])
+    );
+    (center: $($y:expr),* $(,)?; right: $($z:expr),* $(,)? $(;)?) => (
+        iced::widget::container(row![
+            $crate::widget::left_widgets![],
+            $crate::widget::center_widgets![$($y),*],
+            $crate::widget::right_widgets![$($z),*],
         ])
     );
     (left: $($x:expr),* $(,)?; center: $($y:expr),* $(,)?; right: $($z:expr),* $(,)? $(;)?) => (
         iced::widget::container(row![
-            left_widgets![$($x),*],
-            center_widgets![$($y),*],
-            right_widgets![$($z),*],
+            $crate::widget::left_widgets![$($x),*],
+            $crate::widget::center_widgets![$($y),*],
+            $crate::widget::right_widgets![$($z),*],
         ])
     );
 }
 
 pub(crate) use bar_widgets;
+
+pub trait IntoIteratorExt {
+    fn into_owned_vec(self) -> Vec<String>;
+}
+
+impl<'a, I: IntoIterator<Item = &'a str>> IntoIteratorExt for I {
+    fn into_owned_vec(self) -> Vec<String> {
+        self.into_iter().map(String::from).collect()
+    }
+}
