@@ -1,6 +1,6 @@
 use iced::{
     Length, Subscription, Task, padding,
-    widget::{container, row},
+    widget::{container, row, text},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
@@ -16,7 +16,8 @@ use crate::{
     widget::{
         IntoIteratorExt, bar_widgets,
         container_ext::ContainExt,
-        divider::{Direction, Semi},
+        divider::{Angled, Direction, Heading, Semi},
+        text_ext::TextExt,
     },
 };
 
@@ -27,6 +28,7 @@ pub struct DeloraSec {
     clock: clock_comp::Clock,
     date: date_comp::Date,
     eth: cmd::CmdComp,
+    btc: cmd::CmdComp,
 }
 
 #[derive(Debug, Clone)]
@@ -36,6 +38,7 @@ pub enum Message {
     Clock(clock_comp::Message),
     Date(date_comp::Message),
     Eth(cmd::Message),
+    Btc(cmd::Message),
 }
 
 pub struct Init {
@@ -66,6 +69,14 @@ impl Comp for DeloraSec {
             },
             Message::Eth,
         );
+        let (btc, btc_task) = cmd::CmdComp::new(
+            cmd::Init {
+                cmd: "crypto-egg-go".to_owned(),
+                args: vec!["price", "btc"].into_owned_vec(),
+                interval: 1,
+            },
+            Message::Btc,
+        );
 
         let inner_tasks = Task::batch([
             win_comp_task,
@@ -73,6 +84,7 @@ impl Comp for DeloraSec {
             clock_task,
             date_task,
             eth_task,
+            btc_task,
         ]);
 
         (
@@ -83,6 +95,7 @@ impl Comp for DeloraSec {
                 clock,
                 date,
                 eth,
+                btc,
             },
             inner_tasks.map(f),
         )
@@ -94,8 +107,9 @@ impl Comp for DeloraSec {
         let niri_win = self.win.subscription().map(Message::Win);
         let niri_serv = self.niri_serv.subscription().map(Message::NiriService);
         let eth = self.eth.subscription().map(Message::Eth);
+        let btc = self.btc.subscription().map(Message::Btc);
 
-        Subscription::batch([niri_win, niri_serv, clock, date, eth])
+        Subscription::batch([niri_win, niri_serv, clock, date, eth, btc])
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
@@ -107,6 +121,7 @@ impl Comp for DeloraSec {
                 self.niri_serv.update(message).map(Message::NiriService)
             }
             Message::Eth(message) => self.eth.update(message).map(Message::Eth),
+            Message::Btc(message) => self.btc.update(message).map(Message::Btc),
         }
     }
 
@@ -117,31 +132,93 @@ impl Comp for DeloraSec {
         let date_view =
             container(self.date.view(theme.background()).map(Message::Date)).center_y(Length::Fill);
 
-        let win_div = Semi::new(
-            theme.rosewater(),
-            theme.lavender(),
-            Direction::Left,
-            theme.spacing().xl(),
-        );
+        let win = {
+            let div = Semi::new(
+                theme.rosewater(),
+                theme.lavender(),
+                Direction::Left,
+                theme.spacing().xl(),
+            );
 
-        let win_view = self
-            .win
-            .view(win_comp::Props {
-                color: theme.rosewater(),
-                next_color: theme.trans(),
-                state: &self.niri_serv,
-            })
-            .map(Message::Win);
+            let view = self
+                .win
+                .view(win_comp::Props {
+                    color: theme.rosewater(),
+                    next_color: theme.trans(),
+                    state: &self.niri_serv,
+                })
+                .map(Message::Win);
+            row![div, view]
+        };
 
         let clock_view = container(self.clock.view(theme.background()).map(Message::Clock))
             .center_y(Length::Fill)
             .padding(padding::right(theme.spacing().sm()));
 
-        let eth = self.eth.view(theme.base()).map(Message::Eth);
+        let right_cap = Angled::new(
+            theme.overlay2(),
+            theme.trans(),
+            Direction::Left,
+            Heading::South,
+            spacing.xl(),
+        );
+
+        let bitcoin = {
+            let txt = self.btc.output();
+            let txt = text!("{txt}").color(theme.text_color()).bold();
+
+            let icon = iced_font_awesome::fa_icon_brands("bitcoin")
+                .size(spacing.md())
+                .color(theme.peach());
+
+            let icon = container(icon)
+                .center_y(Length::Fill)
+                .padding(padding::right(spacing.xs()));
+
+            let view = container(row![icon, txt])
+                .center_y(Length::Fill)
+                .padding(padding::horizontal(spacing.sm()))
+                .background(theme.overlay2());
+
+            let div = Semi::new(
+                theme.overlay2(),
+                theme.overlay1(),
+                Direction::Right,
+                spacing.xl(),
+            );
+            container(row![view, div])
+        };
+
+        let eth = {
+            let txt = self.eth.output();
+            let txt = text!("{txt}").color(theme.text_color()).bold();
+
+            let icon = iced_font_awesome::fa_icon_brands("ethereum")
+                .size(spacing.md())
+                .color(theme.sapphire());
+
+            let icon = container(icon)
+                .center_y(Length::Fill)
+                .padding(padding::right(spacing.xs()));
+
+            let view = container(row![icon, txt])
+                .center_y(Length::Fill)
+                .padding(padding::left(spacing.sm()))
+                .background(theme.overlay1());
+
+            let div = Semi::new(
+                theme.overlay1(),
+                theme.trans(),
+                Direction::Right,
+                spacing.xl(),
+            );
+
+            container(row![view, div]).padding(padding::right(spacing.sm()))
+        };
 
         bar_widgets!(
-            center: date_view, win_div, win_view, clock_view;
-            right: eth,
+            center: date_view, win, clock_view;
+            right: right_cap, bitcoin, eth,
         )
         .background(theme.trans())
         .padding(padding::left(theme.spacing().md()).top(spacing.sm()))

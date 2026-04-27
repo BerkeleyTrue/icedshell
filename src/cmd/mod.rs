@@ -38,6 +38,12 @@ pub struct CmdComp {
     output: String,
 }
 
+impl CmdComp {
+    pub fn output(&self) -> &str {
+        &self.output
+    }
+}
+
 impl CompWithProps for CmdComp {
     type Message = Message;
     type Init = Init;
