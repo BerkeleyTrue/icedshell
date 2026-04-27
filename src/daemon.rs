@@ -22,7 +22,7 @@ use tracing::{debug, error as log_err, info};
 
 use crate::{
     AppCommand, Cli,
-    bars::delora_main,
+    bars::{delora_main, delora_sec},
     feature::{Comp, FeatWindow, Feature, Service},
     launcher,
     niri::{self, monitors::MonitorsServ},
@@ -67,6 +67,7 @@ impl From<Cli> for Init {
 
 enum Feat {
     Delora(FeatWindow<delora_main::DeloraMain>),
+    DeloraSec(FeatWindow<delora_sec::DeloraSec>),
     TrayMenu(FeatWindow<tray_menu::MenuComp>),
     Launcher(FeatWindow<launcher::Launcher>),
     Osd(FeatWindow<osd::Osd>),
@@ -82,6 +83,7 @@ pub enum Message {
     NiriMon(niri::monitors::Message),
 
     Delora(Id, delora_main::Message),
+    DeloraSec(Id, delora_sec::Message),
     TrayMenu(Id, tray_menu::Message),
     TrayMenuItemClicked(
         /// sni item name
@@ -166,6 +168,10 @@ impl Daemon {
                         .subscription()
                         .with(win_id)
                         .map(|(win_id, m)| Message::Delora(win_id, m)),
+                    Feat::DeloraSec(delora) => delora
+                        .subscription()
+                        .with(win_id)
+                        .map(|(win_id, m)| Message::DeloraSec(win_id, m)),
                     Feat::TrayMenu(menu) => menu
                         .subscription()
                         .with(win_id)
@@ -207,6 +213,15 @@ impl Daemon {
                         _ => Task::none(),
                     };
                     task.chain(open_task)
+                } else {
+                    Task::none()
+                }
+            }
+            Message::DeloraSec(win_id, message) => {
+                if let Some(Feat::DeloraSec(delora)) = self.features.get_mut(&win_id) {
+                    delora
+                        .update(message.clone())
+                        .map(move |m| Message::DeloraSec(win_id, m))
                 } else {
                     Task::none()
                 }
@@ -289,6 +304,7 @@ impl Daemon {
                     .iter()
                     .map(move |mon| match (num_mon, mon.as_str()) {
                         (2, "HDMI-A-1") => self.open_delora_main("HDMI-A-1".into()),
+                        (2, "DP-3") => self.open_delora_sec("DP-3".into()),
                         (1, "DP-3") => self.open_delora_main("DP-3".into()),
                         (_, _) => Task::none(),
                     })
@@ -334,6 +350,7 @@ impl Daemon {
     fn view(&self, win_id: Id) -> Element<'_, Message> {
         match self.features.get(&win_id) {
             Some(Feat::Delora(delora)) => delora.view().map_feat(win_id, Message::Delora),
+            Some(Feat::DeloraSec(delora)) => delora.view().map_feat(win_id, Message::DeloraSec),
             Some(Feat::TrayMenu(menu_feat)) => menu_feat.view().map_feat(win_id, Message::TrayMenu),
             Some(Feat::Launcher(launcher)) => launcher.view().map_feat(win_id, Message::Launcher),
             Some(Feat::Osd(osd)) => osd.view().map_feat(win_id, Message::Osd),
@@ -392,6 +409,49 @@ impl Daemon {
             .chain(Task::done(Message::NewLayerShell {
                 settings: main_layer_settings,
                 id: main_id,
+            }))
+            .chain(inner_task)
+    }
+}
+
+// delora secondary bar feature logic
+impl Daemon {
+    fn open_delora_sec(&mut self, output_name: String) -> Task<Message> {
+        let old_feat = self
+            .features
+            .iter()
+            .find(|(_, feat)| matches!(feat, Feat::DeloraSec(_)))
+            .map(|(win_id, _)| *win_id)
+            .and_then(|win_id| self.features.get(&win_id))
+            .and_then(|old_feat| match old_feat {
+                Feat::DeloraSec(old_feat) => Some(old_feat),
+                _ => None,
+            });
+
+        if let Some(old_feat) = old_feat
+            && old_feat.is_on_output(&output_name)
+        {
+            return Task::none();
+        }
+
+        let (sec_feat, sec_layer_settings, inner_task) =
+            delora_sec::DeloraSec::open(delora_sec::Init { output_name }, Message::DeloraSec);
+        let sec_id = sec_feat.id;
+
+        let remove = old_feat
+            .map(|old_feat| old_feat.id)
+            .map(|win_id| {
+                self.features.remove(&win_id);
+                Task::done(Message::RemoveWindow(win_id))
+            })
+            .unwrap_or(Task::none());
+
+        self.features.insert(sec_id, Feat::DeloraSec(sec_feat));
+
+        remove
+            .chain(Task::done(Message::NewLayerShell {
+                settings: sec_layer_settings,
+                id: sec_id,
             }))
             .chain(inner_task)
     }
