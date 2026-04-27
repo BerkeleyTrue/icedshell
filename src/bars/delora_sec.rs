@@ -7,7 +7,7 @@ use iced_layershell::reexport::{
 };
 
 use crate::{
-    datetime::clock_comp,
+    datetime::{clock_comp, date_comp},
     feature::{Comp, CompWithProps, Feature, Service},
     niri::{state_serv, win_comp},
     theme::CAT_THEME,
@@ -24,6 +24,7 @@ pub struct DeloraSec {
     output_name: String,
     niri_serv: state_serv::NiriStateServ,
     clock: clock_comp::Clock,
+    date: date_comp::Date,
 }
 
 #[derive(Debug, Clone)]
@@ -31,6 +32,7 @@ pub enum Message {
     Win(win_comp::Message),
     NiriService(state_serv::Message),
     Clock(clock_comp::Message),
+    Date(date_comp::Message),
 }
 
 pub struct Init {
@@ -52,7 +54,9 @@ impl Comp for DeloraSec {
         let (niri_serv, niri_serv_task) = state_serv::NiriStateServ::new((), Message::NiriService);
 
         let (clock, clock_task) = clock_comp::Clock::new((), Message::Clock);
-        let inner_tasks = Task::batch([win_comp_task, niri_serv_task, clock_task]);
+        let (date, date_task) = date_comp::Date::new((), Message::Date);
+
+        let inner_tasks = Task::batch([win_comp_task, niri_serv_task, clock_task, date_task]);
 
         (
             Self {
@@ -60,6 +64,7 @@ impl Comp for DeloraSec {
                 win,
                 niri_serv,
                 clock,
+                date,
             },
             inner_tasks.map(f),
         )
@@ -67,14 +72,16 @@ impl Comp for DeloraSec {
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
         let clock = self.clock.subscription().map(Message::Clock);
+        let date = self.date.subscription().map(Message::Date);
         let niri_win = self.win.subscription().map(Message::Win);
         let niri_serv = self.niri_serv.subscription().map(Message::NiriService);
-        Subscription::batch([niri_win, niri_serv, clock])
+        Subscription::batch([niri_win, niri_serv, clock, date])
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
             Message::Clock(message) => self.clock.update(message).map(Message::Clock),
+            Message::Date(message) => self.date.update(message).map(Message::Date),
             Message::Win(message) => self.win.update(message).map(Message::Win),
             Message::NiriService(message) => {
                 self.niri_serv.update(message).map(Message::NiriService)
@@ -86,9 +93,12 @@ impl Comp for DeloraSec {
         let theme = &CAT_THEME;
         let spacing = theme.spacing();
 
+        let date_view =
+            container(self.date.view(theme.background()).map(Message::Date)).center_y(Length::Fill);
+
         let win_div = Semi::new(
             theme.rosewater(),
-            theme.trans(),
+            theme.lavender(),
             Direction::Left,
             theme.spacing().xl(),
         );
@@ -106,11 +116,13 @@ impl Comp for DeloraSec {
             .center_y(Length::Fill)
             .padding(padding::right(theme.spacing().sm()));
 
-        container(row![center_widgets![win_div, win_view, clock_view]])
-            .background(theme.trans())
-            .padding(padding::left(theme.spacing().md()).top(spacing.sm()))
-            .center_y(Length::Fill)
-            .into()
+        container(row![center_widgets![
+            date_view, win_div, win_view, clock_view
+        ]])
+        .background(theme.trans())
+        .padding(padding::left(theme.spacing().md()).top(spacing.sm()))
+        .center_y(Length::Fill)
+        .into()
     }
 }
 
