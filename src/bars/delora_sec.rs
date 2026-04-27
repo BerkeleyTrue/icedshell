@@ -7,13 +7,14 @@ use iced_layershell::reexport::{
 };
 
 use crate::{
+    cmd,
     datetime::{clock_comp, date_comp},
     feature::{Comp, CompWithProps, Feature, Service},
     niri::{state_serv, win_comp},
     theme::CAT_THEME,
     types::MonitorId,
     widget::{
-        bar_widgets, center_widgets,
+        IntoIteratorExt, bar_widgets,
         container_ext::ContainExt,
         divider::{Direction, Semi},
     },
@@ -25,6 +26,7 @@ pub struct DeloraSec {
     niri_serv: state_serv::NiriStateServ,
     clock: clock_comp::Clock,
     date: date_comp::Date,
+    eth: cmd::CmdComp,
 }
 
 #[derive(Debug, Clone)]
@@ -33,6 +35,7 @@ pub enum Message {
     NiriService(state_serv::Message),
     Clock(clock_comp::Message),
     Date(date_comp::Message),
+    Eth(cmd::Message),
 }
 
 pub struct Init {
@@ -55,8 +58,22 @@ impl Comp for DeloraSec {
 
         let (clock, clock_task) = clock_comp::Clock::new((), Message::Clock);
         let (date, date_task) = date_comp::Date::new((), Message::Date);
+        let (eth, eth_task) = cmd::CmdComp::new(
+            cmd::Init {
+                cmd: "crypto-egg-go".to_owned(),
+                args: vec!["price", "eth"].into_owned_vec(),
+                interval: 1,
+            },
+            Message::Eth,
+        );
 
-        let inner_tasks = Task::batch([win_comp_task, niri_serv_task, clock_task, date_task]);
+        let inner_tasks = Task::batch([
+            win_comp_task,
+            niri_serv_task,
+            clock_task,
+            date_task,
+            eth_task,
+        ]);
 
         (
             Self {
@@ -65,6 +82,7 @@ impl Comp for DeloraSec {
                 niri_serv,
                 clock,
                 date,
+                eth,
             },
             inner_tasks.map(f),
         )
@@ -75,7 +93,9 @@ impl Comp for DeloraSec {
         let date = self.date.subscription().map(Message::Date);
         let niri_win = self.win.subscription().map(Message::Win);
         let niri_serv = self.niri_serv.subscription().map(Message::NiriService);
-        Subscription::batch([niri_win, niri_serv, clock, date])
+        let eth = self.eth.subscription().map(Message::Eth);
+
+        Subscription::batch([niri_win, niri_serv, clock, date, eth])
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
@@ -86,6 +106,7 @@ impl Comp for DeloraSec {
             Message::NiriService(message) => {
                 self.niri_serv.update(message).map(Message::NiriService)
             }
+            Message::Eth(message) => self.eth.update(message).map(Message::Eth),
         }
     }
 
@@ -116,8 +137,11 @@ impl Comp for DeloraSec {
             .center_y(Length::Fill)
             .padding(padding::right(theme.spacing().sm()));
 
+        let eth = self.eth.view(theme.base()).map(Message::Eth);
+
         bar_widgets!(
             center: date_view, win_div, win_view, clock_view;
+            right: eth,
         )
         .background(theme.trans())
         .padding(padding::left(theme.spacing().md()).top(spacing.sm()))

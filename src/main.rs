@@ -1,4 +1,5 @@
 mod bars;
+mod cmd;
 mod daemon;
 mod datetime;
 mod feature;
