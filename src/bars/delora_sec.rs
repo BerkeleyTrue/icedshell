@@ -13,7 +13,7 @@ use crate::{
     theme::CAT_THEME,
     types::MonitorId,
     widget::{
-        center_widgets,
+        bar_widgets, center_widgets,
         container_ext::ContainExt,
         divider::{Direction, Semi},
     },
@@ -116,9 +116,9 @@ impl Comp for DeloraSec {
             .center_y(Length::Fill)
             .padding(padding::right(theme.spacing().sm()));
 
-        container(row![center_widgets![
-            date_view, win_div, win_view, clock_view
-        ]])
+        bar_widgets!(
+            center: date_view, win_div, win_view, clock_view;
+        )
         .background(theme.trans())
         .padding(padding::left(theme.spacing().md()).top(spacing.sm()))
         .center_y(Length::Fill)

@@ -63,7 +63,25 @@ macro_rules! right_widgets {
 pub(crate) use right_widgets;
 
 macro_rules! bar_widgets {
-    (left: $($x:expr),* $(,)?; center: $($y:expr),* $(,)?; right: $($z:expr),* $(,)?) => (
+    () => (
+        iced::widget::container(row![])
+    );
+    (left: $($x:expr),* $(,)? $(;)?) => (
+        iced::widget::container(row![
+            left_widgets![$($x),*],
+        ])
+    );
+    (center: $($y:expr),* $(,)? $(;)?) => (
+        iced::widget::container(row![
+            center_widgets![$($y),*],
+        ])
+    );
+    (right: $($z:expr),* $(,)? $(;)?) => (
+        iced::widget::container(row![
+            right_widgets![$($z),*],
+        ])
+    );
+    (left: $($x:expr),* $(,)?; center: $($y:expr),* $(,)?; right: $($z:expr),* $(,)? $(;)?) => (
         iced::widget::container(row![
             left_widgets![$($x),*],
             center_widgets![$($y),*],
