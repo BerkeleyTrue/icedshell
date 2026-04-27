@@ -1,4 +1,5 @@
 mod button;
+pub mod button_comp;
 mod dead_internet;
 mod palette;
 

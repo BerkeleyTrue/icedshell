@@ -9,6 +9,7 @@ use crate::{
     datetime::{clock_comp, date_comp},
     feature::{Comp, CompWithProps, Feature, Service},
     niri::{state_serv, win_comp, ws_comp},
+    powermenu::button_comp,
     system_info as sys_info,
     theme::CAT_THEME,
     tray::{TrayLayout, TrayMenuItemId, service as tray_serv, tray_comp},
@@ -40,6 +41,7 @@ pub enum Message {
     ),
 
     SysInfo(sys_info::Message),
+    PowerBtn(button_comp::Message),
 }
 
 pub struct Init {
@@ -59,6 +61,7 @@ pub struct DeloraMain {
     tray_serv: tray_serv::TrayService,
     tray: tray_comp::TrayComp,
     sys_info: sys_info::SysInfoComp,
+    power_btn: button_comp::PowerButton,
 }
 
 impl DeloraMain {
@@ -98,6 +101,8 @@ impl Comp for DeloraMain {
         let (tray_serv, tray_serv_task) = tray_serv::TrayService::new((), Message::TrayService);
         let (tray, tray_task) = tray_comp::TrayComp::new((), Message::Tray);
         let (sys_info, sys_info_task) = sys_info::SysInfoComp::new((), Message::SysInfo);
+        let (power_btn, power_btn_task) = button_comp::PowerButton::new((), Message::PowerBtn);
+
         let inner_tasks = Task::batch([
             win_comp_task,
             ws_task,
@@ -107,7 +112,9 @@ impl Comp for DeloraMain {
             tray_serv_task,
             tray_task,
             sys_info_task,
+            power_btn_task,
         ]);
+
         (
             Self {
                 height,
@@ -121,6 +128,7 @@ impl Comp for DeloraMain {
                 tray_serv,
                 tray,
                 sys_info,
+                power_btn,
             },
             inner_tasks.map(f),
         )
@@ -149,6 +157,7 @@ impl Comp for DeloraMain {
             }
             Message::OpenTrayMenu(_, _) => Task::none(),
             Message::SysInfo(message) => self.sys_info.update(message).map(Message::SysInfo),
+            Message::PowerBtn(message) => self.power_btn.update(message).map(Message::PowerBtn),
         }
     }
 
@@ -216,12 +225,13 @@ impl Comp for DeloraMain {
             .map(Message::Tray);
 
         let sys_view = self.sys_info.view().map(Message::SysInfo);
+        let power_btn = self.power_btn.view().map(Message::PowerBtn);
 
         // main bar
         bar_widgets!(
             left:  date_view, div, niri_ws_view;
             center: clock_view, win_div, win, tray;
-            right: sys_view
+            right: power_btn, sys_view
         )
         .background(Color::TRANSPARENT)
         .padding(padding::left(theme.spacing().md()).top(self.padding))

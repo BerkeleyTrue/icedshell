@@ -96,7 +96,7 @@ impl Comp for SysInfoComp {
         let cpu = {
             let div = Angled::new(
                 theme.mauve(),
-                theme.trans(),
+                theme.overlay1(),
                 divider::Direction::Left,
                 divider::Heading::North,
                 theme.spacing().xl(),
