@@ -4,9 +4,7 @@ use derive_more::{Deref, DerefMut};
 use iced::{
     Color, Element, Event, Subscription, Task,
     advanced::graphics::futures::MaybeSend,
-    event, exit,
-    keyboard::{self, Key, key::Named},
-    mouse,
+    event, mouse,
     task::Handle,
     theme::Style,
     widget::{container, space},
@@ -21,7 +19,7 @@ use iced_layershell::{
 use tracing::{debug, error as log_err, info};
 
 use crate::{
-    AppCommand, Cli,
+    Cli,
     bars::{delora_main, delora_sec},
     feature::{Comp, FeatWindow, Feature, Service},
     launcher,
@@ -31,37 +29,30 @@ use crate::{
     tray::{TrayLayout, TrayMenuItemId, menu_comp as tray_menu},
 };
 
-#[derive(Clone)]
-enum Hosts {
+#[derive(Debug, Clone)]
+enum Host {
     Delora,
     Rena,
 }
 
 #[derive(Clone)]
 pub struct Init {
-    quit_keybinds: bool,
-    host: Hosts,
+    host: Host,
 }
 
 impl Init {
     pub fn host(&mut self, host: &str) {
         self.host = match host {
-            "delora" => Hosts::Delora,
-            "rena" => Hosts::Rena,
-            _ => Hosts::Delora,
+            "delora" => Host::Delora,
+            "rena" => Host::Rena,
+            _ => Host::Delora,
         };
     }
 }
 
 impl From<Cli> for Init {
-    fn from(cli: Cli) -> Self {
-        Self {
-            quit_keybinds: cli.command.is_some_and(|x| match x {
-                AppCommand::Daemon { quit_keybindings } => quit_keybindings,
-                _ => false,
-            }),
-            host: Hosts::Delora,
-        }
+    fn from(_cli: Cli) -> Self {
+        Self { host: Host::Delora }
     }
 }
 
@@ -103,16 +94,14 @@ pub enum Message {
     PowerMenu(Id, powermenu::Message),
 
     Socket(socket::Request),
-
-    Quit,
 }
 
 struct Daemon {
     features: Features,
     mon_serv: niri::monitors::MonitorsServ,
-    quit_keybinds: bool,
     tray_focused: bool,
     tray_close_handle: Option<Handle>,
+    host: Host,
 }
 
 impl Daemon {
@@ -120,8 +109,7 @@ impl Daemon {
         let (mon_serv, mon_serv_task) = MonitorsServ::new((), Message::NiriMon);
         (
             Self {
-                quit_keybinds: init.quit_keybinds,
-
+                host: init.host,
                 features: Features(HashMap::new()),
                 mon_serv,
                 tray_focused: false,
@@ -137,16 +125,6 @@ impl Daemon {
             Event::Mouse(mouse::Event::CursorLeft) => Some(Message::FeatUnfocused(id)),
             _ => None,
         });
-        let quit_binds = keyboard::listen()
-            .with(self.quit_keybinds)
-            .filter_map(|(quit_keybinds, event)| match (quit_keybinds, event) {
-                (false, keyboard::Event::KeyPressed { key, .. }) => Some(key),
-                _ => None,
-            })
-            .filter_map(|key| match key.as_ref() {
-                Key::Named(Named::Escape) | Key::Character("q") => Some(Message::Quit),
-                _ => None,
-            });
 
         let niri_mon = self.mon_serv.subscription().map(Message::NiriMon);
 
@@ -192,7 +170,7 @@ impl Daemon {
             })
             .collect();
 
-        let mut subs = vec![quit_binds, niri_mon, focus_subs, socket_sub];
+        let mut subs = vec![niri_mon, focus_subs, socket_sub];
         subs.append(&mut win_subs);
         Subscription::batch(subs)
     }
@@ -302,11 +280,17 @@ impl Daemon {
 
                 let mut tasks: Vec<_> = mon_names
                     .iter()
-                    .map(move |mon| match (num_mon, mon.as_str()) {
-                        (2, "HDMI-A-1") => self.open_delora_main("HDMI-A-1".into()),
-                        (2, "DP-3") => self.open_delora_sec("DP-3".into()),
-                        (1, "DP-3") => self.open_delora_main("DP-3".into()),
-                        (_, _) => Task::none(),
+                    .map({
+                        let host = self.host.clone();
+                        move |mon| match (&host, num_mon, mon.as_str()) {
+                            (Host::Delora, 2, "HDMI-A-1") => {
+                                self.open_delora_main("HDMI-A-1".into())
+                            }
+                            (Host::Delora, 2, "DP-3") => self.open_delora_sec("DP-3".into()),
+                            (Host::Delora, 1, "DP-3") => self.open_delora_main("DP-3".into()),
+                            (Host::Rena, _, "eDP-1") => Task::none(),
+                            (_, _, _) => Task::none(),
+                        }
                     })
                     .collect();
 
@@ -340,8 +324,6 @@ impl Daemon {
                 socket::Request::Osd(args) => self.open_osd(args),
                 socket::Request::PowerMenu => self.open_powermenu(),
             },
-
-            Message::Quit => exit(),
 
             _ => Task::none(),
         }

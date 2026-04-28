@@ -29,9 +29,9 @@ osd:
 [group('build')]
 watch:
   if [ -n "{{nixgl}}" ]; then \
-    {{nixgl}} cargo watch -w src -w resources -x "run -- -v daemon --quit-keybindings"; \
+    {{nixgl}} cargo watch -w src -w resources -x "run -- -v daemon"; \
   else \
-    cargo watch -w src -w resources -x "run -- -v daemon --quit-keybindings"; \
+    cargo watch -w src -w resources -x "run -- -v daemon"; \
   fi
 
 [group('build')]

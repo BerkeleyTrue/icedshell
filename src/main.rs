@@ -37,11 +37,7 @@ struct Cli {
 
 #[derive(Subcommand, Debug, Display, Clone)]
 enum AppCommand {
-    Daemon {
-        /// add quit keybinds for testing
-        #[arg(short, long)]
-        quit_keybindings: bool,
-    },
+    Daemon,
     Launcher,
     Osd(OsdArgs),
     PowerMenu,
@@ -71,9 +67,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     match cli_args.command.clone().unwrap() {
-        AppCommand::Daemon {
-            quit_keybindings: _,
-        } => {
+        AppCommand::Daemon => {
             let mut init = Init::from(cli_args);
             init.host(&host);
 
