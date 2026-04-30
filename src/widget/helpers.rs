@@ -64,32 +64,32 @@ pub(crate) use right_widgets;
 
 macro_rules! bar_widgets {
     () => (
-        iced::widget::container(row![])
+        iced::widget::container(iced::widget::row![])
     );
     (left: $($x:expr),* $(,)? $(;)?) => (
-        iced::widget::container(row![
+        iced::widget::container(iced::widget::row![
             $crate::widget::left_widgets![$($x),*],
         ])
     );
     (center: $($y:expr),* $(,)? $(;)?) => (
-        iced::widget::container(row![
+        iced::widget::container(iced::widget::row![
             $crate::widget::center_widgets![$($y),*],
         ])
     );
     (right: $($z:expr),* $(,)? $(;)?) => (
-        iced::widget::container(row![
+        iced::widget::container(iced::widget::row![
             $crate::widget::right_widgets![$($z),*],
         ])
     );
     (center: $($y:expr),* $(,)?; right: $($z:expr),* $(,)? $(;)?) => (
-        iced::widget::container(row![
+        iced::widget::container(iced::widget::row![
             $crate::widget::left_widgets![],
             $crate::widget::center_widgets![$($y),*],
             $crate::widget::right_widgets![$($z),*],
         ])
     );
     (left: $($x:expr),* $(,)?; center: $($y:expr),* $(,)?; right: $($z:expr),* $(,)? $(;)?) => (
-        iced::widget::container(row![
+        iced::widget::container(iced::widget::row![
             $crate::widget::left_widgets![$($x),*],
             $crate::widget::center_widgets![$($y),*],
             $crate::widget::right_widgets![$($z),*],

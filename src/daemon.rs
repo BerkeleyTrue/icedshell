@@ -20,7 +20,7 @@ use tracing::{debug, error as log_err, info};
 
 use crate::{
     Cli,
-    bars::{delora_main, delora_sec},
+    bars::{delora_main, delora_sec, rena_main},
     feature::{Comp, FeatWindow, Feature, Service},
     launcher,
     niri::{self, monitors::MonitorsServ},
@@ -59,6 +59,7 @@ impl From<Cli> for Init {
 enum Feat {
     Delora(FeatWindow<delora_main::DeloraMain>),
     DeloraSec(FeatWindow<delora_sec::DeloraSec>),
+    Rena(FeatWindow<rena_main::RenaMain>),
     TrayMenu(FeatWindow<tray_menu::MenuComp>),
     Launcher(FeatWindow<launcher::Launcher>),
     Osd(FeatWindow<osd::Osd>),
@@ -75,6 +76,7 @@ pub enum Message {
 
     Delora(Id, delora_main::Message),
     DeloraSec(Id, delora_sec::Message),
+    Rena(Id, rena_main::Message),
     TrayMenu(Id, tray_menu::Message),
     TrayMenuItemClicked(
         /// sni item name
@@ -150,6 +152,10 @@ impl Daemon {
                         .subscription()
                         .with(win_id)
                         .map(|(win_id, m)| Message::DeloraSec(win_id, m)),
+                    Feat::Rena(rena) => rena
+                        .subscription()
+                        .with(win_id)
+                        .map(|(win_id, m)| Message::Rena(win_id, m)),
                     Feat::TrayMenu(menu) => menu
                         .subscription()
                         .with(win_id)
@@ -200,6 +206,24 @@ impl Daemon {
                     delora
                         .update(message.clone())
                         .map(move |m| Message::DeloraSec(win_id, m))
+                } else {
+                    Task::none()
+                }
+            }
+            Message::Rena(win_id, message) => {
+                if let Some(Feat::Rena(rena)) = self.features.get_mut(&win_id) {
+                    let task = rena
+                        .update(message.clone())
+                        .map(move |m| Message::Rena(win_id, m));
+
+                    let open_task = match message {
+                        rena_main::Message::OpenTrayMenu(name, layout) => {
+                            self.open_tray_menu(name, layout)
+                        }
+                        rena_main::Message::PowerButtonOnClicked => self.open_powermenu(),
+                        _ => Task::none(),
+                    };
+                    task.chain(open_task)
                 } else {
                     Task::none()
                 }
@@ -293,7 +317,7 @@ impl Daemon {
                                 self.open_delora_main("DP-3".into()),
                                 self.open_delora_sec("DP-3".into(), delora_sec::Position::Bottom),
                             ]),
-                            (Host::Rena, _, "eDP-1") => Task::none(),
+                            (Host::Rena, _, "eDP-1") => self.open_rena("eDP-1".into()),
                             (_, _, _) => Task::none(),
                         }
                     })
@@ -330,6 +354,7 @@ impl Daemon {
         match self.features.get(&win_id) {
             Some(Feat::Delora(delora)) => delora.view().map_feat(win_id, Message::Delora),
             Some(Feat::DeloraSec(delora)) => delora.view().map_feat(win_id, Message::DeloraSec),
+            Some(Feat::Rena(rena)) => rena.view().map_feat(win_id, Message::Rena),
             Some(Feat::TrayMenu(menu_feat)) => menu_feat.view().map_feat(win_id, Message::TrayMenu),
             Some(Feat::Launcher(launcher)) => launcher.view().map_feat(win_id, Message::Launcher),
             Some(Feat::Osd(osd)) => osd.view().map_feat(win_id, Message::Osd),
@@ -388,6 +413,48 @@ impl Daemon {
             .chain(Task::done(Message::NewLayerShell {
                 settings: main_layer_settings,
                 id: main_id,
+            }))
+            .chain(inner_task)
+    }
+}
+
+// rena bar feature logic
+impl Daemon {
+    fn open_rena(&mut self, output_name: String) -> Task<Message> {
+        let old_id = self
+            .features
+            .iter()
+            .find(|(_, feat)| matches!(feat, Feat::Rena(_)))
+            .map(|(win_id, _)| *win_id);
+
+        if let Some(id) = old_id {
+            if let Some(Feat::Rena(old)) = self.features.get(&id) {
+                if old.is_on_output(&output_name) {
+                    return Task::none();
+                }
+            }
+        }
+
+        let (mut rena_feat, rena_layer_settings, inner_task) =
+            rena_main::RenaMain::open(rena_main::Init { output_name }, Message::Rena);
+        let rena_id = rena_feat.id;
+
+        let remove = old_id
+            .map(|win_id| {
+                if let Some(Feat::Rena(old)) = self.features.get(&win_id) {
+                    rena_feat.view.clone_servs(old);
+                }
+                self.features.remove(&win_id);
+                Task::done(Message::RemoveWindow(win_id))
+            })
+            .unwrap_or(Task::none());
+
+        self.features.insert(rena_id, Feat::Rena(rena_feat));
+
+        remove
+            .chain(Task::done(Message::NewLayerShell {
+                settings: rena_layer_settings,
+                id: rena_id,
             }))
             .chain(inner_task)
     }
@@ -457,6 +524,10 @@ impl Daemon {
                     Feat::Delora(bar) => Some(
                         bar.tray_menu_item_clicked(name.clone(), menu_item_id.clone())
                             .map_feat(win_id, Message::Delora),
+                    ),
+                    Feat::Rena(bar) => Some(
+                        bar.tray_menu_item_clicked(name.clone(), menu_item_id.clone())
+                            .map_feat(win_id, Message::Rena),
                     ),
                     _ => None,
                 }
