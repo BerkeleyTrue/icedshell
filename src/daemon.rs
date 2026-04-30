@@ -26,7 +26,7 @@ use crate::{
     niri::{self, monitors::MonitorsServ},
     osd, powermenu, socket,
     theme::{self as mytheme},
-    tray::{TrayLayout, TrayMenuItemId, menu_comp as tray_menu},
+    tray::{TrayBar, TrayLayout, TrayMenuItemId, menu_comp as tray_menu},
 };
 
 #[derive(Debug, Clone)]
@@ -312,17 +312,9 @@ impl Daemon {
                 Some(Feat::Launcher(_)) => self.on_unfocus_launcher(id),
                 _ => Task::none(),
             },
-            Message::TrayMenuItemClicked(name, menu_item_id) => match self
-                .features
-                .iter_mut()
-                .find(|(_, feat)| matches!(feat, Feat::Delora(_)))
-                .map(|(win_id, feat)| (*win_id, feat))
-            {
-                Some((win_id, Feat::Delora(delora))) => delora
-                    .tray_menu_item_clicked(name, menu_item_id)
-                    .map_feat(win_id, Message::Delora),
-                _ => Task::none(),
-            },
+            Message::TrayMenuItemClicked(name, menu_item_id) => {
+                self.handle_tray_click(name, menu_item_id)
+            }
 
             Message::Socket(req) => match req {
                 socket::Request::Launcher => self.open_launcher(),
@@ -456,6 +448,22 @@ impl Daemon {
 
 // tray menu feature logic
 impl Daemon {
+    fn handle_tray_click(&mut self, name: String, menu_item_id: TrayMenuItemId) -> Task<Message> {
+        self.features
+            .iter_mut()
+            .find_map(|(win_id, feat)| {
+                let win_id = *win_id;
+                match feat {
+                    Feat::Delora(bar) => Some(
+                        bar.tray_menu_item_clicked(name.clone(), menu_item_id.clone())
+                            .map_feat(win_id, Message::Delora),
+                    ),
+                    _ => None,
+                }
+            })
+            .unwrap_or(Task::none())
+    }
+
     fn focus_tray(&mut self) -> Task<Message> {
         self.tray_focused = true;
         if let Some(handle) = &self.tray_close_handle {

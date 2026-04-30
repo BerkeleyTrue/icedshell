@@ -12,7 +12,7 @@ use crate::{
     powermenu::button_comp,
     system_info as sys_info,
     theme::CAT_THEME,
-    tray::{TrayLayout, TrayMenuItemId, service as tray_serv, tray_comp},
+    tray::{TrayBar, TrayLayout, TrayMenuItemId, service as tray_serv, tray_comp},
     types::MonitorId,
     widget::{
         align_center, bar_widgets,
@@ -266,10 +266,14 @@ impl Feature for DeloraMain {
     }
 }
 
-impl DeloraMain {
-    pub fn tray_menu_item_clicked(&mut self, name: String, id: TrayMenuItemId) -> Task<Message> {
-        self.tray_serv
-            .menu_item_clicked(name, id)
-            .map(Message::TrayService)
+impl TrayBar for DeloraMain {
+    type Message = Message;
+
+    fn tray_serv_mut(&mut self) -> &mut tray_serv::TrayService {
+        &mut self.tray_serv
+    }
+
+    fn wrap_tray_msg(msg: tray_serv::Message) -> Message {
+        Message::TrayService(msg)
     }
 }
