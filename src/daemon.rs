@@ -286,8 +286,13 @@ impl Daemon {
                             (Host::Delora, 2, "HDMI-A-1") => {
                                 self.open_delora_main("HDMI-A-1".into())
                             }
-                            (Host::Delora, 2, "DP-3") => self.open_delora_sec("DP-3".into()),
-                            (Host::Delora, 1, "DP-3") => self.open_delora_main("DP-3".into()),
+                            (Host::Delora, 2, "DP-3") => {
+                                self.open_delora_sec("DP-3".into(), delora_sec::Position::Top)
+                            }
+                            (Host::Delora, 1, "DP-3") => Task::batch([
+                                self.open_delora_main("DP-3".into()),
+                                self.open_delora_sec("DP-3".into(), delora_sec::Position::Bottom),
+                            ]),
                             (Host::Rena, _, "eDP-1") => Task::none(),
                             (_, _, _) => Task::none(),
                         }
@@ -398,7 +403,11 @@ impl Daemon {
 
 // delora secondary bar feature logic
 impl Daemon {
-    fn open_delora_sec(&mut self, output_name: String) -> Task<Message> {
+    fn open_delora_sec(
+        &mut self,
+        output_name: String,
+        position: delora_sec::Position,
+    ) -> Task<Message> {
         let old_feat = self
             .features
             .iter()
@@ -412,12 +421,18 @@ impl Daemon {
 
         if let Some(old_feat) = old_feat
             && old_feat.is_on_output(&output_name)
+            && old_feat.is_position(position)
         {
             return Task::none();
         }
 
-        let (sec_feat, sec_layer_settings, inner_task) =
-            delora_sec::DeloraSec::open(delora_sec::Init { output_name }, Message::DeloraSec);
+        let (sec_feat, sec_layer_settings, inner_task) = delora_sec::DeloraSec::open(
+            delora_sec::Init {
+                output_name,
+                position,
+            },
+            Message::DeloraSec,
+        );
         let sec_id = sec_feat.id;
 
         let remove = old_feat

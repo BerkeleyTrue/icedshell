@@ -64,6 +64,6 @@ impl Comp for PowerButton {
             })
             .on_press(Message::OnClick);
 
-        row![cap, icon].into()
+        container(row![cap, icon]).into()
     }
 }

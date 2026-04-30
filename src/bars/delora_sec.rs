@@ -24,6 +24,7 @@ use crate::{
 pub struct DeloraSec {
     win: win_comp::NiriWinComp,
     output_name: String,
+    position: Position,
     niri_serv: state_serv::NiriStateServ,
     clock: clock_comp::Clock,
     date: date_comp::Date,
@@ -41,8 +42,15 @@ pub enum Message {
     Btc(cmd::Message),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Position {
+    Top,
+    Bottom,
+}
+
 pub struct Init {
     pub output_name: String,
+    pub position: Position,
 }
 
 impl Comp for DeloraSec {
@@ -90,6 +98,7 @@ impl Comp for DeloraSec {
         (
             Self {
                 output_name: input.output_name,
+                position: input.position,
                 win,
                 niri_serv,
                 clock,
@@ -216,12 +225,20 @@ impl Comp for DeloraSec {
             container(row![view, div]).padding(padding::right(spacing.sm()))
         };
 
+        let pad = {
+            let pad = padding::left(theme.spacing().md());
+            match self.position {
+                Position::Top => pad.top(spacing.sm()),
+                Position::Bottom => pad.bottom(spacing.sm()),
+            }
+        };
+
         bar_widgets!(
             center: date_view, win, clock_view;
             right: right_cap, bitcoin, eth,
         )
         .background(theme.trans())
-        .padding(padding::left(theme.spacing().md()).top(spacing.sm()))
+        .padding(pad)
         .center_y(Length::Fill)
         .into()
     }
@@ -231,6 +248,10 @@ impl DeloraSec {
     pub fn is_on_output(&self, output_name: &str) -> bool {
         self.output_name == output_name
     }
+
+    pub fn is_position(&self, position: Position) -> bool {
+        self.position == position
+    }
 }
 
 impl Feature for DeloraSec {
@@ -238,11 +259,15 @@ impl Feature for DeloraSec {
     fn layer(&self) -> iced_layershell::reexport::NewLayerShellSettings {
         let output_name = self.output_name.clone();
         let height = CAT_THEME.spacing().xl() + CAT_THEME.spacing().xs();
+        let anchor = match self.position {
+            Position::Top => Anchor::Left | Anchor::Top | Anchor::Right,
+            Position::Bottom => Anchor::Left | Anchor::Bottom | Anchor::Right,
+        };
 
         NewLayerShellSettings {
             layer: Layer::Top,
             size: Some((0, height as u32)),
-            anchor: Anchor::Left | Anchor::Top | Anchor::Right,
+            anchor,
             keyboard_interactivity: KeyboardInteractivity::None,
             exclusive_zone: Some(height as i32),
             output_option: OutputOption::OutputName(output_name),
