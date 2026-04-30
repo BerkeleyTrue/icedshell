@@ -255,7 +255,8 @@ impl Feature for MenuComp {
 
         IcedNewMenuSettings {
             size: (220, height as u32),
-            direction: MenuDirection::Up,
+            // TODO: update direction if bar is on top/bottom
+            direction: MenuDirection::Down,
         }
     }
 }
