@@ -222,6 +222,9 @@ impl NiriStateServ {
             | Event::OverviewOpenedOrClosed { is_open: _ }
             | Event::ConfigLoaded { failed: _ }
             | Event::ScreenshotCaptured { path: _ } => (),
+            Event::CastsChanged { casts: _ } => (),
+            Event::CastStartedOrChanged { cast: _ } => (),
+            Event::CastStopped { stream_id: _ } => (),
             // _ => self,
         }
     }
