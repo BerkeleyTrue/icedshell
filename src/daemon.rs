@@ -196,7 +196,7 @@ impl Daemon {
                         delora_main::Message::PowerButtonOnClicked => {
                             self.open_powermenu(powermenu::PowerArgs {
                                 dryrun: false,
-                                no_focus: false,
+                                no_focus: true,
                             })
                         }
                         _ => Task::none(),
@@ -228,7 +228,7 @@ impl Daemon {
                         rena_main::Message::PowerButtonOnClicked => {
                             self.open_powermenu(powermenu::PowerArgs {
                                 dryrun: false,
-                                no_focus: false,
+                                no_focus: true,
                             })
                         }
                         _ => Task::none(),
