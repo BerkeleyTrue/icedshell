@@ -12,6 +12,8 @@ use crate::{
     types::MonitorId,
 };
 
+use clap::Args;
+use derive_more::Display;
 use iced::{
     Border, Color, Element, Event,
     Length::{self, Fill},
@@ -23,6 +25,7 @@ use iced::{
     widget::{column, container, row, space, stack, text},
 };
 use iced_layershell::reexport::{self as layer, OutputOption};
+use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use tracing::{debug, info};
 
@@ -30,8 +33,7 @@ const NUM_OF_BTNS: usize = 5;
 
 #[derive(Debug, Clone)]
 pub struct Init {
-    pub no_focus: bool,
-    pub dryrun: bool,
+    pub args: PowerArgs,
     pub monitor: Option<MonitorId>,
 }
 
@@ -92,11 +94,12 @@ impl Comp for PowerMenu {
         f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
     ) -> (Self, Task<O>) {
         let (dead_internet, task) = dead_internet::DeadInternet::new();
+        info!("powermenu: {}", input.args);
         (
             Self {
                 monitor: input.monitor,
-                dryrun: input.dryrun,
-                no_focus: input.no_focus,
+                dryrun: input.args.dryrun,
+                no_focus: input.args.no_focus,
                 dead_internet,
                 user: None,
                 focused_btn: FocusButton::new(),
@@ -351,7 +354,17 @@ impl Feature for PowerMenu {
                 .unwrap_or(OutputOption::None),
             exclusive_zone: None,
             events_transparent: false,
-            namespace: Some("IcedOsd".to_owned()),
+            namespace: Some("IcedPowermenu".to_owned()),
         }
     }
+}
+
+#[derive(Debug, Args, Clone, Display, Deserialize, Serialize)]
+#[display("dry_run: {dryrun}: no_focus: {no_focus}")]
+pub struct PowerArgs {
+    #[arg(short, long)]
+    pub dryrun: bool,
+
+    #[arg(short, long)]
+    pub no_focus: bool,
 }

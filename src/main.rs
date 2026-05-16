@@ -18,6 +18,7 @@ mod widget;
 use crate::{
     daemon::{Init, start},
     osd::OsdArgs,
+    powermenu::PowerArgs,
 };
 use clap::{Parser, Subcommand};
 use derive_more::Display;
@@ -40,7 +41,7 @@ enum AppCommand {
     Daemon,
     Launcher,
     Osd(OsdArgs),
-    PowerMenu,
+    PowerMenu(PowerArgs),
     // Notify
 }
 
@@ -101,8 +102,8 @@ fn main() -> anyhow::Result<()> {
             };
             Ok(())
         }
-        AppCommand::PowerMenu => {
-            match socket::send_powermenu_req() {
+        AppCommand::PowerMenu(args) => {
+            match socket::send_powermenu_req(args) {
                 Ok(res) => info!("Res: {res:?}"),
                 Err(err) => log_err!("request err: {err:?}"),
             };

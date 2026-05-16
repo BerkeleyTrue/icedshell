@@ -13,13 +13,13 @@ use tokio::{
 use tokio_stream::wrappers::{LinesStream, UnixListenerStream};
 use tracing::info;
 
-use crate::osd::OsdCommand;
+use crate::{osd::OsdCommand, powermenu::PowerArgs};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Request {
     Launcher,
     Osd(OsdCommand),
-    PowerMenu,
+    PowerMenu(PowerArgs),
 }
 
 #[derive(Deref, DerefMut, From)]
@@ -61,8 +61,8 @@ pub fn send_osd_req(args: OsdCommand) -> anyhow::Result<()> {
     connect_and_send(&req)
 }
 
-pub fn send_powermenu_req() -> anyhow::Result<()> {
-    let req = Request::PowerMenu.to_string_line()?;
+pub fn send_powermenu_req(args: PowerArgs) -> anyhow::Result<()> {
+    let req = Request::PowerMenu(args).to_string_line()?;
     connect_and_send(&req)
 }
 

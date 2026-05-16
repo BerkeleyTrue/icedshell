@@ -1,6 +1,4 @@
-use iced::{
-    Color, Length, Subscription, Task, advanced::graphics::futures::MaybeSend, padding, widget::row,
-};
+use iced::{Color, Length, Subscription, Task, advanced::graphics::futures::MaybeSend, padding};
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
@@ -12,7 +10,7 @@ use crate::{
     powermenu::button_comp,
     system_info as sys_info,
     theme::CAT_THEME,
-    tray::{TrayBar, TrayLayout, TrayMenuItemId, service as tray_serv, tray_comp},
+    tray::{TrayBar, TrayLayout, service as tray_serv, tray_comp},
     types::MonitorId,
     widget::{
         align_center, bar_widgets,

@@ -193,7 +193,12 @@ impl Daemon {
                         delora_main::Message::OpenTrayMenu(name, layout) => {
                             self.open_tray_menu(name, layout)
                         }
-                        delora_main::Message::PowerButtonOnClicked => self.open_powermenu(),
+                        delora_main::Message::PowerButtonOnClicked => {
+                            self.open_powermenu(powermenu::PowerArgs {
+                                dryrun: false,
+                                no_focus: false,
+                            })
+                        }
                         _ => Task::none(),
                     };
                     task.chain(open_task)
@@ -220,7 +225,12 @@ impl Daemon {
                         rena_main::Message::OpenTrayMenu(name, layout) => {
                             self.open_tray_menu(name, layout)
                         }
-                        rena_main::Message::PowerButtonOnClicked => self.open_powermenu(),
+                        rena_main::Message::PowerButtonOnClicked => {
+                            self.open_powermenu(powermenu::PowerArgs {
+                                dryrun: false,
+                                no_focus: false,
+                            })
+                        }
                         _ => Task::none(),
                     };
                     task.chain(open_task)
@@ -343,7 +353,7 @@ impl Daemon {
             Message::Socket(req) => match req {
                 socket::Request::Launcher => self.open_launcher(),
                 socket::Request::Osd(args) => self.open_osd(args),
-                socket::Request::PowerMenu => self.open_powermenu(),
+                socket::Request::PowerMenu(args) => self.open_powermenu(args),
             },
 
             _ => Task::none(),
@@ -673,12 +683,11 @@ impl Daemon {
 
 /// powermenu logic
 impl Daemon {
-    fn open_powermenu(&mut self) -> Task<Message> {
+    fn open_powermenu(&mut self, args: powermenu::PowerArgs) -> Task<Message> {
         let (powermenu_feat, settings, inner_task) = powermenu::PowerMenu::open(
             powermenu::Init {
                 monitor: self.mon_serv.cur_monitor().cloned(),
-                dryrun: true,
-                no_focus: true,
+                args,
             },
             Message::PowerMenu,
         );
