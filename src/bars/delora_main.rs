@@ -1,9 +1,16 @@
-use iced::{Color, Length, Subscription, Task, advanced::graphics::futures::MaybeSend, padding};
+use iced::{
+    Color, Length, Subscription, Task,
+    advanced::graphics::futures::MaybeSend,
+    padding,
+    widget::{container, row},
+};
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
+use lucide_icons::iced::{icon_globe, icon_globe_x};
 
 use crate::{
+    cmd,
     datetime::{clock_comp, date_comp},
     feature::{Comp, CompWithProps, Feature, Service},
     niri::{state_serv, win_comp, ws_comp},
@@ -16,6 +23,7 @@ use crate::{
         align_center, bar_widgets,
         container_ext::ContainExt,
         divider::{Angled, Direction, Heading, Semi},
+        text_ext::TextExt,
     },
 };
 
@@ -40,6 +48,8 @@ pub enum Message {
 
     SysInfo(sys_info::Message),
     PowerBtn(button_comp::Message),
+
+    Conn(cmd::Message),
 }
 
 pub struct Init {
@@ -60,6 +70,7 @@ pub struct DeloraMain {
     tray: tray_comp::TrayComp,
     sys_info: sys_info::SysInfoComp,
     power_btn: button_comp::PowerButton,
+    conn: cmd::CmdComp,
 }
 
 impl DeloraMain {
@@ -100,6 +111,14 @@ impl Comp for DeloraMain {
         let (tray, tray_task) = tray_comp::TrayComp::new((), Message::Tray);
         let (sys_info, sys_info_task) = sys_info::SysInfoComp::new((), Message::SysInfo);
         let (power_btn, power_btn_task) = button_comp::PowerButton::new((), Message::PowerBtn);
+        let (conn, conn_task) = cmd::CmdComp::new(
+            cmd::Init {
+                cmd: "connectivity".to_owned(),
+                args: Vec::default(),
+                interval: 1,
+            },
+            Message::Conn,
+        );
 
         let inner_tasks = Task::batch([
             win_comp_task,
@@ -111,6 +130,7 @@ impl Comp for DeloraMain {
             tray_task,
             sys_info_task,
             power_btn_task,
+            conn_task,
         ]);
 
         (
@@ -127,6 +147,7 @@ impl Comp for DeloraMain {
                 tray,
                 sys_info,
                 power_btn,
+                conn,
             },
             inner_tasks.map(f),
         )
@@ -164,6 +185,7 @@ impl Comp for DeloraMain {
                 inner_task.chain(out_task)
             }
             Message::PowerButtonOnClicked => Task::none(),
+            Message::Conn(message) => self.conn.update(message).map(Message::Conn),
         }
     }
 
@@ -176,13 +198,15 @@ impl Comp for DeloraMain {
         let tray_serv = self.tray_serv.subscription().map(Message::TrayService);
         let tray = self.tray.subscription().map(Message::Tray);
         let sys_info = self.sys_info.subscription().map(Message::SysInfo);
+        let conn = self.conn.subscription().map(Message::Conn);
         Subscription::batch([
-            clock, date, niri_ws, niri_win, niri_serv, tray_serv, tray, sys_info,
+            clock, date, niri_ws, niri_win, niri_serv, tray_serv, tray, sys_info, conn,
         ])
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let theme = &CAT_THEME;
+        let spacing = theme.spacing();
 
         let date_view = align_center!(self.date.view(theme.background()).map(Message::Date));
 
@@ -230,14 +254,43 @@ impl Comp for DeloraMain {
             })
             .map(Message::Tray);
 
-        let sys_view = self.sys_info.view().map(Message::SysInfo);
+        let sys_view = {
+            let div = Semi::new(
+                theme.mauve(),
+                theme.lavender(),
+                Direction::Left,
+                theme.spacing().xl(),
+            );
+
+            let view = self.sys_info.view().map(Message::SysInfo);
+
+            align_center!(row![div, view])
+        };
+        let conn = {
+            let icon = if !self.conn.is_error() {
+                icon_globe().color(theme.surface2())
+            } else {
+                icon_globe_x().color(theme.red())
+            }
+            .bold();
+            let icon = container(icon).padding(padding::horizontal(spacing.sm()));
+
+            let div = Angled::new(
+                theme.surface2(),
+                theme.lavender(),
+                Direction::Right,
+                Heading::South,
+                theme.spacing().xl(),
+            );
+            align_center!(row![div, icon]).background(theme.lavender())
+        };
         let power_btn = self.power_btn.view().map(Message::PowerBtn);
 
         // main bar
         bar_widgets!(
             left:  date_view, div, niri_ws_view;
             center: clock_view, win_div, win, tray;
-            right: power_btn, sys_view
+            right: power_btn, conn, sys_view
         )
         .background(Color::TRANSPARENT)
         .padding(padding::left(theme.spacing().md()).top(self.padding))

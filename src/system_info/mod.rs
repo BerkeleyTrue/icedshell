@@ -94,14 +94,6 @@ impl Comp for SysInfoComp {
         let theme = &CAT_THEME;
 
         let cpu = {
-            let div = Angled::new(
-                theme.mauve(),
-                theme.surface2(),
-                divider::Direction::Left,
-                divider::Heading::North,
-                theme.spacing().xl(),
-            );
-
             let temp_icon = Icon::Thermometer
                 .widget()
                 .center()
@@ -120,15 +112,13 @@ impl Comp for SysInfoComp {
             let temp_text = text!("{temp:.0} C").center().color(theme.base()).bold();
             let usage_text = text!("{usage:.0}%").center().color(theme.base()).bold();
 
-            let content = align_center!(
+            align_center!(
                 row![cpu_icon, usage_text, temp_icon, temp_text]
                     .align_y(Vertical::Center)
                     .spacing(theme.spacing().xs()),
             )
             .background(theme.mauve())
-            .padding(padding::horizontal(theme.spacing().md()));
-
-            row![div, content].align_y(Vertical::Center)
+            .padding(padding::horizontal(theme.spacing().md()))
         };
 
         let avg_load = {

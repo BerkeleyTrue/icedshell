@@ -10,7 +10,10 @@ use iced::{
 use crate::{
     feature::Comp,
     theme::CAT_THEME,
-    widget::divider::{self, Angled},
+    widget::{
+        align_center,
+        divider::{self, Angled},
+    },
 };
 
 pub struct PowerButton {}
@@ -64,6 +67,6 @@ impl Comp for PowerButton {
             })
             .on_press(Message::OnClick);
 
-        container(row![cap, icon]).into()
+        align_center!(row![cap, icon]).into()
     }
 }
