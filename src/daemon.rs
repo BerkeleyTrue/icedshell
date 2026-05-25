@@ -20,7 +20,7 @@ use tracing::{debug, error as log_err, info};
 
 use crate::{
     Cli,
-    bars::{delora_main, delora_sec, rena_main},
+    bars::{delora_main, delora_sec, rena_main, rena_sec},
     feature::{Comp, FeatWindow, Feature, Service},
     launcher,
     niri::{self, monitors::MonitorsServ},
@@ -60,6 +60,7 @@ enum Feat {
     Delora(FeatWindow<delora_main::DeloraMain>),
     DeloraSec(FeatWindow<delora_sec::DeloraSec>),
     Rena(FeatWindow<rena_main::RenaMain>),
+    RenaSec(FeatWindow<rena_sec::RenaSec>),
     TrayMenu(FeatWindow<tray_menu::MenuComp>),
     Launcher(FeatWindow<launcher::Launcher>),
     Osd(FeatWindow<osd::Osd>),
@@ -77,6 +78,7 @@ pub enum Message {
     Delora(Id, delora_main::Message),
     DeloraSec(Id, delora_sec::Message),
     Rena(Id, rena_main::Message),
+    RenaSec(Id, rena_sec::Message),
     TrayMenu(Id, tray_menu::Message),
     TrayMenuItemClicked(
         /// sni item name
@@ -156,6 +158,10 @@ impl Daemon {
                         .subscription()
                         .with(win_id)
                         .map(|(win_id, m)| Message::Rena(win_id, m)),
+                    Feat::RenaSec(rena) => rena
+                        .subscription()
+                        .with(win_id)
+                        .map(|(win_id, m)| Message::RenaSec(win_id, m)),
                     Feat::TrayMenu(menu) => menu
                         .subscription()
                         .with(win_id)
@@ -365,6 +371,7 @@ impl Daemon {
             Some(Feat::Delora(delora)) => delora.view().map_feat(win_id, Message::Delora),
             Some(Feat::DeloraSec(delora)) => delora.view().map_feat(win_id, Message::DeloraSec),
             Some(Feat::Rena(rena)) => rena.view().map_feat(win_id, Message::Rena),
+            Some(Feat::RenaSec(rena)) => rena.view().map_feat(win_id, Message::RenaSec),
             Some(Feat::TrayMenu(menu_feat)) => menu_feat.view().map_feat(win_id, Message::TrayMenu),
             Some(Feat::Launcher(launcher)) => launcher.view().map_feat(win_id, Message::Launcher),
             Some(Feat::Osd(osd)) => osd.view().map_feat(win_id, Message::Osd),
@@ -437,12 +444,11 @@ impl Daemon {
             .find(|(_, feat)| matches!(feat, Feat::Rena(_)))
             .map(|(win_id, _)| *win_id);
 
-        if let Some(id) = old_id {
-            if let Some(Feat::Rena(old)) = self.features.get(&id) {
-                if old.is_on_output(&output_name) {
-                    return Task::none();
-                }
-            }
+        if let Some(id) = old_id
+            && let Some(Feat::Rena(old)) = self.features.get(&id)
+            && old.is_on_output(&output_name)
+        {
+            return Task::none();
         }
 
         let (mut rena_feat, rena_layer_settings, inner_task) =
@@ -460,6 +466,41 @@ impl Daemon {
             .unwrap_or(Task::none());
 
         self.features.insert(rena_id, Feat::Rena(rena_feat));
+
+        remove
+            .chain(Task::done(Message::NewLayerShell {
+                settings: rena_layer_settings,
+                id: rena_id,
+            }))
+            .chain(inner_task)
+    }
+
+    fn open_rena_sec(&mut self, output_name: String) -> Task<Message> {
+        let old_id = self
+            .features
+            .iter()
+            .find(|(_, feat)| matches!(feat, Feat::RenaSec(_)))
+            .map(|(win_id, _)| *win_id);
+
+        if let Some(id) = old_id
+            && let Some(Feat::RenaSec(old)) = self.features.get(&id)
+            && old.is_on_output(&output_name)
+        {
+            return Task::none();
+        }
+
+        let (rena_feat, rena_layer_settings, inner_task) =
+            rena_sec::RenaSec::open(rena_sec::Init { output_name }, Message::RenaSec);
+        let rena_id = rena_feat.id;
+
+        let remove = old_id
+            .map(|win_id| {
+                self.features.remove(&win_id);
+                Task::done(Message::RemoveWindow(win_id))
+            })
+            .unwrap_or(Task::none());
+
+        self.features.insert(rena_id, Feat::RenaSec(rena_feat));
 
         remove
             .chain(Task::done(Message::NewLayerShell {

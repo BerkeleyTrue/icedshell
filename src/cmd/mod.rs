@@ -4,7 +4,6 @@ use iced::{
     time::{every, seconds},
     widget::text,
 };
-use tracing::info;
 
 use crate::feature::CompWithProps;
 
@@ -20,7 +19,6 @@ async fn run_cmd(cmd: String, args: Vec<String>) -> CmdState {
         .await
         .ok()
         .map(|o| {
-            info!("{} o: {}", cmd, o.status.success());
             if o.status.success() {
                 CmdState::Output(
                     String::from_utf8(o.stdout)
