@@ -333,7 +333,10 @@ impl Daemon {
                                 self.open_delora_main("DP-3".into()),
                                 self.open_delora_sec("DP-3".into(), delora_sec::Position::Bottom),
                             ]),
-                            (Host::Rena, _, "eDP-1") => self.open_rena("eDP-1".into()),
+                            (Host::Rena, _, "eDP-1") => Task::batch([
+                                self.open_rena("eDP-1".into()),
+                                self.open_rena_sec("eDP-1".into()),
+                            ]),
                             (_, _, _) => Task::none(),
                         }
                     })
