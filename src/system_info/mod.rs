@@ -1,3 +1,4 @@
+mod battery;
 mod cpu_temp;
 use iced::{
     Subscription, Task,
@@ -12,6 +13,7 @@ use tracing::info;
 
 use crate::{
     feature::Comp,
+    system_info::battery::{self as bat, BatteryState},
     theme::CAT_THEME,
     widget::{
         align_center,
@@ -25,7 +27,8 @@ const BYTES_IN_GIG: u64 = 1_073_741_824;
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    OnCpuTempUpdated(f32),
+    OnCpuTempTick(f32),
+    OnBatTick(bat::BatteryState),
     OnTick,
 }
 
@@ -34,6 +37,25 @@ pub struct SysInfoComp {
     system: System,
     load: f64,
     cpu_temp: f32,
+    bat_stat: BatteryState,
+}
+
+impl SysInfoComp {
+    pub fn disk_usage(&self) -> String {
+        let disk = self
+            .disks
+            .iter()
+            .find(|disk| disk.mount_point() == "/")
+            .or(self.disks.first())
+            .map(|disk| disk.available_space() / BYTES_IN_GIG)
+            .unwrap_or_default();
+
+        format!("{disk}G")
+    }
+
+    pub fn bat_stat(&self) -> &BatteryState {
+        &self.bat_stat
+    }
 }
 
 impl Comp for SysInfoComp {
@@ -56,6 +78,7 @@ impl Comp for SysInfoComp {
             system,
             load: 0.,
             cpu_temp: 0.,
+            bat_stat: BatteryState::None,
         }
         .to_tuple()
     }
@@ -63,22 +86,41 @@ impl Comp for SysInfoComp {
     fn subscription(&self) -> iced::Subscription<Self::Message> {
         let avg_temp_sub = Subscription::run_with(cpu_temp::ListenData(1000), cpu_temp::listen)
             .filter_map(|res| match res {
-                Ok(temp) => Some(Message::OnCpuTempUpdated(temp)),
+                Ok(temp) => Some(Message::OnCpuTempTick(temp)),
                 Err(err) => {
                     info!("Error getting temp {err:?}");
                     None
                 }
             });
 
+        let bat_stat = Subscription::run_with(
+            bat::ListenData {
+                delay: 1000,
+                bat: "BAT1".to_string(),
+            },
+            bat::listen,
+        )
+        .filter_map(|res| match res {
+            Ok(bat) => Some(Message::OnBatTick(bat)),
+            Err(err) => {
+                info!("Error getting bat state {err:?}");
+                None
+            }
+        });
+
         let refresh_sub = time::every(time::Duration::from_millis(750)).map(|_| Message::OnTick);
 
-        Subscription::batch([avg_temp_sub, refresh_sub])
+        Subscription::batch([avg_temp_sub, refresh_sub, bat_stat])
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
-            Message::OnCpuTempUpdated(cpu_temp) => {
+            Message::OnCpuTempTick(cpu_temp) => {
                 self.cpu_temp = cpu_temp;
+                Task::none()
+            }
+            Message::OnBatTick(bat_state) => {
+                self.bat_stat = bat_state;
                 Task::none()
             }
             Message::OnTick => {
@@ -196,15 +238,9 @@ impl Comp for SysInfoComp {
                 .size(theme.spacing().lg())
                 .center()
                 .color(theme.base());
-            let disk = self
-                .disks
-                .iter()
-                .find(|disk| disk.mount_point() == "/")
-                .or(self.disks.first())
-                .map(|disk| disk.available_space() / BYTES_IN_GIG)
-                .unwrap_or_default();
 
-            let text = text!("{disk}G").color(theme.base()).bold();
+            let text = self.disk_usage();
+            let text = text!("{text}").color(theme.base()).bold();
 
             let main = align_center!(
                 row![icon, text]

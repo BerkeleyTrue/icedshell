@@ -11,6 +11,7 @@ use crate::{
     datetime::{clock_comp, date_comp},
     feature::{Comp, CompWithProps, Feature, Service},
     niri::{state_serv, win_comp},
+    system_info,
     theme::CAT_THEME,
     types::MonitorId,
     widget::{
@@ -29,6 +30,7 @@ pub struct RenaSec {
     date: date_comp::Date,
     eth: cmd::CmdComp,
     btc: cmd::CmdComp,
+    sys_info: system_info::SysInfoComp,
 }
 
 #[derive(Debug, Clone)]
@@ -39,6 +41,7 @@ pub enum Message {
     Date(date_comp::Message),
     Eth(cmd::Message),
     Btc(cmd::Message),
+    SysInfo(system_info::Message),
 }
 
 pub struct Init {
@@ -78,6 +81,8 @@ impl Comp for RenaSec {
             Message::Btc,
         );
 
+        let (sys_info, sys_info_task) = system_info::SysInfoComp::new((), Message::SysInfo);
+
         let inner_tasks = Task::batch([
             win_comp_task,
             niri_serv_task,
@@ -85,6 +90,7 @@ impl Comp for RenaSec {
             date_task,
             eth_task,
             btc_task,
+            sys_info_task,
         ]);
 
         (
@@ -96,6 +102,7 @@ impl Comp for RenaSec {
                 date,
                 eth,
                 btc,
+                sys_info,
             },
             inner_tasks.map(f),
         )
@@ -122,6 +129,7 @@ impl Comp for RenaSec {
             }
             Message::Eth(message) => self.eth.update(message).map(Message::Eth),
             Message::Btc(message) => self.btc.update(message).map(Message::Btc),
+            Message::SysInfo(message) => self.sys_info.update(message).map(Message::SysInfo),
         }
     }
 
