@@ -1,13 +1,15 @@
+use ::iced::widget::text;
 use iced::{
     Color, Length, Subscription, Task,
     advanced::graphics::futures::MaybeSend,
+    alignment::Vertical,
     padding,
     widget::{container, row},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
-use lucide_icons::iced::{icon_globe, icon_globe_x};
+use lucide_icons::iced::{self as lucide};
 
 use crate::{
     cmd,
@@ -255,6 +257,29 @@ impl Comp for DeloraMain {
             })
             .map(Message::Tray);
 
+        let power_btn = self.power_btn.view().map(Message::PowerBtn);
+
+        let conn = {
+            let icon = if !self.conn.is_error() {
+                lucide::icon_globe().color(theme.surface2())
+            } else {
+                lucide::icon_globe_x().color(theme.red())
+            }
+            .bold();
+
+            let content = container(icon).padding(padding::horizontal(spacing.sm()));
+
+            let div = Angled::new(
+                theme.surface2(),
+                theme.lavender(),
+                Direction::Right,
+                Heading::South,
+                theme.spacing().xl(),
+            );
+
+            align_center!(row![div, content]).background(theme.lavender())
+        };
+
         let sys_view = {
             let div = Semi::new(
                 theme.mauve(),
@@ -267,34 +292,42 @@ impl Comp for DeloraMain {
 
             align_center!(row![div, view])
         };
-        let conn = {
-            let icon = if !self.conn.is_error() {
-                icon_globe().color(theme.surface2())
-            } else {
-                icon_globe_x().color(theme.red())
-            }
-            .bold();
-            let icon = container(icon).padding(padding::horizontal(spacing.sm()));
 
-            let div = Angled::new(
-                theme.surface2(),
-                theme.lavender(),
+        let disk_usage = {
+            let div = Semi::new(
+                theme.blue(),
+                theme.trans(),
                 Direction::Right,
-                Heading::South,
                 theme.spacing().xl(),
             );
-            align_center!(row![div, icon]).background(theme.lavender())
+
+            let icon = lucide::icon_hard_drive()
+                .size(theme.spacing().lg())
+                .center()
+                .color(theme.base());
+
+            let text = self.sys_info.disk_usage();
+            let text = text!("{text}").color(theme.base()).bold();
+
+            let main = align_center!(
+                row![icon, text]
+                    .align_y(Vertical::Center)
+                    .spacing(theme.spacing().xxs()),
+            )
+            .background(theme.trans())
+            .padding(padding::left(theme.spacing().lg()));
+
+            align_center!(row![div, main])
         };
-        let power_btn = self.power_btn.view().map(Message::PowerBtn);
 
         // main bar
         bar_widgets!(
             left:  date_view, div, niri_ws_view;
             center: clock_view, win_div, win, tray;
-            right: power_btn, conn, sys_view
+            right: power_btn, conn, sys_view, disk_usage
         )
         .background(Color::TRANSPARENT)
-        .padding(padding::left(theme.spacing().md()).top(self.padding))
+        .padding(padding::horizontal(theme.spacing().md()).top(self.padding))
         .center_y(Length::Fill)
         .into()
     }

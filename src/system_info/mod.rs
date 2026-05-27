@@ -27,10 +27,11 @@ use crate::{
 
 const BYTES_IN_GIG: u64 = 1_073_741_824;
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone)]
 pub enum Message {
-    OnCpuTempTick(f32),
-    OnBatTick(bat::BatteryState),
+    OnCpuTemp(f32),
+    OnBat(bat::BatteryState),
     OnTick,
 }
 
@@ -94,7 +95,7 @@ impl Comp for SysInfoComp {
     fn subscription(&self) -> iced::Subscription<Self::Message> {
         let avg_temp_sub = Subscription::run_with(cpu_temp::ListenData(1000), cpu_temp::listen)
             .filter_map(|res| match res {
-                Ok(temp) => Some(Message::OnCpuTempTick(temp)),
+                Ok(temp) => Some(Message::OnCpuTemp(temp)),
                 Err(err) => {
                     info!("Error getting temp {err:?}");
                     None
@@ -109,7 +110,7 @@ impl Comp for SysInfoComp {
             bat::listen,
         )
         .filter_map(|res| match res {
-            Ok(bat) => Some(Message::OnBatTick(bat)),
+            Ok(bat) => Some(Message::OnBat(bat)),
             Err(err) => {
                 info!("Error getting bat state {err:?}");
                 None
@@ -123,11 +124,11 @@ impl Comp for SysInfoComp {
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
-            Message::OnCpuTempTick(cpu_temp) => {
+            Message::OnCpuTemp(cpu_temp) => {
                 self.cpu_temp = cpu_temp;
                 Task::none()
             }
-            Message::OnBatTick(bat_state) => {
+            Message::OnBat(bat_state) => {
                 self.bat_stat = bat_state;
                 Task::none()
             }
@@ -233,35 +234,7 @@ impl Comp for SysInfoComp {
             row![div, content].align_y(Vertical::Center)
         };
 
-        let disk_usage = {
-            let div = Semi::new(
-                theme.blue(),
-                theme.trans(),
-                divider::Direction::Right,
-                theme.spacing().xl(),
-            );
-
-            let icon = Icon::HardDrive
-                .widget()
-                .size(theme.spacing().lg())
-                .center()
-                .color(theme.base());
-
-            let text = self.disk_usage();
-            let text = text!("{text}").color(theme.base()).bold();
-
-            let main = align_center!(
-                row![icon, text]
-                    .align_y(Vertical::Center)
-                    .spacing(theme.spacing().xxs()),
-            )
-            .background(theme.trans())
-            .padding(padding::horizontal(theme.spacing().lg()));
-
-            align_center!(row![div, main])
-        };
-
-        container(row![cpu, avg_load, mem, disk_usage])
+        container(row![cpu, avg_load, mem])
             .align_y(Vertical::Center)
             .into()
     }
