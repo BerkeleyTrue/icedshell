@@ -109,7 +109,8 @@ impl Comp for DeloraMain {
         let (niri_serv, niri_serv_task) = state_serv::NiriStateServ::new((), Message::NiriService);
         let (tray_serv, tray_serv_task) = tray_serv::TrayService::new((), Message::TrayService);
         let (tray, tray_task) = tray_comp::TrayComp::new((), Message::Tray);
-        let (sys_info, sys_info_task) = sys_info::SysInfoComp::new((), Message::SysInfo);
+        let (sys_info, sys_info_task) =
+            sys_info::SysInfoComp::new(sys_info::Init { bat_name: None }, Message::SysInfo);
         let (power_btn, power_btn_task) = button_comp::PowerButton::new((), Message::PowerBtn);
         let (conn, conn_task) = cmd::CmdComp::new(
             cmd::Init {

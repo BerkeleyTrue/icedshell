@@ -48,8 +48,6 @@ pub enum Message {
 
     SysInfo(sys_info::Message),
     PowerBtn(button_comp::Message),
-
-    Conn(cmd::Message),
 }
 
 pub struct Init {
@@ -70,7 +68,6 @@ pub struct RenaMain {
     tray: tray_comp::TrayComp,
     sys_info: sys_info::SysInfoComp,
     power_btn: button_comp::PowerButton,
-    conn: cmd::CmdComp,
 }
 
 impl RenaMain {
@@ -109,16 +106,9 @@ impl Comp for RenaMain {
         let (niri_serv, niri_serv_task) = state_serv::NiriStateServ::new((), Message::NiriService);
         let (tray_serv, tray_serv_task) = tray_serv::TrayService::new((), Message::TrayService);
         let (tray, tray_task) = tray_comp::TrayComp::new((), Message::Tray);
-        let (sys_info, sys_info_task) = sys_info::SysInfoComp::new((), Message::SysInfo);
+        let (sys_info, sys_info_task) =
+            sys_info::SysInfoComp::new(sys_info::Init { bat_name: None }, Message::SysInfo);
         let (power_btn, power_btn_task) = button_comp::PowerButton::new((), Message::PowerBtn);
-        let (conn, conn_task) = cmd::CmdComp::new(
-            cmd::Init {
-                cmd: "connectivity".to_owned(),
-                args: Vec::default(),
-                interval: 1,
-            },
-            Message::Conn,
-        );
 
         let inner_tasks = Task::batch([
             win_comp_task,
@@ -130,7 +120,6 @@ impl Comp for RenaMain {
             tray_task,
             sys_info_task,
             power_btn_task,
-            conn_task,
         ]);
 
         (
@@ -147,7 +136,6 @@ impl Comp for RenaMain {
                 tray,
                 sys_info,
                 power_btn,
-                conn,
             },
             inner_tasks.map(f),
         )
@@ -184,7 +172,6 @@ impl Comp for RenaMain {
                 inner_task.chain(out_task)
             }
             Message::PowerButtonOnClicked => Task::none(),
-            Message::Conn(message) => self.conn.update(message).map(Message::Conn),
         }
     }
 
@@ -197,9 +184,8 @@ impl Comp for RenaMain {
         let tray_serv = self.tray_serv.subscription().map(Message::TrayService);
         let tray = self.tray.subscription().map(Message::Tray);
         let sys_info = self.sys_info.subscription().map(Message::SysInfo);
-        let conn = self.conn.subscription().map(Message::Conn);
         Subscription::batch([
-            clock, date, niri_ws, niri_win, niri_serv, tray_serv, tray, sys_info, conn,
+            clock, date, niri_ws, niri_win, niri_serv, tray_serv, tray, sys_info,
         ])
     }
 
@@ -256,7 +242,7 @@ impl Comp for RenaMain {
         let sys_view = {
             let div = Semi::new(
                 theme.mauve(),
-                theme.lavender(),
+                theme.surface2(),
                 Direction::Left,
                 theme.spacing().xl(),
             );
@@ -266,34 +252,15 @@ impl Comp for RenaMain {
             align_center!(row![div, view])
         };
 
-        let conn = {
-            let icon = if !self.conn.is_error() {
-                icon_globe().color(theme.surface2())
-            } else {
-                icon_globe_x().color(theme.red())
-            }
-            .bold();
-            let icon = container(icon).padding(padding::horizontal(spacing.sm()));
-
-            let div = Angled::new(
-                theme.surface2(),
-                theme.lavender(),
-                Direction::Right,
-                Heading::South,
-                theme.spacing().xl(),
-            );
-            container(row![div, icon]).background(theme.lavender())
-        };
-
         let power_btn = self.power_btn.view().map(Message::PowerBtn);
 
         bar_widgets!(
             left:  date_view, div, niri_ws_view;
             center: clock_view, win_div, win, tray;
-            right: power_btn, conn, sys_view
+            right: power_btn, sys_view
         )
         .background(Color::TRANSPARENT)
-        .padding(padding::left(theme.spacing().md()).top(self.padding))
+        .padding(padding::horizontal(theme.spacing().md()).top(self.padding))
         .center_y(Length::Fill)
         .into()
     }

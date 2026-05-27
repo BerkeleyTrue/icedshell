@@ -1,21 +1,25 @@
 use iced::{
-    Length, Subscription, Task, padding,
+    Length, Subscription, Task,
+    alignment::Vertical,
+    padding,
     widget::{container, row, text},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
+use lucide_icons::iced::{self as lucide, icon_globe, icon_globe_x};
+use tracing::info;
 
 use crate::{
     cmd,
     datetime::{clock_comp, date_comp},
     feature::{Comp, CompWithProps, Feature, Service},
     niri::{state_serv, win_comp},
-    system_info,
+    system_info::{self, BatteryState},
     theme::CAT_THEME,
     types::MonitorId,
     widget::{
-        IntoIteratorExt, bar_widgets,
+        IntoIteratorExt, align_center, bar_widgets,
         container_ext::ContainExt,
         divider::{Angled, Direction, Heading, Semi},
         text_ext::TextExt,
@@ -31,6 +35,7 @@ pub struct RenaSec {
     eth: cmd::CmdComp,
     btc: cmd::CmdComp,
     sys_info: system_info::SysInfoComp,
+    conn: cmd::CmdComp,
 }
 
 #[derive(Debug, Clone)]
@@ -42,6 +47,7 @@ pub enum Message {
     Eth(cmd::Message),
     Btc(cmd::Message),
     SysInfo(system_info::Message),
+    Conn(cmd::Message),
 }
 
 pub struct Init {
@@ -81,7 +87,20 @@ impl Comp for RenaSec {
             Message::Btc,
         );
 
-        let (sys_info, sys_info_task) = system_info::SysInfoComp::new((), Message::SysInfo);
+        let (sys_info, sys_info_task) = system_info::SysInfoComp::new(
+            system_info::Init {
+                bat_name: Some("BAT1".to_owned()),
+            },
+            Message::SysInfo,
+        );
+        let (conn, conn_task) = cmd::CmdComp::new(
+            cmd::Init {
+                cmd: "connectivity".to_owned(),
+                args: Vec::default(),
+                interval: 1,
+            },
+            Message::Conn,
+        );
 
         let inner_tasks = Task::batch([
             win_comp_task,
@@ -91,6 +110,7 @@ impl Comp for RenaSec {
             eth_task,
             btc_task,
             sys_info_task,
+            conn_task,
         ]);
 
         (
@@ -103,6 +123,7 @@ impl Comp for RenaSec {
                 eth,
                 btc,
                 sys_info,
+                conn,
             },
             inner_tasks.map(f),
         )
@@ -115,8 +136,10 @@ impl Comp for RenaSec {
         let niri_serv = self.niri_serv.subscription().map(Message::NiriService);
         let eth = self.eth.subscription().map(Message::Eth);
         let btc = self.btc.subscription().map(Message::Btc);
+        let conn = self.conn.subscription().map(Message::Conn);
+        let sys_info = self.sys_info.subscription().map(Message::SysInfo);
 
-        Subscription::batch([niri_win, niri_serv, clock, date, eth, btc])
+        Subscription::batch([niri_win, niri_serv, clock, date, eth, btc, conn, sys_info])
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
@@ -129,6 +152,7 @@ impl Comp for RenaSec {
             }
             Message::Eth(message) => self.eth.update(message).map(Message::Eth),
             Message::Btc(message) => self.btc.update(message).map(Message::Btc),
+            Message::Conn(message) => self.conn.update(message).map(Message::Conn),
             Message::SysInfo(message) => self.sys_info.update(message).map(Message::SysInfo),
         }
     }
@@ -224,12 +248,102 @@ impl Comp for RenaSec {
             container(row![view, div]).padding(padding::right(spacing.sm()))
         };
 
+        let bat = {
+            let bat_state = self.sys_info.bat_stat();
+
+            let color = match bat_state {
+                BatteryState::Discharging(cap) => {
+                    if cap < &60.0 {
+                        theme.yellow()
+                    } else {
+                        theme.text_color()
+                    }
+                }
+                BatteryState::Charging(_) => theme.green(),
+                BatteryState::Low(_) => theme.red(),
+                BatteryState::Full | BatteryState::None => theme.text_color(),
+            };
+            let text = match bat_state {
+                BatteryState::None => "N/A".to_owned(),
+                BatteryState::Full => "100".to_owned(),
+                BatteryState::Charging(cap)
+                | BatteryState::Discharging(cap)
+                | BatteryState::Low(cap) => format!("{}", cap),
+            };
+            let text = text!("{text}").color(color);
+            let icon = match bat_state {
+                BatteryState::None => lucide::icon_battery_warning(),
+                BatteryState::Charging(_) => lucide::icon_battery_charging(),
+                BatteryState::Full => lucide::icon_battery_full(),
+                BatteryState::Discharging(cap) => {
+                    if cap > &90.0 {
+                        lucide::icon_battery_full()
+                    } else {
+                        lucide::icon_battery_medium()
+                    }
+                }
+                BatteryState::Low(_) => lucide::icon_battery_low(),
+            }
+            .color(color);
+
+            align_center!(row![icon, text].spacing(spacing.xs()))
+                .padding(padding::horizontal(spacing.sm()))
+                .background(theme.surface0())
+        };
+
+        let conn = {
+            let icon = if !self.conn.is_error() {
+                icon_globe().color(theme.surface2())
+            } else {
+                icon_globe_x().color(theme.red())
+            }
+            .bold();
+            let icon = container(icon).padding(padding::horizontal(spacing.sm()));
+
+            let div = Angled::new(
+                theme.surface0(),
+                theme.lavender(),
+                Direction::Right,
+                Heading::South,
+                theme.spacing().xl(),
+            );
+            container(row![div, icon]).background(theme.lavender())
+        };
+
+        let disk_usage = {
+            let div = Semi::new(
+                theme.lavender(),
+                theme.trans(),
+                Direction::Right,
+                theme.spacing().xl(),
+            );
+
+            let icon = lucide::icon_hard_drive()
+                .size(theme.spacing().lg())
+                .center()
+                .color(theme.base());
+
+            let text = self.sys_info.disk_usage();
+            let text = text!("{text}").color(theme.base()).bold();
+
+            let main = align_center!(
+                row![icon, text]
+                    .align_y(Vertical::Center)
+                    .spacing(theme.spacing().xxs()),
+            )
+            .background(theme.trans())
+            .padding(padding::left(theme.spacing().sm()));
+
+            align_center!(row![div, main])
+        };
+
         bar_widgets!(
+            left: right_cap, bitcoin, eth;
             center: date_view, win, clock_view;
-            right: right_cap, bitcoin, eth,
+            right: bat, conn, disk_usage;
         )
         .background(theme.trans())
-        .padding(padding::left(theme.spacing().md()).bottom(spacing.sm()))
+        .padding(padding::horizontal(theme.spacing().md()).bottom(spacing.sm()))
         .center_y(Length::Fill)
         .into()
     }

@@ -11,9 +11,11 @@ use lucide_icons::Icon;
 use sysinfo::{CpuRefreshKind, DiskRefreshKind, Disks, MemoryRefreshKind, RefreshKind, System};
 use tracing::info;
 
+pub use battery::BatteryState;
+
 use crate::{
     feature::Comp,
-    system_info::battery::{self as bat, BatteryState},
+    system_info::battery::{self as bat},
     theme::CAT_THEME,
     widget::{
         align_center,
@@ -32,11 +34,16 @@ pub enum Message {
     OnTick,
 }
 
+pub struct Init {
+    pub bat_name: Option<String>,
+}
+
 pub struct SysInfoComp {
     disks: Disks,
     system: System,
     load: f64,
     cpu_temp: f32,
+    bat_name: String,
     bat_stat: BatteryState,
 }
 
@@ -60,10 +67,10 @@ impl SysInfoComp {
 
 impl Comp for SysInfoComp {
     type Message = Message;
-    type Init = ();
+    type Init = Init;
 
     fn new<O: MaybeSend + 'static>(
-        _input: Self::Init,
+        input: Self::Init,
         _f: impl Fn(Self::Message) -> O + MaybeSend + 'static,
     ) -> (Self, Task<O>) {
         let system = System::new_with_specifics(
@@ -79,6 +86,7 @@ impl Comp for SysInfoComp {
             load: 0.,
             cpu_temp: 0.,
             bat_stat: BatteryState::None,
+            bat_name: input.bat_name.unwrap_or_default(),
         }
         .to_tuple()
     }
@@ -96,7 +104,7 @@ impl Comp for SysInfoComp {
         let bat_stat = Subscription::run_with(
             bat::ListenData {
                 delay: 1000,
-                bat: "BAT1".to_string(),
+                bat: self.bat_name.clone(),
             },
             bat::listen,
         )

@@ -244,6 +244,14 @@ impl Daemon {
                     Task::none()
                 }
             }
+            Message::RenaSec(win_id, message) => {
+                if let Some(Feat::RenaSec(rena)) = self.features.get_mut(&win_id) {
+                    rena.update(message)
+                        .map(move |m| Message::RenaSec(win_id, m))
+                } else {
+                    Task::none()
+                }
+            }
             Message::TrayMenu(win_id, message) => {
                 if let Some(Feat::TrayMenu(menu)) = self.features.get_mut(&win_id) {
                     let inner_task = menu
