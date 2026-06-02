@@ -1,4 +1,3 @@
-use derive_more::Deref;
 use iced::futures::{
     StreamExt,
     stream::{self, BoxStream},
@@ -47,7 +46,8 @@ async fn get_status(bat: &str) -> BatteryState {
         .unwrap_or_else(|_| "Unknown".to_string());
 
     match status.trim() {
-        "Charging" | "Full" => BatteryState::Charging(cap),
+        "Full" => BatteryState::Full,
+        "Charging" => BatteryState::Charging(cap),
         "Discharging" if cap < 10.0 => BatteryState::Low(cap),
         _ => BatteryState::Discharging(cap),
     }

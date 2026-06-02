@@ -1,10 +1,9 @@
-use ::iced::widget::text;
 use iced::{
     Color, Length, Subscription, Task,
     advanced::graphics::futures::MaybeSend,
     alignment::Vertical,
     padding,
-    widget::{container, row},
+    widget::{container, row, text},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
@@ -266,6 +265,7 @@ impl Comp for DeloraMain {
             .map(Message::Tray);
 
         let power_btn = self.power_btn.view().map(Message::PowerBtn);
+
         let audio = {
             let vol = self.audio.get_vol();
             let icon = lucide::icon_volume();

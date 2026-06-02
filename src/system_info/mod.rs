@@ -20,7 +20,7 @@ use crate::{
     widget::{
         align_center,
         container_ext::ContainExt,
-        divider::{self, Angled, Semi},
+        divider::{self, Angled},
         text_ext::TextExt,
     },
 };

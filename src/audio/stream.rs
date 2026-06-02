@@ -1,15 +1,12 @@
 use std::ops::{Div, Mul};
-use std::thread;
 use std::time::Duration;
 use std::{ffi::CString, io::BufReader, os::unix::net::UnixStream};
 
 use anyhow::{Error, Result, anyhow};
 use iced::futures::stream;
-use pulseaudio::protocol::{self, CommandReply, SubscriptionMask};
+use pulseaudio::protocol::{self, CommandReply};
 use tokio::fs;
-use tokio::sync::mpsc;
 use tokio_stream::Stream;
-use tracing::info;
 
 fn get_sock() -> Result<BufReader<UnixStream>> {
     let socket_path =

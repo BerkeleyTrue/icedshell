@@ -8,7 +8,6 @@ use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
 use lucide_icons::iced::{self as lucide, icon_globe, icon_globe_x};
-use tracing::info;
 
 use crate::{
     cmd,

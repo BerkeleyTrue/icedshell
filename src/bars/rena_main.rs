@@ -1,16 +1,17 @@
 use iced::{
     Color, Length, Subscription, Task,
     advanced::graphics::futures::MaybeSend,
+    alignment::Vertical,
     padding,
-    widget::{container, row},
+    widget::{row, text},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
-use lucide_icons::iced::{icon_globe, icon_globe_x};
+use lucide_icons::iced::{self as lucide};
 
 use crate::{
-    cmd,
+    audio,
     datetime::{clock_comp, date_comp},
     feature::{Comp, CompWithProps, Feature, Service},
     niri::{state_serv, win_comp, ws_comp},
@@ -48,6 +49,7 @@ pub enum Message {
 
     SysInfo(sys_info::Message),
     PowerBtn(button_comp::Message),
+    Audio(audio::Message),
 }
 
 pub struct Init {
@@ -68,6 +70,7 @@ pub struct RenaMain {
     tray: tray_comp::TrayComp,
     sys_info: sys_info::SysInfoComp,
     power_btn: button_comp::PowerButton,
+    audio: audio::PulseAudio,
 }
 
 impl RenaMain {
@@ -109,6 +112,7 @@ impl Comp for RenaMain {
         let (sys_info, sys_info_task) =
             sys_info::SysInfoComp::new(sys_info::Init { bat_name: None }, Message::SysInfo);
         let (power_btn, power_btn_task) = button_comp::PowerButton::new((), Message::PowerBtn);
+        let (audio, audio_task) = audio::PulseAudio::new((), Message::Audio);
 
         let inner_tasks = Task::batch([
             win_comp_task,
@@ -120,6 +124,7 @@ impl Comp for RenaMain {
             tray_task,
             sys_info_task,
             power_btn_task,
+            audio_task,
         ]);
 
         (
@@ -136,9 +141,26 @@ impl Comp for RenaMain {
                 tray,
                 sys_info,
                 power_btn,
+                audio,
             },
             inner_tasks.map(f),
         )
+    }
+
+    fn subscription(&self) -> Subscription<Self::Message> {
+        let clock = self.clock.subscription().map(Message::Clock);
+        let date = self.date.subscription().map(Message::Date);
+        let niri_serv = self.niri_serv.subscription().map(Message::NiriService);
+        let niri_ws = self.ws.subscription().map(Message::Ws);
+        let niri_win = self.win.subscription().map(Message::Win);
+        let tray_serv = self.tray_serv.subscription().map(Message::TrayService);
+        let tray = self.tray.subscription().map(Message::Tray);
+        let sys_info = self.sys_info.subscription().map(Message::SysInfo);
+        let audio = self.audio.subscription().map(Message::Audio);
+
+        Subscription::batch([
+            clock, date, niri_ws, niri_win, niri_serv, tray_serv, tray, sys_info, audio,
+        ])
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
@@ -172,21 +194,8 @@ impl Comp for RenaMain {
                 inner_task.chain(out_task)
             }
             Message::PowerButtonOnClicked => Task::none(),
+            Message::Audio(message) => self.audio.update(message).map(Message::Audio),
         }
-    }
-
-    fn subscription(&self) -> Subscription<Self::Message> {
-        let clock = self.clock.subscription().map(Message::Clock);
-        let date = self.date.subscription().map(Message::Date);
-        let niri_serv = self.niri_serv.subscription().map(Message::NiriService);
-        let niri_ws = self.ws.subscription().map(Message::Ws);
-        let niri_win = self.win.subscription().map(Message::Win);
-        let tray_serv = self.tray_serv.subscription().map(Message::TrayService);
-        let tray = self.tray.subscription().map(Message::Tray);
-        let sys_info = self.sys_info.subscription().map(Message::SysInfo);
-        Subscription::batch([
-            clock, date, niri_ws, niri_win, niri_serv, tray_serv, tray, sys_info,
-        ])
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
@@ -239,10 +248,36 @@ impl Comp for RenaMain {
             })
             .map(Message::Tray);
 
+        let power_btn = self.power_btn.view().map(Message::PowerBtn);
+
+        let audio = {
+            let vol = self.audio.get_vol();
+            let icon = lucide::icon_volume();
+            let text = align_center!(
+                row![
+                    icon.center().color(theme.base()).bold(),
+                    text!("{vol}%").color(theme.base()).bold(),
+                ]
+                .align_y(Vertical::Center)
+                .spacing(spacing.xxs()),
+            )
+            .padding(padding::horizontal(spacing.sm()));
+
+            let div = Angled::new(
+                theme.surface2(),
+                theme.green(),
+                Direction::Right,
+                Heading::South,
+                spacing.xl(),
+            );
+
+            align_center!(row![div, text]).background(theme.green())
+        };
+
         let sys_view = {
             let div = Semi::new(
                 theme.mauve(),
-                theme.surface2(),
+                theme.green(),
                 Direction::Left,
                 theme.spacing().xl(),
             );
@@ -252,12 +287,10 @@ impl Comp for RenaMain {
             align_center!(row![div, view])
         };
 
-        let power_btn = self.power_btn.view().map(Message::PowerBtn);
-
         bar_widgets!(
             left:  date_view, div, niri_ws_view;
             center: clock_view, win_div, win, tray;
-            right: power_btn, sys_view
+            right: power_btn, audio, sys_view
         )
         .background(Color::TRANSPARENT)
         .padding(padding::horizontal(theme.spacing().md()).top(self.padding))
