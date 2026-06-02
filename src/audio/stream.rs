@@ -43,7 +43,7 @@ fn request<T: CommandReply>(
 #[derive(Debug, Clone)]
 pub enum AudioEvents {
     Connected,
-    Vol(u32),
+    Vol(u32, bool),
     None,
 }
 
@@ -188,6 +188,8 @@ pub fn listen() -> impl Stream<Item = Result<AudioEvents>> {
                     StreamState::Connected { pulse },
                 );
 
+                let muted = sink.muted;
+
                 let vol = ok_stream!(
                     sink.cvolume.channels().iter().next(),
                     StreamState::Connected { pulse },
@@ -197,7 +199,7 @@ pub fn listen() -> impl Stream<Item = Result<AudioEvents>> {
                 let vol = vol.div(protocol::Volume::NORM.as_u32() as f32).mul(100.);
 
                 Some((
-                    Ok(AudioEvents::Vol(vol.round_ties_even() as u32)),
+                    Ok(AudioEvents::Vol(vol.round_ties_even() as u32, muted)),
                     StreamState::Connected { pulse },
                 ))
             }

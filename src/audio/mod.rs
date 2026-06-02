@@ -15,11 +15,15 @@ pub enum Message {
 
 pub struct PulseAudio {
     vol: u32,
+    muted: bool,
 }
 
 impl PulseAudio {
     pub fn get_vol(&self) -> u32 {
         self.vol
+    }
+    pub fn get_muted(&self) -> bool {
+        self.muted
     }
 }
 
@@ -30,7 +34,13 @@ impl Service for PulseAudio {
         _input: Self::Init,
         _f: impl Fn(Self::Message) -> O + iced::advanced::graphics::futures::MaybeSend + 'static,
     ) -> (Self, iced::Task<O>) {
-        (Self { vol: 0 }, Task::none())
+        (
+            Self {
+                vol: 0,
+                muted: false,
+            },
+            Task::none(),
+        )
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
@@ -48,8 +58,9 @@ impl Service for PulseAudio {
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
         match message {
             Message::Audio(audio) => match audio {
-                AudioEvents::Vol(vol) => {
+                AudioEvents::Vol(vol, muted) => {
                     self.vol = vol;
+                    self.muted = muted;
                     Task::none()
                 }
                 AudioEvents::Connected | AudioEvents::None => Task::none(),

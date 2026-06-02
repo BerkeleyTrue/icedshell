@@ -252,14 +252,23 @@ impl Comp for RenaMain {
 
         let audio = {
             let vol = self.audio.get_vol();
-            let icon = lucide::icon_volume();
+            let muted = self.audio.get_muted();
+
+            let icon = match (muted, vol) {
+                (true, _) => lucide::icon_volume_off(),
+                (_, val) if val > 60 => lucide::icon_volume_2(),
+                (_, val) if val > 20 => lucide::icon_volume_1(),
+                (_, _) => lucide::icon_volume(),
+            }
+            .center()
+            .size(spacing.md())
+            .color(theme.base())
+            .bold();
+
             let text = align_center!(
-                row![
-                    icon.center().color(theme.base()).bold(),
-                    text!("{vol}%").color(theme.base()).bold(),
-                ]
-                .align_y(Vertical::Center)
-                .spacing(spacing.xxs()),
+                row![icon, text!("{vol}%").color(theme.base()).bold(),]
+                    .align_y(Vertical::Center)
+                    .spacing(spacing.xxs()),
             )
             .padding(padding::horizontal(spacing.sm()));
 

@@ -283,6 +283,7 @@ impl Comp for RenaSec {
                 }
                 BatteryState::Low(_) => lucide::icon_battery_low(),
             }
+            .size(spacing.md())
             .color(color);
 
             align_center!(row![icon, text].spacing(spacing.xs()))
@@ -296,7 +297,10 @@ impl Comp for RenaSec {
             } else {
                 icon_globe_x().color(theme.red())
             }
+            .center()
+            .size(spacing.md())
             .bold();
+
             let icon = container(icon).padding(padding::horizontal(spacing.sm()));
 
             let div = Angled::new(
@@ -318,7 +322,7 @@ impl Comp for RenaSec {
             );
 
             let icon = lucide::icon_hard_drive()
-                .size(theme.spacing().lg())
+                .size(theme.spacing().md())
                 .center()
                 .color(theme.base());
 
