@@ -12,7 +12,7 @@ use iced_layershell::reexport::{
 use lucide_icons::iced::{self as lucide};
 
 use crate::{
-    cmd,
+    audio, cmd,
     datetime::{clock_comp, date_comp},
     feature::{Comp, CompWithProps, Feature, Service},
     niri::{state_serv, win_comp, ws_comp},
@@ -52,6 +52,7 @@ pub enum Message {
     PowerBtn(button_comp::Message),
 
     Conn(cmd::Message),
+    Audio(audio::Message),
 }
 
 pub struct Init {
@@ -73,6 +74,7 @@ pub struct DeloraMain {
     sys_info: sys_info::SysInfoComp,
     power_btn: button_comp::PowerButton,
     conn: cmd::CmdComp,
+    audio: audio::PulseAudio,
 }
 
 impl DeloraMain {
@@ -122,6 +124,7 @@ impl Comp for DeloraMain {
             },
             Message::Conn,
         );
+        let (audio, audio_task) = audio::PulseAudio::new((), Message::Audio);
 
         let inner_tasks = Task::batch([
             win_comp_task,
@@ -134,6 +137,7 @@ impl Comp for DeloraMain {
             sys_info_task,
             power_btn_task,
             conn_task,
+            audio_task,
         ]);
 
         (
@@ -151,6 +155,7 @@ impl Comp for DeloraMain {
                 sys_info,
                 power_btn,
                 conn,
+                audio,
             },
             inner_tasks.map(f),
         )
@@ -189,6 +194,7 @@ impl Comp for DeloraMain {
             }
             Message::PowerButtonOnClicked => Task::none(),
             Message::Conn(message) => self.conn.update(message).map(Message::Conn),
+            Message::Audio(message) => self.audio.update(message).map(Message::Audio),
         }
     }
 
@@ -202,8 +208,10 @@ impl Comp for DeloraMain {
         let tray = self.tray.subscription().map(Message::Tray);
         let sys_info = self.sys_info.subscription().map(Message::SysInfo);
         let conn = self.conn.subscription().map(Message::Conn);
+        let audio = self.audio.subscription().map(Message::Audio);
+
         Subscription::batch([
-            clock, date, niri_ws, niri_win, niri_serv, tray_serv, tray, sys_info, conn,
+            clock, date, niri_ws, niri_win, niri_serv, tray_serv, tray, sys_info, conn, audio,
         ])
     }
 
@@ -226,17 +234,17 @@ impl Comp for DeloraMain {
             theme.background(),
             Direction::Right,
             Heading::South,
-            theme.spacing().xl(),
+            spacing.xl(),
         );
 
         let clock_view = align_center!(self.clock.view(theme.background()).map(Message::Clock))
-            .padding(padding::right(theme.spacing().sm()));
+            .padding(padding::right(spacing.sm()));
 
         let win_div = Semi::new(
             theme.rosewater(),
             theme.trans(),
             Direction::Left,
-            theme.spacing().xl(),
+            spacing.xl(),
         );
 
         let win = align_center!(
@@ -258,6 +266,29 @@ impl Comp for DeloraMain {
             .map(Message::Tray);
 
         let power_btn = self.power_btn.view().map(Message::PowerBtn);
+        let audio = {
+            let vol = self.audio.get_vol();
+            let icon = lucide::icon_volume();
+            let text = align_center!(
+                row![
+                    icon.center().color(theme.base()).bold(),
+                    text!("{vol}%").color(theme.base()).bold(),
+                ]
+                .align_y(Vertical::Center)
+                .spacing(spacing.xxs()),
+            )
+            .padding(padding::horizontal(spacing.sm()));
+
+            let div = Angled::new(
+                theme.surface2(),
+                theme.green(),
+                Direction::Right,
+                Heading::South,
+                spacing.xl(),
+            );
+
+            align_center!(row![div, text]).background(theme.green())
+        };
 
         let conn = {
             let icon = if !self.conn.is_error() {
@@ -270,11 +301,11 @@ impl Comp for DeloraMain {
             let content = container(icon).padding(padding::horizontal(spacing.sm()));
 
             let div = Angled::new(
-                theme.surface2(),
+                theme.green(),
                 theme.lavender(),
                 Direction::Right,
                 Heading::South,
-                theme.spacing().xl(),
+                spacing.xl(),
             );
 
             align_center!(row![div, content]).background(theme.lavender())
@@ -285,7 +316,7 @@ impl Comp for DeloraMain {
                 theme.mauve(),
                 theme.lavender(),
                 Direction::Left,
-                theme.spacing().xl(),
+                spacing.xl(),
             );
 
             let view = self.sys_info.view().map(Message::SysInfo);
@@ -294,15 +325,10 @@ impl Comp for DeloraMain {
         };
 
         let disk_usage = {
-            let div = Semi::new(
-                theme.blue(),
-                theme.trans(),
-                Direction::Right,
-                theme.spacing().xl(),
-            );
+            let div = Semi::new(theme.blue(), theme.trans(), Direction::Right, spacing.xl());
 
             let icon = lucide::icon_hard_drive()
-                .size(theme.spacing().lg())
+                .size(spacing.lg())
                 .center()
                 .color(theme.base());
 
@@ -312,10 +338,10 @@ impl Comp for DeloraMain {
             let main = align_center!(
                 row![icon, text]
                     .align_y(Vertical::Center)
-                    .spacing(theme.spacing().xxs()),
+                    .spacing(spacing.xxs()),
             )
             .background(theme.trans())
-            .padding(padding::left(theme.spacing().lg()));
+            .padding(padding::left(spacing.lg()));
 
             align_center!(row![div, main])
         };
@@ -324,10 +350,10 @@ impl Comp for DeloraMain {
         bar_widgets!(
             left:  date_view, div, niri_ws_view;
             center: clock_view, win_div, win, tray;
-            right: power_btn, conn, sys_view, disk_usage
+            right: power_btn, audio, conn, sys_view, disk_usage
         )
         .background(Color::TRANSPARENT)
-        .padding(padding::horizontal(theme.spacing().md()).top(self.padding))
+        .padding(padding::horizontal(spacing.md()).top(self.padding))
         .center_y(Length::Fill)
         .into()
     }

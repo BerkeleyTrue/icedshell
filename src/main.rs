@@ -1,3 +1,4 @@
+mod audio;
 mod bars;
 mod cmd;
 mod daemon;
