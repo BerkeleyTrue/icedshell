@@ -249,10 +249,12 @@ impl Comp for RenaMain {
             align_center!(row![div, view])
         };
 
+        let end_cap = Semi::new(theme.blue(), theme.trans(), Direction::Right, spacing.xl());
+
         bar_widgets!(
             left:  date_view, div, niri_ws_view;
             center: clock_view, win_div, win, tray;
-            right: power_btn, sys_view
+            right: power_btn, sys_view, end_cap
         )
         .background(Color::TRANSPARENT)
         .padding(padding::horizontal(spacing.md()).top(self.padding))
