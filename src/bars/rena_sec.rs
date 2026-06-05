@@ -7,10 +7,10 @@ use iced::{
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
-use lucide_icons::iced::{self as lucide, icon_globe, icon_globe_x};
+use lucide_icons::iced::{self as lucide};
 
 use crate::{
-    cmd,
+    audio, cmd,
     datetime::{clock_comp, date_comp},
     feature::{Comp, CompWithProps, Feature, Service},
     niri::{state_serv, win_comp},
@@ -25,18 +25,6 @@ use crate::{
     },
 };
 
-pub struct RenaSec {
-    win: win_comp::NiriWinComp,
-    output_name: String,
-    niri_serv: state_serv::NiriStateServ,
-    clock: clock_comp::Clock,
-    date: date_comp::Date,
-    eth: cmd::CmdComp,
-    btc: cmd::CmdComp,
-    sys_info: system_info::SysInfoComp,
-    conn: cmd::CmdComp,
-}
-
 #[derive(Debug, Clone)]
 pub enum Message {
     Win(win_comp::Message),
@@ -47,6 +35,20 @@ pub enum Message {
     Btc(cmd::Message),
     SysInfo(system_info::Message),
     Conn(cmd::Message),
+    Audio(audio::Message),
+}
+
+pub struct RenaSec {
+    win: win_comp::NiriWinComp,
+    output_name: String,
+    niri_serv: state_serv::NiriStateServ,
+    clock: clock_comp::Clock,
+    date: date_comp::Date,
+    eth: cmd::CmdComp,
+    btc: cmd::CmdComp,
+    sys_info: system_info::SysInfoComp,
+    conn: cmd::CmdComp,
+    audio: audio::PulseAudio,
 }
 
 pub struct Init {
@@ -100,6 +102,7 @@ impl Comp for RenaSec {
             },
             Message::Conn,
         );
+        let (audio, audio_task) = audio::PulseAudio::new((), Message::Audio);
 
         let inner_tasks = Task::batch([
             win_comp_task,
@@ -110,6 +113,7 @@ impl Comp for RenaSec {
             btc_task,
             sys_info_task,
             conn_task,
+            audio_task,
         ]);
 
         (
@@ -123,6 +127,7 @@ impl Comp for RenaSec {
                 btc,
                 sys_info,
                 conn,
+                audio,
             },
             inner_tasks.map(f),
         )
@@ -137,8 +142,11 @@ impl Comp for RenaSec {
         let btc = self.btc.subscription().map(Message::Btc);
         let conn = self.conn.subscription().map(Message::Conn);
         let sys_info = self.sys_info.subscription().map(Message::SysInfo);
+        let audio = self.audio.subscription().map(Message::Audio);
 
-        Subscription::batch([niri_win, niri_serv, clock, date, eth, btc, conn, sys_info])
+        Subscription::batch([
+            niri_win, niri_serv, clock, date, eth, btc, conn, sys_info, audio,
+        ])
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Task<Self::Message> {
@@ -153,6 +161,7 @@ impl Comp for RenaSec {
             Message::Btc(message) => self.btc.update(message).map(Message::Btc),
             Message::Conn(message) => self.conn.update(message).map(Message::Conn),
             Message::SysInfo(message) => self.sys_info.update(message).map(Message::SysInfo),
+            Message::Audio(message) => self.audio.update(message).map(Message::Audio),
         }
     }
 
@@ -168,7 +177,7 @@ impl Comp for RenaSec {
                 theme.rosewater(),
                 theme.lavender(),
                 Direction::Left,
-                theme.spacing().xl(),
+                spacing.xl(),
             );
 
             let view = self
@@ -184,13 +193,12 @@ impl Comp for RenaSec {
 
         let clock_view = container(self.clock.view(theme.background()).map(Message::Clock))
             .center_y(Length::Fill)
-            .padding(padding::right(theme.spacing().sm()));
+            .padding(padding::right(spacing.sm()));
 
-        let right_cap = Angled::new(
+        let right_cap = Semi::new(
             theme.overlay2(),
             theme.trans(),
             Direction::Left,
-            Heading::South,
             spacing.xl(),
         );
 
@@ -234,13 +242,14 @@ impl Comp for RenaSec {
 
             let view = container(row![icon, txt])
                 .center_y(Length::Fill)
-                .padding(padding::left(spacing.sm()))
+                .padding(padding::horizontal(spacing.sm()))
                 .background(theme.overlay1());
 
-            let div = Semi::new(
+            let div = Angled::new(
                 theme.overlay1(),
                 theme.trans(),
                 Direction::Right,
+                Heading::South,
                 spacing.xl(),
             );
 
@@ -284,18 +293,66 @@ impl Comp for RenaSec {
                 BatteryState::Low(_) => lucide::icon_battery_low(),
             }
             .size(spacing.md())
+            .center()
             .color(color);
 
-            align_center!(row![icon, text].spacing(spacing.xs()))
-                .padding(padding::horizontal(spacing.sm()))
-                .background(theme.surface0())
+            let div = Angled::new(
+                theme.surface0(),
+                theme.trans(),
+                Direction::Left,
+                Heading::South,
+                spacing.xl(),
+            );
+
+            let content = align_center!(
+                row![icon, text]
+                    .spacing(spacing.xs())
+                    .align_y(Vertical::Center)
+            )
+            .padding(padding::horizontal(spacing.sm()))
+            .background(theme.surface0());
+
+            row![div, content].align_y(Vertical::Center)
+        };
+
+        let audio = {
+            let vol = self.audio.get_vol();
+            let muted = self.audio.get_muted();
+
+            let icon = match (muted, vol) {
+                (true, _) => lucide::icon_volume_off(),
+                (_, val) if val > 60 => lucide::icon_volume_2(),
+                (_, val) if val > 20 => lucide::icon_volume_1(),
+                (_, _) => lucide::icon_volume(),
+            }
+            .center()
+            .size(spacing.md())
+            .color(theme.base())
+            .bold();
+
+            let text = align_center!(
+                row![icon, text!("{vol}%").color(theme.base()).bold(),]
+                    .align_y(Vertical::Center)
+                    .spacing(spacing.xxs()),
+            )
+            .padding(padding::horizontal(spacing.sm()));
+
+            let div = Angled::new(
+                theme.surface0(),
+                theme.green(),
+                Direction::Right,
+                Heading::South,
+                spacing.xl(),
+            );
+
+            align_center!(row![div, text]).background(theme.green())
         };
 
         let conn = {
             let icon = if !self.conn.is_error() {
-                icon_globe().color(theme.surface2())
+                lucide::icon_globe().color(theme.surface2())
             } else {
-                icon_globe_x().color(theme.red())
+                lucide::icon_globe_x().color(theme.red())
             }
             .center()
             .size(spacing.md())
@@ -304,11 +361,11 @@ impl Comp for RenaSec {
             let icon = container(icon).padding(padding::horizontal(spacing.sm()));
 
             let div = Angled::new(
-                theme.surface0(),
+                theme.green(),
                 theme.lavender(),
                 Direction::Right,
                 Heading::South,
-                theme.spacing().xl(),
+                spacing.xl(),
             );
             container(row![div, icon]).background(theme.lavender())
         };
@@ -318,11 +375,11 @@ impl Comp for RenaSec {
                 theme.lavender(),
                 theme.trans(),
                 Direction::Right,
-                theme.spacing().xl(),
+                spacing.xl(),
             );
 
             let icon = lucide::icon_hard_drive()
-                .size(theme.spacing().md())
+                .size(spacing.md())
                 .center()
                 .color(theme.base());
 
@@ -332,10 +389,10 @@ impl Comp for RenaSec {
             let main = align_center!(
                 row![icon, text]
                     .align_y(Vertical::Center)
-                    .spacing(theme.spacing().xxs()),
+                    .spacing(spacing.xxs()),
             )
             .background(theme.trans())
-            .padding(padding::left(theme.spacing().sm()));
+            .padding(padding::left(spacing.sm()));
 
             align_center!(row![div, main])
         };
@@ -343,10 +400,10 @@ impl Comp for RenaSec {
         bar_widgets!(
             left: right_cap, bitcoin, eth;
             center: date_view, win, clock_view;
-            right: bat, conn, disk_usage;
+            right: bat, audio, conn, disk_usage;
         )
         .background(theme.trans())
-        .padding(padding::horizontal(theme.spacing().md()).bottom(spacing.sm()))
+        .padding(padding::horizontal(spacing.md()).bottom(spacing.sm()))
         .center_y(Length::Fill)
         .into()
     }

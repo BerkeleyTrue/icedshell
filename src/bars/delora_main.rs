@@ -3,7 +3,7 @@ use iced::{
     advanced::graphics::futures::MaybeSend,
     alignment::Vertical,
     padding,
-    widget::{container, row, text},
+    widget::{row, text},
 };
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
